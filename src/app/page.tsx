@@ -3,6 +3,8 @@
 import React, { useState, useMemo, useCallback } from "react";
 import { Navbar } from "@/components/layout/Navbar";
 import { MasterGrid } from "@/components/master-grid/MasterGrid";
+import { SingleClassView } from "@/components/views/SingleClassView";
+import { TeacherScheduleView } from "@/components/views/TeacherScheduleView";
 import { SetupWizard } from "@/components/wizard/SetupWizard";
 import { ZamenaModal } from "@/components/zamena/ZamenaModal";
 import { ExcelImportModal } from "@/components/excel/ExcelImportModal";
@@ -36,11 +38,16 @@ import {
   Building2,
   X,
   Plus,
+  LayoutGrid,
+  GraduationCap,
+  Users,
 } from "lucide-react";
+
+type ViewMode = "CLASS" | "MASTER" | "TEACHER";
 
 export default function HomePage() {
   const [schools, setSchools] = useState<SchoolInfo[]>(initialSchools);
-  const [currentSchoolId, setCurrentSchoolId] = useState<string>("school_39"); // Default: 39-maktab
+  const [currentSchoolId, setCurrentSchoolId] = useState<string>("school_39"); // 39-maktab
 
   const [allBranches, setAllBranches] = useState<Branch[]>(initialBranches);
   const [allShifts, setAllShifts] = useState<Shift[]>(initialShifts);
@@ -53,6 +60,7 @@ export default function HomePage() {
   const [history, setHistory] = useState<Lesson[][]>([]);
   const [zoomLevel, setZoomLevel] = useState<number>(100);
   const [selectedBranch, setSelectedBranch] = useState<string>("ALL");
+  const [viewMode, setViewMode] = useState<ViewMode>("CLASS"); // Default: Sinf bo'yicha chiroyli ko'rish
 
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
   const [generationResult, setGenerationResult] = useState<SolverResult | null>(null);
@@ -64,7 +72,7 @@ export default function HomePage() {
   const [newSchoolName, setNewSchoolName] = useState<string>("");
   const [selectedZamenaLesson, setSelectedZamenaLesson] = useState<Lesson | null>(null);
 
-  // Joriy tanlangan maktab ma'lumotlarini filtrlash (Multi-tenant)
+  // Joriy maktab ma'lumotlari (Multi-tenant)
   const currentSchool = useMemo(
     () => schools.find((s) => s.id === currentSchoolId) || schools[0],
     [schools, currentSchoolId]
@@ -109,7 +117,6 @@ export default function HomePage() {
   const handleSchoolLessonsChange = useCallback(
     (newLessons: Lesson[]) => {
       setHistory((prev) => [...prev.slice(-15), allLessons]);
-      // Faqat boshqa maktablar darslarini saqlab, joriy maktab darslarini yangilash
       setAllLessons((prev) => [
         ...prev.filter((l) => l.schoolId !== currentSchoolId),
         ...newLessons,
@@ -191,7 +198,6 @@ export default function HomePage() {
     setSchools([...schools, newSch]);
     setCurrentSchoolId(newId);
 
-    // Yangi maktab uchun standart filial va smena yaratish
     const defaultBranch: Branch = {
       id: `b_${Date.now()}`,
       schoolId: newId,
@@ -211,8 +217,6 @@ export default function HomePage() {
     setAllShifts([...allShifts, defaultShift]);
     setNewSchoolName("");
     setIsAddSchoolOpen(false);
-
-    // Darhol sozlash oynasini ochish
     setIsWizardOpen(true);
   };
 
@@ -254,6 +258,55 @@ export default function HomePage() {
         branches={schoolBranches}
       />
 
+      {/* View Mode Switcher Sub-Header */}
+      <div className="border-b border-border/80 bg-card/60 px-4 md:px-6 py-2.5 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-1.5 bg-muted/40 p-1 rounded-xl border border-border/60">
+          <button
+            onClick={() => setViewMode("CLASS")}
+            className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-bold transition-all ${
+              viewMode === "CLASS"
+                ? "bg-blue-600 text-white shadow-md shadow-blue-600/20"
+                : "text-muted-foreground hover:text-foreground hover:bg-background/60"
+            }`}
+          >
+            <GraduationCap className="h-4 w-4" />
+            <span>Sinf Bo&apos;yicha Jadval</span>
+          </button>
+
+          <button
+            onClick={() => setViewMode("TEACHER")}
+            className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-bold transition-all ${
+              viewMode === "TEACHER"
+                ? "bg-blue-600 text-white shadow-md shadow-blue-600/20"
+                : "text-muted-foreground hover:text-foreground hover:bg-background/60"
+            }`}
+          >
+            <Users className="h-4 w-4" />
+            <span>O&apos;qituvchi Jadvali</span>
+          </button>
+
+          <button
+            onClick={() => setViewMode("MASTER")}
+            className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-bold transition-all ${
+              viewMode === "MASTER"
+                ? "bg-blue-600 text-white shadow-md shadow-blue-600/20"
+                : "text-muted-foreground hover:text-foreground hover:bg-background/60"
+            }`}
+          >
+            <LayoutGrid className="h-4 w-4" />
+            <span>Umumiy Master Doska</span>
+          </button>
+        </div>
+
+        <div className="flex items-center gap-3 text-xs text-muted-foreground">
+          <span>
+            {currentSchool?.name}:{" "}
+            <strong className="text-foreground">{schoolClasses.length} ta sinf</strong>,{" "}
+            <strong className="text-foreground">{schoolTeachers.length} nafar o&apos;qituvchi</strong>
+          </span>
+        </div>
+      </div>
+
       {/* Main Content Area */}
       <main className="flex-1 flex flex-col">
         {/* Generatsiya Xulosasi Kartasi (Banner) */}
@@ -266,20 +319,20 @@ export default function HomePage() {
                 </div>
                 <div>
                   <h4 className="text-xs font-bold text-foreground flex items-center gap-2">
-                    <span>{currentSchool?.name} — AI & CSP Solver Natijasi:</span>
+                    <span>{currentSchool?.name} — Darslar 1-darsdan boshlab tartiblandi:</span>
                     <span className="rounded-full bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 px-2 py-0.5 text-[10px] font-extrabold">
                       {generationResult.stats.score}% Ziddiyatsiz
                     </span>
                   </h4>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    ✅ {generationResult.stats.placedHours} ta dars joylashtirildi &bull;{" "}
-                    {generationResult.stats.conflictsCount > 0 ? (
-                      <span className="text-amber-600 font-semibold">
-                        ⚠️ {generationResult.stats.conflictsCount} ta dars bo&apos;yicha ogohlantirish
+                    ✅ {generationResult.stats.placedHours} ta dars to&apos;liq joylashtirildi &bull;{" "}
+                    {generationResult.stats.conflictsCount === 0 ? (
+                      <span className="text-emerald-600 font-semibold">
+                        0 ta ziddiyat (Oyna va bo&apos;shliqlarsiz)
                       </span>
                     ) : (
-                      <span className="text-emerald-600 font-semibold">
-                        0 ta ziddiyat (Ideal taqsimot)
+                      <span className="text-amber-600 font-semibold">
+                        ⚠️ {generationResult.stats.conflictsCount} ta dars bo&apos;yicha ogohlantirish
                       </span>
                     )}
                   </p>
@@ -298,10 +351,10 @@ export default function HomePage() {
           </div>
         )}
 
-        {/* Master Grid Doskasi */}
+        {/* Dynamic View Component */}
         <div className="flex-1">
           {schoolLessons.length === 0 ? (
-            <div className="flex flex-col items-center justify-center min-h-[65vh] p-8 text-center">
+            <div className="flex flex-col items-center justify-center min-h-[60vh] p-8 text-center">
               <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-100 dark:bg-blue-950/80 text-blue-600 mb-4 shadow-lg shadow-blue-500/10">
                 <Building2 className="h-8 w-8" />
               </div>
@@ -309,9 +362,8 @@ export default function HomePage() {
                 {currentSchool?.name} Dars Jadvali
               </h2>
               <p className="text-xs text-muted-foreground max-w-md mt-1 mb-6">
-                Maktab o&apos;qituvchilari ({schoolTeachers.length} nafar), sinflar (
-                {schoolClasses.length} ta) va SanPiN talablari asosida avtomatik ziddiyatsiz
-                jadvalni generatsiya qiling yoki ma&apos;lumotlarni tahrirlang.
+                Maktab sinflari ({schoolClasses.map((c) => c.name).join(", ") || "Hali kiritilmagan"}) va
+                o&apos;qituvchilari bo&apos;yicha ziddiyatsiz tartibli jadvalni hisoblang.
               </p>
               <div className="flex flex-wrap items-center justify-center gap-3">
                 <button
@@ -339,6 +391,23 @@ export default function HomePage() {
                 </button>
               </div>
             </div>
+          ) : viewMode === "CLASS" ? (
+            <SingleClassView
+              classes={schoolClasses}
+              subjects={schoolSubjects}
+              teachers={schoolTeachers}
+              rooms={schoolRooms}
+              lessons={schoolLessons}
+              onOpenZamena={(l) => setSelectedZamenaLesson(l)}
+            />
+          ) : viewMode === "TEACHER" ? (
+            <TeacherScheduleView
+              classes={schoolClasses}
+              subjects={schoolSubjects}
+              teachers={schoolTeachers}
+              rooms={schoolRooms}
+              lessons={schoolLessons}
+            />
           ) : (
             <MasterGrid
               classes={schoolClasses}
@@ -355,7 +424,7 @@ export default function HomePage() {
         </div>
       </main>
 
-      {/* Yangi Maktab Qo'shish Modali */}
+      {/* Modallar */}
       {isAddSchoolOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in">
           <div className="w-full max-w-md rounded-2xl border border-border bg-card p-6 shadow-2xl">
@@ -381,7 +450,7 @@ export default function HomePage() {
                   required
                   value={newSchoolName}
                   onChange={(e) => setNewSchoolName(e.target.value)}
-                  placeholder="Masalan: 39-Umumiy o'rta ta'lim maktabi"
+                  placeholder="Masalan: 45-Umumiy o'rta ta'lim maktabi"
                   className="w-full rounded-xl border border-border bg-background px-3 py-2 text-xs text-foreground focus:ring-2 focus:ring-blue-500 focus:outline-none"
                 />
               </div>
@@ -406,7 +475,6 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* Setup Wizard */}
       <SetupWizard
         isOpen={isWizardOpen}
         onClose={() => setIsWizardOpen(false)}
@@ -444,7 +512,6 @@ export default function HomePage() {
         }}
       />
 
-      {/* Excel Import */}
       <ExcelImportModal
         isOpen={isImportOpen}
         onClose={() => setIsImportOpen(false)}
@@ -464,7 +531,6 @@ export default function HomePage() {
         }}
       />
 
-      {/* Zamena Modal */}
       <ZamenaModal
         isOpen={!!selectedZamenaLesson}
         onClose={() => setSelectedZamenaLesson(null)}
