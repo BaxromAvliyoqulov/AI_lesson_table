@@ -29,10 +29,9 @@ export class CSPSolver {
   public solve(): SolverResult {
     const lessons: Lesson[] = [];
 
-    // Har bir sinf uchun fanlar ro'yxatini shakllantirish
-    // teacherOccupied[teacherId][day][period] = boolean
+    // teacherOccupied[teacherId][day][period]
     const teacherOccupied = new Map<string, Map<number, Set<number>>>();
-    // roomOccupied[roomId][day][period] = boolean
+    // roomOccupied[roomId][day][period]
     const roomOccupied = new Map<string, Map<number, Set<number>>>();
 
     const isTeacherFree = (teacherId: string, day: number, period: number): boolean => {
@@ -48,13 +47,9 @@ export class CSPSolver {
     };
 
     const occupyTeacher = (teacherId: string, day: number, period: number) => {
-      if (!teacherOccupied.has(teacherId)) {
-        teacherOccupied.set(teacherId, new Map());
-      }
+      if (!teacherOccupied.has(teacherId)) teacherOccupied.set(teacherId, new Map());
       const dayMap = teacherOccupied.get(teacherId)!;
-      if (!dayMap.has(day)) {
-        dayMap.set(day, new Set());
-      }
+      if (!dayMap.has(day)) dayMap.set(day, new Set());
       dayMap.get(day)!.add(period);
     };
 
@@ -73,13 +68,9 @@ export class CSPSolver {
     };
 
     const occupyRoom = (roomId: string, day: number, period: number) => {
-      if (!roomOccupied.has(roomId)) {
-        roomOccupied.set(roomId, new Map());
-      }
+      if (!roomOccupied.has(roomId)) roomOccupied.set(roomId, new Map());
       const dayMap = roomOccupied.get(roomId)!;
-      if (!dayMap.has(day)) {
-        dayMap.set(day, new Set());
-      }
+      if (!dayMap.has(day)) dayMap.set(day, new Set());
       dayMap.get(day)!.add(period);
     };
 
@@ -92,9 +83,8 @@ export class CSPSolver {
       reason?: string;
     }[] = [];
 
-    // Har bir sinf bo'yicha alohida, tartibli 1-darsdan boshlab taqsimlash
+    // Har bir sinf uchun darslarni yig'ish
     for (const cls of this.input.classes) {
-      // 1. Sinfning barcha dars soatlarini yig'ish
       interface LessonItem {
         subjectId: string;
         teacherId: string;
@@ -122,7 +112,6 @@ export class CSPSolver {
       const totalClassHours = pool.length;
       if (totalClassHours === 0) continue;
 
-      // Kunlik darslar sonini hisoblash (masalan, 25 soat bo'lsa: 5 kunda 4-5 tadan dars)
       const baseDailyHours = Math.floor(totalClassHours / this.daysCount);
       const extraHours = totalClassHours % this.daysCount;
       const dailyTargets: number[] = [];
@@ -130,66 +119,52 @@ export class CSPSolver {
         dailyTargets.push(baseDailyHours + (d < extraHours ? 1 : 0));
       }
 
-      // Fanlarni SanPiN qiyinchilik darajasi bo'yicha saralash
-      // Og'ir fanlar (Matematika, Fizika, Kimyo) birinchi
-      pool.sort((a, b) => b.subject.difficultyScore - a.subject.difficultyScore);
-
-      // Sinf jadvali: classSchedule[day][period] -> LessonItem | null
-      const classSchedule: (LessonItem | null)[][] = Array.from({ length: this.daysCount + 1 }, () =>
-        Array.from({ length: 8 }, () => null)
-      );
-
-      // Har bir kun uchun darslarni 1-darsdan boshlab ketma-ket joylashtirish
+      // Har bir kun uchun darslarni qat'iy 1-darsdan boshlab to'ldirish
       for (let day = 1; day <= this.daysCount; day++) {
         const maxPeriodsForDay = dailyTargets[day - 1] || 4;
         const daySubjectCounts = new Map<string, number>();
 
         for (let period = 1; period <= maxPeriodsForDay; period++) {
-          // Eng mos darsni topish
           let candidateIndex = -1;
 
+          // 1-urinish: SanPiN va xona chekloviga to'liq mos darsni qidirish
           for (let i = 0; i < pool.length; i++) {
             const item = pool[i];
+            if (!isTeacherFree(item.teacherId, day, period)) continue;
 
-            // 1. O'qituvchi shu kuni shu soatda bo'sh bo'lishi shart!
-            if (!isTeacherFree(item.teacherId, day, period)) {
-              continue;
-            }
-
-            // 2. Maxsus xona kerak bo'lsa — bo'sh xona bormi?
             if (item.subject.requiresRoomType) {
               const freeRoom = findFreeRoom(item.subject, cls.branchId, day, period);
               if (!freeRoom) continue;
             }
 
-            // 3. Bir kunda fan takrorlanishi
             const countToday = daySubjectCounts.get(item.subjectId) || 0;
-            if (countToday >= 1 && !item.subject.allowDoubleLesson) {
-              continue; // 1 kunda 1 martadan oshmaydi
-            }
-            if (countToday >= 2) {
-              continue;
-            }
-
-            // 4. SanPiN: Og'ir fanlar (score >= 9) 1-3 darslarga, yengil fanlar (score <= 3) oxirgi darslarga
-            if (item.subject.difficultyScore >= 9 && period >= 5) {
-              // Iloji boricha 1-4 darslarga qo'yish
-              const otherOption = pool.findIndex(
-                (p, idx) =>
-                  idx > i &&
-                  p.subject.difficultyScore < 9 &&
-                  isTeacherFree(p.teacherId, day, period)
-              );
-              if (otherOption !== -1) {
-                continue;
-              }
-            }
+            if (countToday >= 1 && !item.subject.allowDoubleLesson) continue;
+            if (countToday >= 2) continue;
 
             candidateIndex = i;
             break;
           }
 
-          // Agar qat'iy mos keluvchi topilmasa, istalgan bo'sh o'qituvchini olish
+          // 2-urinish: Agar yuqoridagi mos kelmasa, har qanday bo'sh o'qituvchini shu soatga qo'yish (1-dars bo'sh qolmasligi shart!)
+          if (candidateIndex === -1) {
+            for (let i = 0; i < pool.length; i++) {
+              const item = pool[i];
+              if (!isTeacherFree(item.teacherId, day, period)) continue;
+
+              if (item.subject.requiresRoomType) {
+                const freeRoom = findFreeRoom(item.subject, cls.branchId, day, period);
+                if (!freeRoom) continue;
+              }
+
+              const countToday = daySubjectCounts.get(item.subjectId) || 0;
+              if (countToday >= 2) continue;
+
+              candidateIndex = i;
+              break;
+            }
+          }
+
+          // Agar hali ham topilmasa, hatto 1 kunda takrorlangan bo'lsa ham darsni qo'yish (bo'sh qolishdan ko'ra)
           if (candidateIndex === -1) {
             for (let i = 0; i < pool.length; i++) {
               const item = pool[i];
@@ -206,12 +181,9 @@ export class CSPSolver {
 
           if (candidateIndex !== -1) {
             const chosen = pool.splice(candidateIndex, 1)[0];
-            classSchedule[day][period] = chosen;
 
-            // O'qituvchini band qilish
             occupyTeacher(chosen.teacherId, day, period);
 
-            // Xonani band qilish
             let assignedRoom: Room | null = null;
             if (chosen.subject.requiresRoomType) {
               assignedRoom = findFreeRoom(chosen.subject, cls.branchId, day, period);
@@ -220,7 +192,6 @@ export class CSPSolver {
               }
             }
 
-            // Kunlik hisoblagichni oshirish
             daySubjectCounts.set(chosen.subjectId, (daySubjectCounts.get(chosen.subjectId) || 0) + 1);
 
             lessons.push({
@@ -240,7 +211,6 @@ export class CSPSolver {
         }
       }
 
-      // Qolib ketgan darslar bo'lsa
       if (pool.length > 0) {
         for (const item of pool) {
           unassigned.push({
@@ -248,7 +218,7 @@ export class CSPSolver {
             subjectId: item.subjectId,
             teacherId: item.teacherId,
             remainingHours: 1,
-            reason: `${cls.name} sinfi uchun ${item.subject.name} soati o'qituvchi to'qnashuvi tufayli qolib ketdi.`,
+            reason: `${cls.name} sinfi uchun ${item.subject.name} soati joy yetishmagani sababli qoldi.`,
           });
         }
       }
