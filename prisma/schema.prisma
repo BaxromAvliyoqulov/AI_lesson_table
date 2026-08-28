@@ -1,0 +1,266 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model School {
+  id                 String    @id @default(cuid())
+  name               String
+  slug               String    @unique
+  subscriptionPlan   String    @default("trial") // trial | standard | pro
+  subscriptionStatus String    @default("trial") // active | suspended | trial
+  trialEndsAt        DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  branches     Branch[]
+  shifts       Shift[]
+  subjects     Subject[]
+  teachers     Teacher[]
+  classes      Class[]
+  rooms        Room[]
+  schedules    Schedule[]
+  users        User[]
+  auditLogs    AuditLog[]
+}
+
+model Branch {
+  id        String   @id @default(cuid())
+  schoolId  String
+  name      String
+  address   String?
+  isMain    Boolean  @default(false)
+
+  school    School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  classes   Class[]
+  rooms     Room[]
+  lessons   Lesson[]
+
+  @@index([schoolId])
+}
+
+model Shift {
+  id           String   @id @default(cuid())
+  schoolId     String
+  name         String   // "1-smena", "2-smena"
+  startTime    String   // "08:00"
+  endTime      String   // "13:00"
+  periodsCount Int      @default(6) // kunlik darslar soni
+
+  school       School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  classes      Class[]
+
+  @@index([schoolId])
+}
+
+model Subject {
+  id                 String   @id @default(cuid())
+  schoolId           String
+  name               String
+  shortName          String?  // "Mat", "Ona tili"
+  colorTag           String   // Masalan "#3B82F6"
+  difficultyScore    Int      @default(5) // SanPiN bo'yicha 1-13 ball
+  allowDoubleLesson  Boolean  @default(false) // 2 soat ketma-ket qo'yishga ruxsat
+  requiresRoomType   String?  // "GYM", "LAB", "COMP_LAB" yoki null
+
+  school             School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  classSubjects      ClassSubject[]
+  teacherSubjects    TeacherSubject[]
+  lessons            Lesson[]
+
+  @@index([schoolId])
+}
+
+model Teacher {
+  id                  String   @id @default(cuid())
+  schoolId            String
+  fullName            String
+  phone               String?
+  weeklyHourCapacity  Int      @default(20)
+  maxConsecutiveHours Int      @default(4)
+  homeroomClassId     String?  @unique
+
+  school              School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  subjects            TeacherSubject[]
+  branches            TeacherBranch[]
+  availabilities      TeacherAvailability[]
+  classSubjects       ClassSubject[]
+  lessons             Lesson[]
+  replacements        LessonReplacement[]
+
+  @@index([schoolId])
+}
+
+model TeacherAvailability {
+  id          String   @id @default(cuid())
+  schoolId    String
+  teacherId   String
+  dayOfWeek   Int      // 1-6 (Dushanba-Shanba)
+  period      Int      // 1-8
+  isAvailable Boolean  @default(true) // false bo'lsa - bu vaqtda dars qo'yilmaydi
+
+  teacher     Teacher  @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+
+  @@unique([teacherId, dayOfWeek, period])
+  @@index([schoolId])
+}
+
+model TeacherSubject {
+  schoolId  String
+  teacherId String
+  subjectId String
+
+  teacher   Teacher @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  subject   Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+
+  @@id([teacherId, subjectId])
+  @@index([schoolId])
+}
+
+model TeacherBranch {
+  schoolId  String
+  teacherId String
+  branchId  String
+
+  teacher   Teacher @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+
+  @@id([teacherId, branchId])
+  @@index([schoolId])
+}
+
+model Room {
+  id          String   @id @default(cuid())
+  schoolId    String
+  branchId    String
+  name        String   // "Sport zal", "104-xona", "Fizika lab"
+  roomType    String   @default("GENERAL") // "GENERAL", "GYM", "LAB", "COMP_LAB", "OUTDOOR_PITCH"
+  capacity    Int      @default(35)
+
+  school      School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  branch      Branch   @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  lessons     Lesson[]
+
+  @@index([schoolId, branchId])
+}
+
+model Class {
+  id                String   @id @default(cuid())
+  schoolId          String
+  branchId          String
+  shiftId           String
+  name              String   // "1-A", "10-B"
+  grade             Int      // 1..11
+  isPrimary         Boolean  @default(false)
+
+  school            School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  branch            Branch   @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  shift             Shift    @relation(fields: [shiftId], references: [id], onDelete: Cascade)
+  subjects          ClassSubject[]
+  lessons           Lesson[]
+
+  @@index([schoolId, branchId, shiftId])
+}
+
+model ClassSubject {
+  id          String   @id @default(cuid())
+  schoolId    String
+  classId     String
+  subjectId   String
+  teacherId   String
+  weeklyHours Int
+
+  class       Class    @relation(fields: [classId], references: [id], onDelete: Cascade)
+  subject     Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  teacher     Teacher  @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+
+  @@unique([classId, subjectId, teacherId])
+  @@index([schoolId, classId])
+}
+
+model Schedule {
+  id           String   @id @default(cuid())
+  schoolId     String
+  name         String   // "2025-2026 1-Chorak Asosiy Jadval"
+  academicYear String   // "2025-2026"
+  term         Int      @default(1) // 1, 2, 3, 4-chorak
+  status       String   @default("DRAFT") // "DRAFT", "PUBLISHED", "ARCHIVED"
+  isActive     Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  school       School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  lessons      Lesson[]
+
+  @@index([schoolId, isActive])
+}
+
+model Lesson {
+  id           String   @id @default(cuid())
+  scheduleId   String
+  schoolId     String
+  classId      String
+  subjectId    String
+  teacherId    String
+  roomId       String?
+  branchId     String
+  dayOfWeek    Int      // 1-6 (Dushanba-Shanba)
+  periodNumber Int      // 1..8
+  isLocked     Boolean  @default(false)
+
+  schedule     Schedule @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+  class        Class    @relation(fields: [classId], references: [id], onDelete: Cascade)
+  subject      Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  teacher      Teacher  @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  room         Room?    @relation(fields: [roomId], references: [id], onDelete: SetNull)
+  branch       Branch   @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  replacements LessonReplacement[]
+
+  @@unique([scheduleId, classId, dayOfWeek, periodNumber])
+  @@index([scheduleId, teacherId, dayOfWeek, periodNumber])
+  @@index([scheduleId, roomId, dayOfWeek, periodNumber])
+}
+
+model LessonReplacement {
+  id                   String   @id @default(cuid())
+  lessonId             String
+  date                 DateTime
+  originalTeacherId    String
+  replacementTeacherId String
+  reason               String?
+  createdAt            DateTime @default(now())
+
+  lesson               Lesson   @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  replacementTeacher   Teacher  @relation(fields: [replacementTeacherId], references: [id], onDelete: Cascade)
+
+  @@index([date, originalTeacherId])
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  schoolId  String
+  userId    String
+  action    String
+  payload   Json
+  createdAt DateTime @default(now())
+
+  school    School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@index([schoolId, createdAt])
+}
+
+model User {
+  id           String   @id @default(cuid())
+  schoolId     String?
+  role         String   // "SUPER_ADMIN" | "SCHOOL_ADMIN"
+  fullName     String
+  email        String   @unique
+  phone        String?
+  passwordHash String
+  createdAt    DateTime @default(now())
+
+  school       School?  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+}

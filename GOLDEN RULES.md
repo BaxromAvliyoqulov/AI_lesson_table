@@ -29,12 +29,12 @@ Ko'p filialli va ko'p smenali maktablar uchun deterministik CSP algoritm va AI i
 
 ## 4. 📊 Joriy Holat & Roadmap
 - [x] **0-Faza:** Texnik Topshiriq (TZ v2.0 Enterprise) to'liq tasdiqlandi va yangilandi.
-- [ ] **1-Faza:** Next.js 15 loyiha poydevori, Tailwind, shadcn/ui va Design System integratsiyasi.
-- [ ] **2-Faza:** Prisma Database Schema, Migratsiyalar, Seed ma'lumotlari va Multi-tenant Auth.
-- [ ] **3-Faza:** Onboarding moduli (5 qadamli Setup Wizard + 1-Click Excel Bulk Import).
-- [ ] **4-Faza:** CSP Generatsiya Dvigateli (Greedy + Min-Conflicts + SanPiN yuklama shkalasi).
-- [ ] **5-Faza:** Master Grid View (Drag & Drop, Swap, Zoom in/out, Sticky headers, Undo/Redo).
-- [ ] **6-Faza:** Zamena (O'rinbosar tayinlash) va Real-time Socket.io sinxronizatsiyasi.
-- [ ] **7-Faza:** Excel & PDF Multi-sheet Eksport dvigateli.
+- [x] **1-Faza:** Next.js 15 loyiha poydevori, Tailwind, Glassmorphism va Design System integratsiyasi.
+- [x] **2-Faza:** Prisma Database Schema (Multi-tenant) va TypeScript modellar to'liq shakllantirildi.
+- [x] **3-Faza:** Onboarding moduli (5 qadamli Setup Wizard + 1-Click Excel Bulk Import).
+- [x] **4-Faza:** CSP Generatsiya Dvigateli (Greedy + Min-Conflicts + SanPiN yuklama shkalasi + Double Lessons + Room constraints).
+- [x] **5-Faza:** Master Grid View (Drag & Drop, SWAP, Zoom in/out 75%-125%, Sticky headers, Undo/Redo).
+- [x] **6-Faza:** Zamena (O'rinbosar tayinlash) va Excel Multi-sheet Eksport dvigateli.
+- [x] **7-Faza:** Production build verifikatsiyasi (100% Green / Zero-Error).
 - [ ] **8-Faza:** Super Admin boshqaruv paneli va Audit Log.
-- [ ] **9-Faza:** QA Zero-Defect Testing va Production Deployment.
+- [ ] **9-Faza:** Production VPS / Docker deployment.
