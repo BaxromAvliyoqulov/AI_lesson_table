@@ -40,27 +40,34 @@ interface NavbarProps {
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
-  schools,
-  currentSchoolId,
+  schools = [],
+  currentSchoolId = "school_39",
   onSelectSchool,
   onAddSchool,
-  zoomLevel,
+  zoomLevel = 100,
   onZoomChange,
   onGenerate,
   onExport,
   onOpenWizard,
   onOpenImport,
   onUndo,
-  canUndo,
-  isGenerating,
-  selectedBranch,
+  canUndo = false,
+  isGenerating = false,
+  selectedBranch = "ALL",
   onBranchChange,
-  branches,
+  branches = [],
 }) => {
   const [isDark, setIsDark] = useState(false);
   const [isSchoolMenuOpen, setIsSchoolMenuOpen] = useState(false);
 
-  const currentSchool = schools.find((s) => s.id === currentSchoolId) || schools[0];
+  const safeSchools = schools || [];
+  const currentSchool =
+    safeSchools.find((s) => s.id === currentSchoolId) ||
+    safeSchools[0] || {
+      id: "school_39",
+      name: "39-Umumiy o'rta ta'lim maktabi",
+      slug: "maktab-39",
+    };
 
   const toggleTheme = () => {
     setIsDark(!isDark);

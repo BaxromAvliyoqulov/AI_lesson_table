@@ -36,6 +36,11 @@ export class CSPSolver {
 
     const isTeacherFree = (teacherId: string, day: number, period: number): boolean => {
       const teacher = this.teacherMap.get(teacherId);
+      // 1. Agar bugun o'qituvchining metod kuni bo'lsa (Metod kuni butunlay darsdan ozod)
+      if (teacher?.methodDayOfWeek && teacher.methodDayOfWeek === day) {
+        return false;
+      }
+      // 2. Shaxsiy availability matrisasi bo'yicha bandlik
       if (teacher?.availabilities && teacher.availabilities.length > 0) {
         const av = teacher.availabilities.find((a) => a.dayOfWeek === day && a.period === period);
         if (av && !av.isAvailable) return false;
@@ -83,8 +88,11 @@ export class CSPSolver {
       reason?: string;
     }[] = [];
 
-    // Har bir sinf uchun darslarni yig'ish
+    // Har bir sinf uchun darslarni yig'ish va joylashtirish
     for (const cls of this.input.classes) {
+      // 1. Agar sinf yopilgan bo'lsa, uni jadvalga kiritmaymiz
+      if (cls.isClosed) continue;
+
       interface LessonItem {
         subjectId: string;
         teacherId: string;
@@ -112,19 +120,54 @@ export class CSPSolver {
       const totalClassHours = pool.length;
       if (totalClassHours === 0) continue;
 
-      const baseDailyHours = Math.floor(totalClassHours / this.daysCount);
-      const extraHours = totalClassHours % this.daysCount;
+      // 2. QOIDA: Boshlang'ich sinflar (1-4 sinflar) uchun 5 kunlik o'qish haftasi (Shanba kuni dars bo'lmaydi!)
+      const isPrimaryClass = cls.isPrimary || cls.grade <= 4;
+      const classDaysCount = isPrimaryClass ? 5 : (this.daysCount || 6);
+
+      const baseDailyHours = Math.floor(totalClassHours / classDaysCount);
+      const extraHours = totalClassHours % classDaysCount;
       const dailyTargets: number[] = [];
-      for (let d = 0; d < this.daysCount; d++) {
+      for (let d = 0; d < classDaysCount; d++) {
         dailyTargets.push(baseDailyHours + (d < extraHours ? 1 : 0));
       }
 
+      // 3. QOIDA: Dushanba kuni 1-soatga qat'iy "Kelajak Soati" (Sinf rahbari tomonidan)
+      // Pool ichidan Kelajak Soati yoki Tarbiya fanini qidiramiz
+      const kelajakIndex = pool.findIndex(
+        (p) => p.subjectId === "sub_kelajak" || p.subject.name.toLowerCase().includes("kelajak")
+      );
+
+      if (kelajakIndex !== -1) {
+        const kelajakItem = pool.splice(kelajakIndex, 1)[0];
+        const homeroomTeacherId = cls.homeroomTeacherId || kelajakItem.teacherId;
+
+        // Dushanba (day = 1), 1-soat (period = 1)
+        occupyTeacher(homeroomTeacherId, 1, 1);
+
+        lessons.push({
+          id: `l_${cls.id}_kelajak_1_1_${Date.now()}_${Math.random()}`,
+          scheduleId: "draft-schedule",
+          schoolId: cls.schoolId,
+          classId: cls.id,
+          subjectId: kelajakItem.subjectId,
+          teacherId: homeroomTeacherId,
+          roomId: null,
+          branchId: cls.branchId,
+          dayOfWeek: 1,
+          periodNumber: 1,
+          isLocked: true, // Qat'iy bloklangan dars
+        });
+      }
+
       // Har bir kun uchun darslarni qat'iy 1-darsdan boshlab to'ldirish
-      for (let day = 1; day <= this.daysCount; day++) {
+      for (let day = 1; day <= classDaysCount; day++) {
         const maxPeriodsForDay = dailyTargets[day - 1] || 4;
         const daySubjectCounts = new Map<string, number>();
 
-        for (let period = 1; period <= maxPeriodsForDay; period++) {
+        // Agar Dushanba bo'lsa va 1-soatga Kelajak Soati qo'yilgan bo'lsa, 2-darsdan boshlaymiz
+        const startPeriod = (day === 1 && kelajakIndex !== -1) ? 2 : 1;
+
+        for (let period = startPeriod; period <= maxPeriodsForDay; period++) {
           let candidateIndex = -1;
 
           // 1-urinish: SanPiN va xona chekloviga to'liq mos darsni qidirish
@@ -164,7 +207,7 @@ export class CSPSolver {
             }
           }
 
-          // Agar hali ham topilmasa, hatto 1 kunda takrorlangan bo'lsa ham darsni qo'yish (bo'sh qolishdan ko'ra)
+          // 3-urinish: Agar hali ham topilmasa, hatto 1 kunda takrorlangan bo'lsa ham darsni qo'yish
           if (candidateIndex === -1) {
             for (let i = 0; i < pool.length; i++) {
               const item = pool[i];
@@ -236,7 +279,7 @@ export class CSPSolver {
       },
       explanation:
         unassigned.length === 0
-          ? "Barcha sinflar uchun darslar 1-darsdan boshlab, oraliq bo'shliqlarsiz mukammal taqsimlandi."
+          ? "Barcha sinflar uchun darslar milliy qoidalar (1-4 sinf 5 kunlik, Dushanba 1-soat Kelajak soati) asosida mukammal taqsimlandi."
           : `${unassigned.length} ta dars bo'yicha ziddiyat aniqlandi.`,
     };
   }

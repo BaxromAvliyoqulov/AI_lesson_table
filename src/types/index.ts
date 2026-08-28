@@ -44,6 +44,7 @@ export interface TeacherAvailability {
   dayOfWeek: number;
   period: number;
   isAvailable: boolean;
+  isPreferred?: boolean;
 }
 
 export interface Teacher {
@@ -53,10 +54,35 @@ export interface Teacher {
   phone?: string | null;
   weeklyHourCapacity: number;
   maxConsecutiveHours: number;
+  maxGapsPerDay?: number; // Maksimal darchalar (okno) soni
+  methodDayOfWeek?: number | null; // Metod kuni (1=Dushanba ... 6=Shanba)
   homeroomClassId?: string | null;
   subjectIds: string[];
   branchIds: string[];
   availabilities?: TeacherAvailability[];
+}
+
+export interface BellPeriod {
+  periodNumber: number;
+  startTime: string; // "08:00"
+  endTime: string;   // "08:45"
+  breakDurationMinutes: number; // 5 or 10 min
+}
+
+export interface SubstitutionRecord {
+  id: string;
+  schoolId: string;
+  scheduleId: string;
+  date: string;
+  dayOfWeek: number;
+  periodNumber: number;
+  classId: string;
+  subjectId: string;
+  originalTeacherId: string;
+  substituteTeacherId: string;
+  reason: string; // "Kasal", "Xizmat safari", "Malaka oshirish"
+  isApproved: boolean;
+  createdAt: string;
 }
 
 export interface Room {
@@ -74,6 +100,7 @@ export interface ClassSubject {
   subjectId: string;
   teacherId: string;
   weeklyHours: number;
+  groupType?: "WHOLE" | "GROUP_1" | "GROUP_2"; // Guruhlarga bo'lingan darslar (Ingliz, Rus, Informatika)
 }
 
 export interface SchoolClass {
@@ -84,6 +111,8 @@ export interface SchoolClass {
   name: string;
   grade: number;
   isPrimary: boolean;
+  isClosed?: boolean;
+  homeroomTeacherId?: string | null;
   subjects: ClassSubject[];
 }
 
@@ -110,6 +139,7 @@ export interface Lesson {
   branchId: string;
   dayOfWeek: number;
   periodNumber: number;
+  groupType?: "WHOLE" | "GROUP_1" | "GROUP_2";
   isLocked?: boolean;
 }
 
@@ -145,6 +175,7 @@ export interface SolverResult {
     placedHours: number;
     score: number;
     conflictsCount: number;
+    gapsCount?: number;
   };
   explanation?: string;
 }
