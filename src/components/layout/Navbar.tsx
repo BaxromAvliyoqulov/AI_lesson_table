@@ -216,14 +216,14 @@ export const Navbar: React.FC<NavbarProps> = ({
             <span>Excel Import</span>
           </button>
 
-          {/* Setup Wizard */}
-          <button
-            onClick={onOpenWizard}
-            className="flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-medium hover:bg-muted transition-colors shadow-sm"
+          {/* Maktab Sozlamalari (Alohida Sahifa) */}
+          <a
+            href="/sozlamalar"
+            className="flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-semibold hover:bg-muted transition-colors shadow-sm text-foreground"
           >
             <Settings2 className="h-3.5 w-3.5 text-blue-600" />
-            <span className="hidden sm:inline">Maktabni Sozlash</span>
-          </button>
+            <span className="hidden sm:inline">Maktabni Sozlash (CRUD)</span>
+          </a>
 
           {/* Excel Export */}
           <button

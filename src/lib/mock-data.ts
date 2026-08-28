@@ -1,394 +1,207 @@
 import { SchoolInfo, Branch, Shift, Subject, Teacher, Room, SchoolClass } from "@/types";
 
 export const initialSchools: SchoolInfo[] = [
-  { id: "school_21", name: "21-Umumiy o'rta ta'lim maktabi", slug: "maktab-21", branchesCount: 2, classesCount: 5, teachersCount: 9 },
-  { id: "school_39", name: "39-Umumiy o'rta ta'lim maktabi", slug: "maktab-39", branchesCount: 1, classesCount: 4, teachersCount: 8 },
+  { id: "school_39", name: "39-Umumiy o'rta ta'lim maktabi", slug: "maktab-39", branchesCount: 1, classesCount: 22, teachersCount: 25 },
+  { id: "school_21", name: "21-Umumiy o'rta ta'lim maktabi", slug: "maktab-21", branchesCount: 2, classesCount: 22, teachersCount: 25 },
 ];
 
 export const initialBranches: Branch[] = [
-  // 21-maktab
-  { id: "b1", schoolId: "school_21", name: "Asosiy Bino (Bosh korpus)", address: "Toshkent sh., Chilonzor 9", isMain: true },
-  { id: "b2", schoolId: "school_21", name: "1-Filial (Boshlang'ich binosi)", address: "Toshkent sh., Chilonzor 10", isMain: false },
-  // 39-maktab
-  { id: "b39_1", schoolId: "school_39", name: "39-Maktab Asosiy Binosi", address: "Toshkent sh., Mirzo Ulug'bek", isMain: true },
+  { id: "b39_1", schoolId: "school_39", name: "39-Maktab Asosiy Bino", address: "Toshkent sh., Mirzo Ulug'bek", isMain: true },
+  { id: "b21_1", schoolId: "school_21", name: "21-Maktab Bosh Korpus", address: "Toshkent sh., Chilonzor 9", isMain: true },
+  { id: "b21_2", schoolId: "school_21", name: "21-Maktab 1-Filial (Boshlang'ich)", address: "Toshkent sh., Chilonzor 10", isMain: false },
 ];
 
 export const initialShifts: Shift[] = [
-  // 21-maktab
-  { id: "s1", schoolId: "school_21", name: "1-Smena (Ertalabki)", startTime: "08:00", endTime: "13:00", periodsCount: 6 },
-  { id: "s2", schoolId: "school_21", name: "2-Smena (Tushdan keyingi)", startTime: "13:15", endTime: "18:00", periodsCount: 6 },
-  // 39-maktab
-  { id: "s39_1", schoolId: "school_39", name: "1-Smena (08:00 - 13:00)", startTime: "08:00", endTime: "13:00", periodsCount: 6 },
+  { id: "s39_1", schoolId: "school_39", name: "1-Smena (Ertalabki)", startTime: "08:00", endTime: "13:00", periodsCount: 6 },
+  { id: "s39_2", schoolId: "school_39", name: "2-Smena (Tushdan keyin)", startTime: "13:15", endTime: "18:00", periodsCount: 6 },
+  { id: "s21_1", schoolId: "school_21", name: "1-Smena", startTime: "08:00", endTime: "13:00", periodsCount: 6 },
 ];
 
 export const initialRooms: Room[] = [
-  // 21-maktab
-  { id: "r1", schoolId: "school_21", branchId: "b1", name: "Asosiy Sport Zal", roomType: "GYM", capacity: 40 },
-  { id: "r2", schoolId: "school_21", branchId: "b1", name: "1-Kompyuter Lab", roomType: "COMP_LAB", capacity: 30 },
-  { id: "r3", schoolId: "school_21", branchId: "b1", name: "Fizika & Kimyo Lab", roomType: "LAB", capacity: 35 },
-  { id: "r4", schoolId: "school_21", branchId: "b1", name: "Ochiq Futbol Maydoni", roomType: "OUTDOOR_PITCH", capacity: 60 },
-  { id: "r5", schoolId: "school_21", branchId: "b2", name: "Kichik Sport Zali (Boshlang'ich)", roomType: "GYM", capacity: 30 },
-  // 39-maktab
-  { id: "r39_gym", schoolId: "school_39", branchId: "b39_1", name: "39-Sport Majmuasi", roomType: "GYM", capacity: 45 },
-  { id: "r39_comp", schoolId: "school_39", branchId: "b39_1", name: "Raqamli Texnologiyalar Xonasi", roomType: "COMP_LAB", capacity: 32 },
-  { id: "r39_lab", schoolId: "school_39", branchId: "b39_1", name: "Kimyo-Biologiya Laboratoriyasi", roomType: "LAB", capacity: 36 },
+  { id: "r39_gym1", schoolId: "school_39", branchId: "b39_1", name: "Katta Sport Zali", roomType: "GYM", capacity: 45 },
+  { id: "r39_pitch", schoolId: "school_39", branchId: "b39_1", name: "Ochiq Stadion / Maydon", roomType: "OUTDOOR_PITCH", capacity: 60 },
+  { id: "r39_comp1", schoolId: "school_39", branchId: "b39_1", name: "1-Informatika Xonasi", roomType: "COMP_LAB", capacity: 30 },
+  { id: "r39_comp2", schoolId: "school_39", branchId: "b39_1", name: "2-Informatika Xonasi", roomType: "COMP_LAB", capacity: 30 },
+  { id: "r39_lab1", schoolId: "school_39", branchId: "b39_1", name: "Fizika-Kimyo Laboratoriyasi", roomType: "LAB", capacity: 35 },
 ];
 
 export const initialSubjects: Subject[] = [
-  // 21-maktab
-  { id: "sub_mat", schoolId: "school_21", name: "Matematika / Algebra", shortName: "Mat", colorTag: "#3B82F6", difficultyScore: 11, allowDoubleLesson: true },
-  { id: "sub_ona", schoolId: "school_21", name: "Ona tili va adabiyot", shortName: "Ona tili", colorTag: "#EC4899", difficultyScore: 9, allowDoubleLesson: false },
-  { id: "sub_ing", schoolId: "school_21", name: "Ingliz tili (Chet tili)", shortName: "Ingliz", colorTag: "#8B5CF6", difficultyScore: 8, allowDoubleLesson: false },
-  { id: "sub_fiz", schoolId: "school_21", name: "Fizika", shortName: "Fizika", colorTag: "#06B6D4", difficultyScore: 10, allowDoubleLesson: true, requiresRoomType: "LAB" },
-  { id: "sub_kim", schoolId: "school_21", name: "Kimyo", shortName: "Kimyo", colorTag: "#10B981", difficultyScore: 10, allowDoubleLesson: true, requiresRoomType: "LAB" },
-  { id: "sub_bio", schoolId: "school_21", name: "Biologiya", shortName: "Bio", colorTag: "#84CC16", difficultyScore: 7, allowDoubleLesson: false },
-  { id: "sub_tar", schoolId: "school_21", name: "Tarix", shortName: "Tarix", colorTag: "#F59E0B", difficultyScore: 7, allowDoubleLesson: false },
-  { id: "sub_inf", schoolId: "school_21", name: "Informatika va AT", shortName: "Info", colorTag: "#6366F1", difficultyScore: 8, allowDoubleLesson: false, requiresRoomType: "COMP_LAB" },
-  { id: "sub_jism", schoolId: "school_21", name: "Jismoniy tarbiya", shortName: "Jismoniy", colorTag: "#EF4444", difficultyScore: 2, allowDoubleLesson: false, requiresRoomType: "GYM" },
-  { id: "sub_tarb", schoolId: "school_21", name: "Tarbiya", shortName: "Tarbiya", colorTag: "#F97316", difficultyScore: 3, allowDoubleLesson: false },
-
-  // 39-maktab fanlari
-  { id: "sub39_mat", schoolId: "school_39", name: "Matematika", shortName: "Mat", colorTag: "#2563EB", difficultyScore: 11, allowDoubleLesson: true },
-  { id: "sub39_ona", schoolId: "school_39", name: "Ona tili", shortName: "Ona tili", colorTag: "#DB2777", difficultyScore: 9, allowDoubleLesson: false },
-  { id: "sub39_ing", schoolId: "school_39", name: "Ingliz tili", shortName: "Ingliz", colorTag: "#7C3AED", difficultyScore: 8, allowDoubleLesson: false },
-  { id: "sub39_fiz", schoolId: "school_39", name: "Fizika", shortName: "Fizika", colorTag: "#0891B2", difficultyScore: 10, allowDoubleLesson: true, requiresRoomType: "LAB" },
-  { id: "sub39_kim", schoolId: "school_39", name: "Kimyo", shortName: "Kimyo", colorTag: "#059669", difficultyScore: 10, allowDoubleLesson: true, requiresRoomType: "LAB" },
-  { id: "sub39_tar", schoolId: "school_39", name: "Tarix", shortName: "Tarix", colorTag: "#D97706", difficultyScore: 7, allowDoubleLesson: false },
-  { id: "sub39_inf", schoolId: "school_39", name: "Informatika", shortName: "Info", colorTag: "#4F46E5", difficultyScore: 8, allowDoubleLesson: false, requiresRoomType: "COMP_LAB" },
-  { id: "sub39_jism", schoolId: "school_39", name: "Jismoniy tarbiya", shortName: "Jismoniy", colorTag: "#DC2626", difficultyScore: 2, allowDoubleLesson: false, requiresRoomType: "GYM" },
+  { id: "sub_mat", schoolId: "school_39", name: "Matematika / Algebra", shortName: "Mat", colorTag: "#3B82F6", difficultyScore: 11, allowDoubleLesson: true },
+  { id: "sub_geom", schoolId: "school_39", name: "Geometriya", shortName: "Geom", colorTag: "#2563EB", difficultyScore: 10, allowDoubleLesson: false },
+  { id: "sub_ona", schoolId: "school_39", name: "Ona tili va Adabiyot", shortName: "Ona tili", colorTag: "#EC4899", difficultyScore: 9, allowDoubleLesson: false },
+  { id: "sub_ing", schoolId: "school_39", name: "Ingliz tili (Chet tili)", shortName: "Ingliz", colorTag: "#8B5CF6", difficultyScore: 8, allowDoubleLesson: false },
+  { id: "sub_rus", schoolId: "school_39", name: "Rus tili", shortName: "Rus tili", colorTag: "#A855F7", difficultyScore: 8, allowDoubleLesson: false },
+  { id: "sub_fiz", schoolId: "school_39", name: "Fizika / Astronomiya", shortName: "Fizika", colorTag: "#06B6D4", difficultyScore: 10, allowDoubleLesson: true, requiresRoomType: "LAB" },
+  { id: "sub_kim", schoolId: "school_39", name: "Kimyo", shortName: "Kimyo", colorTag: "#10B981", difficultyScore: 10, allowDoubleLesson: true, requiresRoomType: "LAB" },
+  { id: "sub_bio", schoolId: "school_39", name: "Biologiya", shortName: "Bio", colorTag: "#84CC16", difficultyScore: 7, allowDoubleLesson: false },
+  { id: "sub_tar", schoolId: "school_39", name: "Tarix (O'zbekiston / Jahon)", shortName: "Tarix", colorTag: "#F59E0B", difficultyScore: 7, allowDoubleLesson: false },
+  { id: "sub_geo", schoolId: "school_39", name: "Geografiya", shortName: "Geo", colorTag: "#14B8A6", difficultyScore: 6, allowDoubleLesson: false },
+  { id: "sub_inf", schoolId: "school_39", name: "Informatika va AT", shortName: "Info", colorTag: "#6366F1", difficultyScore: 8, allowDoubleLesson: false, requiresRoomType: "COMP_LAB" },
+  { id: "sub_jism", schoolId: "school_39", name: "Jismoniy tarbiya", shortName: "Jismoniy", colorTag: "#EF4444", difficultyScore: 2, allowDoubleLesson: false, requiresRoomType: "GYM" },
+  { id: "sub_sanat", schoolId: "school_39", name: "Tasviriy san'at / Chizmachilik", shortName: "San'at", colorTag: "#D946EF", difficultyScore: 1, allowDoubleLesson: false },
+  { id: "sub_musiqa", schoolId: "school_39", name: "Musiqa madaniyati", shortName: "Musiqa", colorTag: "#F43F5E", difficultyScore: 1, allowDoubleLesson: false },
+  { id: "sub_texno", schoolId: "school_39", name: "Texnologiya (Mehnat)", shortName: "Texno", colorTag: "#EA580C", difficultyScore: 3, allowDoubleLesson: true },
+  { id: "sub_tarbiya", schoolId: "school_39", name: "Tarbiya", shortName: "Tarbiya", colorTag: "#F97316", difficultyScore: 3, allowDoubleLesson: false },
+  { id: "sub_oqish", schoolId: "school_39", name: "O'qish savodxonligi", shortName: "O'qish", colorTag: "#FB7185", difficultyScore: 7, allowDoubleLesson: false },
 ];
 
 export const initialTeachers: Teacher[] = [
-  // 21-maktab o'qituvchilari
-  {
-    id: "t_alimov",
-    schoolId: "school_21",
-    fullName: "Alimov Jamshid Qodirovich",
-    phone: "+998 90 123 45 67",
-    weeklyHourCapacity: 24,
-    maxConsecutiveHours: 4,
-    subjectIds: ["sub_mat"],
-    branchIds: ["b1"],
-    availabilities: [
-      { teacherId: "t_alimov", dayOfWeek: 4, period: 1, isAvailable: false },
-      { teacherId: "t_alimov", dayOfWeek: 4, period: 2, isAvailable: false },
-      { teacherId: "t_alimov", dayOfWeek: 4, period: 3, isAvailable: false },
-      { teacherId: "t_alimov", dayOfWeek: 4, period: 4, isAvailable: false },
-      { teacherId: "t_alimov", dayOfWeek: 4, period: 5, isAvailable: false },
-      { teacherId: "t_alimov", dayOfWeek: 4, period: 6, isAvailable: false },
-    ],
-  },
-  {
-    id: "t_karimova",
-    schoolId: "school_21",
-    fullName: "Karimova Nigora Shavkatovna",
-    phone: "+998 93 987 65 43",
-    weeklyHourCapacity: 22,
-    maxConsecutiveHours: 4,
-    subjectIds: ["sub_ona"],
-    branchIds: ["b1"],
-  },
-  {
-    id: "t_johnson",
-    schoolId: "school_21",
-    fullName: "Azizov Sardor Dilshodovich (Ingliz)",
-    phone: "+998 94 333 22 11",
-    weeklyHourCapacity: 20,
-    maxConsecutiveHours: 4,
-    subjectIds: ["sub_ing"],
-    branchIds: ["b1", "b2"],
-  },
-  {
-    id: "t_tursunov",
-    schoolId: "school_21",
-    fullName: "Tursunov Bobur Ergash o'g'li (Fizika)",
-    phone: "+998 91 555 44 33",
-    weeklyHourCapacity: 18,
-    maxConsecutiveHours: 4,
-    subjectIds: ["sub_fiz"],
-    branchIds: ["b1"],
-  },
-  {
-    id: "t_rasulova",
-    schoolId: "school_21",
-    fullName: "Rasulova Malika Anvarovna (Kimyo/Bio)",
-    phone: "+998 97 777 88 99",
-    weeklyHourCapacity: 20,
-    maxConsecutiveHours: 4,
-    subjectIds: ["sub_kim", "sub_bio"],
-    branchIds: ["b1"],
-  },
-  {
-    id: "t_saidov",
-    schoolId: "school_21",
-    fullName: "Saidov Farrux Sherzodovich (Tarix)",
-    phone: "+998 99 111 22 33",
-    weeklyHourCapacity: 18,
-    maxConsecutiveHours: 4,
-    subjectIds: ["sub_tar"],
-    branchIds: ["b1"],
-  },
-  {
-    id: "t_xolmatov",
-    schoolId: "school_21",
-    fullName: "Xolmatov Ilhom Baxtiyorovich (Informatika)",
-    phone: "+998 90 222 33 44",
-    weeklyHourCapacity: 18,
-    maxConsecutiveHours: 4,
-    subjectIds: ["sub_inf"],
-    branchIds: ["b1"],
-  },
-  {
-    id: "t_jismoniy",
-    schoolId: "school_21",
-    fullName: "Qurbonov Jasur Rustamovich (Jismoniy)",
-    phone: "+998 93 444 55 66",
-    weeklyHourCapacity: 24,
-    maxConsecutiveHours: 5,
-    subjectIds: ["sub_jism"],
-    branchIds: ["b1", "b2"],
-  },
-  {
-    id: "t_boshlangich1",
-    schoolId: "school_21",
-    fullName: "Mirzayeva Gulnoza O'ktamovna",
-    phone: "+998 90 777 11 22",
-    weeklyHourCapacity: 20,
-    maxConsecutiveHours: 4,
-    subjectIds: ["sub_mat", "sub_ona", "sub_tarb"],
-    branchIds: ["b2"],
-  },
+  // Matematika o'qituvchilari
+  { id: "t_baxrom", schoolId: "school_39", fullName: "Baxrom Avliyoqulov (Matematika & IT)", phone: "+998 90 000 39 39", weeklyHourCapacity: 26, maxConsecutiveHours: 4, subjectIds: ["sub_mat", "sub_geom", "sub_inf"], branchIds: ["b39_1"] },
+  { id: "t_mat2", schoolId: "school_39", fullName: "Qodirova Mahliyo (Matematika)", phone: "+998 91 111 22 33", weeklyHourCapacity: 24, maxConsecutiveHours: 4, subjectIds: ["sub_mat", "sub_geom"], branchIds: ["b39_1"] },
+  { id: "t_mat3", schoolId: "school_39", fullName: "Rahmonov Alisher (Matematika)", phone: "+998 93 222 33 44", weeklyHourCapacity: 22, maxConsecutiveHours: 4, subjectIds: ["sub_mat"], branchIds: ["b39_1"] },
 
-  // 39-maktab o'qituvchilari
-  {
-    id: "t39_1",
-    schoolId: "school_39",
-    fullName: "Baxrom Avliyoqulov (Matematika & IT)",
-    phone: "+998 90 000 39 39",
-    weeklyHourCapacity: 26,
-    maxConsecutiveHours: 4,
-    subjectIds: ["sub39_mat", "sub39_inf"],
-    branchIds: ["b39_1"],
-  },
-  {
-    id: "t39_2",
-    schoolId: "school_39",
-    fullName: "Sobirova Dilnoza (Ona tili)",
-    phone: "+998 91 390 11 22",
-    weeklyHourCapacity: 22,
-    maxConsecutiveHours: 4,
-    subjectIds: ["sub39_ona"],
-    branchIds: ["b39_1"],
-  },
-  {
-    id: "t39_3",
-    schoolId: "school_39",
-    fullName: "Rustamov Elyor (Fizika)",
-    phone: "+998 93 390 33 44",
-    weeklyHourCapacity: 20,
-    maxConsecutiveHours: 4,
-    subjectIds: ["sub39_fiz"],
-    branchIds: ["b39_1"],
-  },
-  {
-    id: "t39_4",
-    schoolId: "school_39",
-    fullName: "Xudoyberdiyeva Shahnoza (Ingliz tili)",
-    phone: "+998 97 390 55 66",
-    weeklyHourCapacity: 20,
-    maxConsecutiveHours: 4,
-    subjectIds: ["sub39_ing"],
-    branchIds: ["b39_1"],
-  },
-  {
-    id: "t39_5",
-    schoolId: "school_39",
-    fullName: "Qodirov Anvar (Kimyo)",
-    phone: "+998 99 390 77 88",
-    weeklyHourCapacity: 18,
-    maxConsecutiveHours: 4,
-    subjectIds: ["sub39_kim"],
-    branchIds: ["b39_1"],
-  },
-  {
-    id: "t39_6",
-    schoolId: "school_39",
-    fullName: "Yoqubov Dilshod (Tarix)",
-    phone: "+998 90 390 99 00",
-    weeklyHourCapacity: 18,
-    maxConsecutiveHours: 4,
-    subjectIds: ["sub39_tar"],
-    branchIds: ["b39_1"],
-  },
-  {
-    id: "t39_7",
-    schoolId: "school_39",
-    fullName: "Nazarov Sherzod (Jismoniy tarbiya)",
-    phone: "+998 94 390 12 34",
-    weeklyHourCapacity: 24,
-    maxConsecutiveHours: 5,
-    subjectIds: ["sub39_jism"],
-    branchIds: ["b39_1"],
-  },
+  // Ona tili va Adabiyot
+  { id: "t_ona1", schoolId: "school_39", fullName: "Sobirova Dilnoza (Ona tili)", phone: "+998 91 390 11 22", weeklyHourCapacity: 24, maxConsecutiveHours: 4, subjectIds: ["sub_ona"], branchIds: ["b39_1"] },
+  { id: "t_ona2", schoolId: "school_39", fullName: "Karimova Zilola (Ona tili)", phone: "+998 97 444 55 66", weeklyHourCapacity: 22, maxConsecutiveHours: 4, subjectIds: ["sub_ona"], branchIds: ["b39_1"] },
+
+  // Chet tillari
+  { id: "t_ing1", schoolId: "school_39", fullName: "Xudoyberdiyeva Shahnoza (Ingliz)", phone: "+998 97 390 55 66", weeklyHourCapacity: 22, maxConsecutiveHours: 4, subjectIds: ["sub_ing"], branchIds: ["b39_1"] },
+  { id: "t_ing2", schoolId: "school_39", fullName: "Azizov Sardor (Ingliz tili)", phone: "+998 94 555 66 77", weeklyHourCapacity: 20, maxConsecutiveHours: 4, subjectIds: ["sub_ing"], branchIds: ["b39_1"] },
+  { id: "t_rus1", schoolId: "school_39", fullName: "Ivanova Olga (Rus tili)", phone: "+998 90 666 77 88", weeklyHourCapacity: 20, maxConsecutiveHours: 4, subjectIds: ["sub_rus"], branchIds: ["b39_1"] },
+
+  // Tabiiy fanlar (Fizika, Kimyo, Bio, Geo)
+  { id: "t_fiz1", schoolId: "school_39", fullName: "Rustamov Elyor (Fizika)", phone: "+998 93 390 33 44", weeklyHourCapacity: 22, maxConsecutiveHours: 4, subjectIds: ["sub_fiz"], branchIds: ["b39_1"] },
+  { id: "t_kim1", schoolId: "school_39", fullName: "Qodirov Anvar (Kimyo)", phone: "+998 99 390 77 88", weeklyHourCapacity: 20, maxConsecutiveHours: 4, subjectIds: ["sub_kim"], branchIds: ["b39_1"] },
+  { id: "t_bio1", schoolId: "school_39", fullName: "Rasulova Malika (Biologiya)", phone: "+998 91 777 88 99", weeklyHourCapacity: 20, maxConsecutiveHours: 4, subjectIds: ["sub_bio"], branchIds: ["b39_1"] },
+  { id: "t_geo1", schoolId: "school_39", fullName: "Yo'ldoshev Otabek (Geografiya)", phone: "+998 93 888 99 00", weeklyHourCapacity: 18, maxConsecutiveHours: 4, subjectIds: ["sub_geo"], branchIds: ["b39_1"] },
+
+  // Ijtimoiy fanlar (Tarix, Tarbiya)
+  { id: "t_tar1", schoolId: "school_39", fullName: "Yoqubov Dilshod (Tarix)", phone: "+998 90 390 99 00", weeklyHourCapacity: 20, maxConsecutiveHours: 4, subjectIds: ["sub_tar", "sub_tarbiya"], branchIds: ["b39_1"] },
+
+  // Informatika
+  { id: "t_inf1", schoolId: "school_39", fullName: "Xolmatov Ilhom (Informatika)", phone: "+998 90 999 00 11", weeklyHourCapacity: 22, maxConsecutiveHours: 4, subjectIds: ["sub_inf"], branchIds: ["b39_1"] },
+
+  // Jismoniy tarbiya & Mehnat
+  { id: "t_jism1", schoolId: "school_39", fullName: "Nazarov Sherzod (Jismoniy)", phone: "+998 94 390 12 34", weeklyHourCapacity: 26, maxConsecutiveHours: 5, subjectIds: ["sub_jism"], branchIds: ["b39_1"] },
+  { id: "t_jism2", schoolId: "school_39", fullName: "Qurbonov Jasur (Jismoniy)", phone: "+998 93 123 45 67", weeklyHourCapacity: 24, maxConsecutiveHours: 5, subjectIds: ["sub_jism"], branchIds: ["b39_1"] },
+  { id: "t_texno1", schoolId: "school_39", fullName: "Hakimov Rustam (Texnologiya/Mehnat)", phone: "+998 97 234 56 78", weeklyHourCapacity: 18, maxConsecutiveHours: 4, subjectIds: ["sub_texno", "sub_sanat"], branchIds: ["b39_1"] },
+  { id: "t_musiqa1", schoolId: "school_39", fullName: "Shamsiyeva Gulbahor (Musiqa)", phone: "+998 90 345 67 89", weeklyHourCapacity: 16, maxConsecutiveHours: 4, subjectIds: ["sub_musiqa", "sub_sanat"], branchIds: ["b39_1"] },
+
+  // Boshlang'ich sinf ustozlari (1-4 sinflar)
+  { id: "t_bosh1", schoolId: "school_39", fullName: "Mirzayeva Gulnoza (1-A rahbari)", phone: "+998 90 777 11 22", weeklyHourCapacity: 20, maxConsecutiveHours: 4, subjectIds: ["sub_mat", "sub_ona", "sub_oqish", "sub_tarbiya"], branchIds: ["b39_1"] },
+  { id: "t_bosh2", schoolId: "school_39", fullName: "Usmonova Munira (1-B rahbari)", phone: "+998 91 888 22 33", weeklyHourCapacity: 20, maxConsecutiveHours: 4, subjectIds: ["sub_mat", "sub_ona", "sub_oqish", "sub_tarbiya"], branchIds: ["b39_1"] },
+  { id: "t_bosh3", schoolId: "school_39", fullName: "Ergasheva Dilfuza (2-A rahbari)", phone: "+998 93 999 33 44", weeklyHourCapacity: 20, maxConsecutiveHours: 4, subjectIds: ["sub_mat", "sub_ona", "sub_oqish", "sub_tarbiya"], branchIds: ["b39_1"] },
+  { id: "t_bosh4", schoolId: "school_39", fullName: "Tolipova Nodira (2-B rahbari)", phone: "+998 94 000 44 55", weeklyHourCapacity: 20, maxConsecutiveHours: 4, subjectIds: ["sub_mat", "sub_ona", "sub_oqish", "sub_tarbiya"], branchIds: ["b39_1"] },
+  { id: "t_bosh5", schoolId: "school_39", fullName: "Ahmedova Shahida (3-A rahbari)", phone: "+998 97 111 55 66", weeklyHourCapacity: 20, maxConsecutiveHours: 4, subjectIds: ["sub_mat", "sub_ona", "sub_oqish", "sub_tarbiya"], branchIds: ["b39_1"] },
+  { id: "t_bosh6", schoolId: "school_39", fullName: "Zokirova Nargiza (3-B rahbari)", phone: "+998 99 222 66 77", weeklyHourCapacity: 20, maxConsecutiveHours: 4, subjectIds: ["sub_mat", "sub_ona", "sub_oqish", "sub_tarbiya"], branchIds: ["b39_1"] },
+  { id: "t_bosh7", schoolId: "school_39", fullName: "Boboyeva Kamola (4-A rahbari)", phone: "+998 90 333 77 88", weeklyHourCapacity: 20, maxConsecutiveHours: 4, subjectIds: ["sub_mat", "sub_ona", "sub_oqish", "sub_tarbiya"], branchIds: ["b39_1"] },
+  { id: "t_bosh8", schoolId: "school_39", fullName: "Davlatova Feruza (4-B rahbari)", phone: "+998 91 444 88 99", weeklyHourCapacity: 20, maxConsecutiveHours: 4, subjectIds: ["sub_mat", "sub_ona", "sub_oqish", "sub_tarbiya"], branchIds: ["b39_1"] },
 ];
 
-export const initialClasses: SchoolClass[] = [
-  // 21-maktab sinflari
-  {
-    id: "c_5a",
-    schoolId: "school_21",
-    branchId: "b1",
-    shiftId: "s1",
-    name: "5-A",
-    grade: 5,
-    isPrimary: false,
-    subjects: [
-      { classId: "c_5a", subjectId: "sub_mat", teacherId: "t_alimov", weeklyHours: 5 },
-      { classId: "c_5a", subjectId: "sub_ona", teacherId: "t_karimova", weeklyHours: 4 },
-      { classId: "c_5a", subjectId: "sub_ing", teacherId: "t_johnson", weeklyHours: 3 },
-      { classId: "c_5a", subjectId: "sub_tar", teacherId: "t_saidov", weeklyHours: 2 },
-      { classId: "c_5a", subjectId: "sub_inf", teacherId: "t_xolmatov", weeklyHours: 1 },
-      { classId: "c_5a", subjectId: "sub_jism", teacherId: "t_jismoniy", weeklyHours: 2 },
-    ],
-  },
-  {
-    id: "c_5b",
-    schoolId: "school_21",
-    branchId: "b1",
-    shiftId: "s1",
-    name: "5-B",
-    grade: 5,
-    isPrimary: false,
-    subjects: [
-      { classId: "c_5b", subjectId: "sub_mat", teacherId: "t_alimov", weeklyHours: 5 },
-      { classId: "c_5b", subjectId: "sub_ona", teacherId: "t_karimova", weeklyHours: 4 },
-      { classId: "c_5b", subjectId: "sub_ing", teacherId: "t_johnson", weeklyHours: 3 },
-      { classId: "c_5b", subjectId: "sub_tar", teacherId: "t_saidov", weeklyHours: 2 },
-      { classId: "c_5b", subjectId: "sub_inf", teacherId: "t_xolmatov", weeklyHours: 1 },
-      { classId: "c_5b", subjectId: "sub_jism", teacherId: "t_jismoniy", weeklyHours: 2 },
-    ],
-  },
-  {
-    id: "c_8a",
-    schoolId: "school_21",
-    branchId: "b1",
-    shiftId: "s1",
-    name: "8-A",
-    grade: 8,
-    isPrimary: false,
-    subjects: [
-      { classId: "c_8a", subjectId: "sub_mat", teacherId: "t_alimov", weeklyHours: 5 },
-      { classId: "c_8a", subjectId: "sub_fiz", teacherId: "t_tursunov", weeklyHours: 3 },
-      { classId: "c_8a", subjectId: "sub_kim", teacherId: "t_rasulova", weeklyHours: 2 },
-      { classId: "c_8a", subjectId: "sub_bio", teacherId: "t_rasulova", weeklyHours: 2 },
-      { classId: "c_8a", subjectId: "sub_ona", teacherId: "t_karimova", weeklyHours: 3 },
-      { classId: "c_8a", subjectId: "sub_ing", teacherId: "t_johnson", weeklyHours: 2 },
-      { classId: "c_8a", subjectId: "sub_jism", teacherId: "t_jismoniy", weeklyHours: 2 },
-    ],
-  },
-  {
-    id: "c_9a",
-    schoolId: "school_21",
-    branchId: "b1",
-    shiftId: "s1",
-    name: "9-A",
-    grade: 9,
-    isPrimary: false,
-    subjects: [
-      { classId: "c_9a", subjectId: "sub_mat", teacherId: "t_alimov", weeklyHours: 5 },
-      { classId: "c_9a", subjectId: "sub_fiz", teacherId: "t_tursunov", weeklyHours: 3 },
-      { classId: "c_9a", subjectId: "sub_kim", teacherId: "t_rasulova", weeklyHours: 2 },
-      { classId: "c_9a", subjectId: "sub_tar", teacherId: "t_saidov", weeklyHours: 2 },
-      { classId: "c_9a", subjectId: "sub_inf", teacherId: "t_xolmatov", weeklyHours: 2 },
-      { classId: "c_9a", subjectId: "sub_jism", teacherId: "t_jismoniy", weeklyHours: 2 },
-    ],
-  },
-  {
-    id: "c_1a",
-    schoolId: "school_21",
-    branchId: "b2",
-    shiftId: "s1",
-    name: "1-A",
-    grade: 1,
-    isPrimary: true,
-    subjects: [
-      { classId: "c_1a", subjectId: "sub_mat", teacherId: "t_boshlangich1", weeklyHours: 4 },
-      { classId: "c_1a", subjectId: "sub_ona", teacherId: "t_boshlangich1", weeklyHours: 4 },
-      { classId: "c_1a", subjectId: "sub_tarb", teacherId: "t_boshlangich1", weeklyHours: 1 },
-      { classId: "c_1a", subjectId: "sub_jism", teacherId: "t_jismoniy", weeklyHours: 2 },
-      { classId: "c_1a", subjectId: "sub_ing", teacherId: "t_johnson", weeklyHours: 2 },
-    ],
-  },
+// Helper: 1-A dan 11-B gacha 22 ta sinfni to'liq tarifikatsiya bilan shakllantirish
+const generateFull22Classes = (schoolId: string, branchId: string, shiftId: string): SchoolClass[] => {
+  const classesList: SchoolClass[] = [];
 
-  // 39-maktab sinflari
-  {
-    id: "c39_7a",
-    schoolId: "school_39",
-    branchId: "b39_1",
-    shiftId: "s39_1",
-    name: "7-A",
-    grade: 7,
-    isPrimary: false,
-    subjects: [
-      { classId: "c39_7a", subjectId: "sub39_mat", teacherId: "t39_1", weeklyHours: 5 },
-      { classId: "c39_7a", subjectId: "sub39_ona", teacherId: "t39_2", weeklyHours: 4 },
-      { classId: "c39_7a", subjectId: "sub39_fiz", teacherId: "t39_3", weeklyHours: 2 },
-      { classId: "c39_7a", subjectId: "sub39_ing", teacherId: "t39_4", weeklyHours: 3 },
-      { classId: "c39_7a", subjectId: "sub39_tar", teacherId: "t39_6", weeklyHours: 2 },
-      { classId: "c39_7a", subjectId: "sub39_inf", teacherId: "t39_1", weeklyHours: 1 },
-      { classId: "c39_7a", subjectId: "sub39_jism", teacherId: "t39_7", weeklyHours: 2 },
-    ],
-  },
-  {
-    id: "c39_8a",
-    schoolId: "school_39",
-    branchId: "b39_1",
-    shiftId: "s39_1",
-    name: "8-A",
-    grade: 8,
-    isPrimary: false,
-    subjects: [
-      { classId: "c39_8a", subjectId: "sub39_mat", teacherId: "t39_1", weeklyHours: 5 },
-      { classId: "c39_8a", subjectId: "sub39_ona", teacherId: "t39_2", weeklyHours: 4 },
-      { classId: "c39_8a", subjectId: "sub39_fiz", teacherId: "t39_3", weeklyHours: 3 },
-      { classId: "c39_8a", subjectId: "sub39_kim", teacherId: "t39_5", weeklyHours: 2 },
-      { classId: "c39_8a", subjectId: "sub39_ing", teacherId: "t39_4", weeklyHours: 2 },
-      { classId: "c39_8a", subjectId: "sub39_tar", teacherId: "t39_6", weeklyHours: 2 },
-      { classId: "c39_8a", subjectId: "sub39_jism", teacherId: "t39_7", weeklyHours: 2 },
-    ],
-  },
-  {
-    id: "c39_9a",
-    schoolId: "school_39",
-    branchId: "b39_1",
-    shiftId: "s39_1",
-    name: "9-A",
-    grade: 9,
-    isPrimary: false,
-    subjects: [
-      { classId: "c39_9a", subjectId: "sub39_mat", teacherId: "t39_1", weeklyHours: 5 },
-      { classId: "c39_9a", subjectId: "sub39_ona", teacherId: "t39_2", weeklyHours: 3 },
-      { classId: "c39_9a", subjectId: "sub39_fiz", teacherId: "t39_3", weeklyHours: 3 },
-      { classId: "c39_9a", subjectId: "sub39_kim", teacherId: "t39_5", weeklyHours: 2 },
-      { classId: "c39_9a", subjectId: "sub39_inf", teacherId: "t39_1", weeklyHours: 2 },
-      { classId: "c39_9a", subjectId: "sub39_jism", teacherId: "t39_7", weeklyHours: 2 },
-    ],
-  },
-  {
-    id: "c39_10a",
-    schoolId: "school_39",
-    branchId: "b39_1",
-    shiftId: "s39_1",
-    name: "10-A",
-    grade: 10,
-    isPrimary: false,
-    subjects: [
-      { classId: "c39_10a", subjectId: "sub39_mat", teacherId: "t39_1", weeklyHours: 5 },
-      { classId: "c39_10a", subjectId: "sub39_fiz", teacherId: "t39_3", weeklyHours: 4 },
-      { classId: "c39_10a", subjectId: "sub39_kim", teacherId: "t39_5", weeklyHours: 3 },
-      { classId: "c39_10a", subjectId: "sub39_ona", teacherId: "t39_2", weeklyHours: 3 },
-      { classId: "c39_10a", subjectId: "sub39_ing", teacherId: "t39_4", weeklyHours: 2 },
-      { classId: "c39_10a", subjectId: "sub39_jism", teacherId: "t39_7", weeklyHours: 2 },
-    ],
-  },
+  const GRADES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
+  const LETTERS = ["A", "B"];
+
+  for (const grade of GRADES) {
+    for (const letter of LETTERS) {
+      const name = `${grade}-${letter}`;
+      const id = `c_${schoolId}_${grade}${letter.toLowerCase()}`;
+      const isPrimary = grade <= 4;
+
+      let subjectsList: { subjectId: string; teacherId: string; weeklyHours: number }[] = [];
+
+      if (grade === 1) {
+        const teacherId = letter === "A" ? "t_bosh1" : "t_bosh2";
+        subjectsList = [
+          { subjectId: "sub_mat", teacherId, weeklyHours: 4 },
+          { subjectId: "sub_ona", teacherId, weeklyHours: 4 },
+          { subjectId: "sub_oqish", teacherId, weeklyHours: 3 },
+          { subjectId: "sub_tarbiya", teacherId, weeklyHours: 1 },
+          { subjectId: "sub_ing", teacherId: letter === "A" ? "t_ing1" : "t_ing2", weeklyHours: 2 },
+          { subjectId: "sub_jism", teacherId: "t_jism1", weeklyHours: 2 },
+        ];
+      } else if (grade === 2) {
+        const teacherId = letter === "A" ? "t_bosh3" : "t_bosh4";
+        subjectsList = [
+          { subjectId: "sub_mat", teacherId, weeklyHours: 4 },
+          { subjectId: "sub_ona", teacherId, weeklyHours: 4 },
+          { subjectId: "sub_oqish", teacherId, weeklyHours: 3 },
+          { subjectId: "sub_tarbiya", teacherId, weeklyHours: 1 },
+          { subjectId: "sub_ing", teacherId: letter === "A" ? "t_ing1" : "t_ing2", weeklyHours: 2 },
+          { subjectId: "sub_jism", teacherId: "t_jism2", weeklyHours: 2 },
+        ];
+      } else if (grade === 3) {
+        const teacherId = letter === "A" ? "t_bosh5" : "t_bosh6";
+        subjectsList = [
+          { subjectId: "sub_mat", teacherId, weeklyHours: 5 },
+          { subjectId: "sub_ona", teacherId, weeklyHours: 4 },
+          { subjectId: "sub_oqish", teacherId, weeklyHours: 3 },
+          { subjectId: "sub_tarbiya", teacherId, weeklyHours: 1 },
+          { subjectId: "sub_ing", teacherId: letter === "A" ? "t_ing1" : "t_ing2", weeklyHours: 2 },
+          { subjectId: "sub_jism", teacherId: "t_jism1", weeklyHours: 2 },
+          { subjectId: "sub_musiqa", teacherId: "t_musiqa1", weeklyHours: 1 },
+        ];
+      } else if (grade === 4) {
+        const teacherId = letter === "A" ? "t_bosh7" : "t_bosh8";
+        subjectsList = [
+          { subjectId: "sub_mat", teacherId, weeklyHours: 5 },
+          { subjectId: "sub_ona", teacherId, weeklyHours: 4 },
+          { subjectId: "sub_oqish", teacherId, weeklyHours: 3 },
+          { subjectId: "sub_tarbiya", teacherId, weeklyHours: 1 },
+          { subjectId: "sub_ing", teacherId: letter === "A" ? "t_ing1" : "t_ing2", weeklyHours: 2 },
+          { subjectId: "sub_inf", teacherId: "t_inf1", weeklyHours: 1 },
+          { subjectId: "sub_jism", teacherId: "t_jism2", weeklyHours: 2 },
+        ];
+      } else if (grade === 5 || grade === 6) {
+        subjectsList = [
+          { subjectId: "sub_mat", teacherId: letter === "A" ? "t_mat2" : "t_mat3", weeklyHours: 5 },
+          { subjectId: "sub_ona", teacherId: letter === "A" ? "t_ona1" : "t_ona2", weeklyHours: 4 },
+          { subjectId: "sub_ing", teacherId: letter === "A" ? "t_ing1" : "t_ing2", weeklyHours: 3 },
+          { subjectId: "sub_tar", teacherId: "t_tar1", weeklyHours: 2 },
+          { subjectId: "sub_inf", teacherId: "t_inf1", weeklyHours: 1 },
+          { subjectId: "sub_bio", teacherId: "t_bio1", weeklyHours: 2 },
+          { subjectId: "sub_geo", teacherId: "t_geo1", weeklyHours: 1 },
+          { subjectId: "sub_jism", teacherId: letter === "A" ? "t_jism1" : "t_jism2", weeklyHours: 2 },
+          { subjectId: "sub_texno", teacherId: "t_texno1", weeklyHours: 1 },
+        ];
+      } else if (grade === 7 || grade === 8) {
+        subjectsList = [
+          { subjectId: "sub_mat", teacherId: letter === "A" ? "t_baxrom" : "t_mat2", weeklyHours: 5 },
+          { subjectId: "sub_fiz", teacherId: "t_fiz1", weeklyHours: 2 },
+          { subjectId: "sub_kim", teacherId: "t_kim1", weeklyHours: 2 },
+          { subjectId: "sub_bio", teacherId: "t_bio1", weeklyHours: 2 },
+          { subjectId: "sub_ona", teacherId: letter === "A" ? "t_ona1" : "t_ona2", weeklyHours: 4 },
+          { subjectId: "sub_ing", teacherId: letter === "A" ? "t_ing1" : "t_ing2", weeklyHours: 3 },
+          { subjectId: "sub_tar", teacherId: "t_tar1", weeklyHours: 2 },
+          { subjectId: "sub_inf", teacherId: letter === "A" ? "t_baxrom" : "t_inf1", weeklyHours: 1 },
+          { subjectId: "sub_jism", teacherId: letter === "A" ? "t_jism1" : "t_jism2", weeklyHours: 2 },
+        ];
+      } else {
+        // 9, 10, 11-sinflar (Yuqori)
+        subjectsList = [
+          { subjectId: "sub_mat", teacherId: letter === "A" ? "t_baxrom" : "t_mat3", weeklyHours: 5 },
+          { subjectId: "sub_fiz", teacherId: "t_fiz1", weeklyHours: 3 },
+          { subjectId: "sub_kim", teacherId: "t_kim1", weeklyHours: 2 },
+          { subjectId: "sub_bio", teacherId: "t_bio1", weeklyHours: 2 },
+          { subjectId: "sub_ona", teacherId: letter === "A" ? "t_ona1" : "t_ona2", weeklyHours: 3 },
+          { subjectId: "sub_ing", teacherId: letter === "A" ? "t_ing1" : "t_ing2", weeklyHours: 3 },
+          { subjectId: "sub_tar", teacherId: "t_tar1", weeklyHours: 2 },
+          { subjectId: "sub_inf", teacherId: letter === "A" ? "t_baxrom" : "t_inf1", weeklyHours: 2 },
+          { subjectId: "sub_jism", teacherId: letter === "A" ? "t_jism1" : "t_jism2", weeklyHours: 2 },
+        ];
+      }
+
+      classesList.push({
+        id,
+        schoolId,
+        branchId,
+        shiftId,
+        name,
+        grade,
+        isPrimary,
+        subjects: subjectsList.map((s) => ({ ...s, classId: id })),
+      });
+    }
+  }
+
+  return classesList;
+};
+
+export const initialClasses: SchoolClass[] = [
+  ...generateFull22Classes("school_39", "b39_1", "s39_1"),
+  ...generateFull22Classes("school_21", "b21_1", "s21_1"),
 ];

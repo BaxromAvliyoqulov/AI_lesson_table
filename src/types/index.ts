@@ -1,6 +1,5 @@
-import { Role, RoomType } from "./index";
-
-export type { Role, RoomType };
+export type Role = "SUPER_ADMIN" | "SCHOOL_ADMIN";
+export type RoomType = "GENERAL" | "GYM" | "LAB" | "COMP_LAB" | "OUTDOOR_PITCH";
 
 export interface SchoolInfo {
   id: string;
