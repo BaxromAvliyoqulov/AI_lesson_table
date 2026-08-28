@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import {
   Calendar,
   Sparkles,
@@ -14,9 +14,17 @@ import {
   Undo2,
   ZoomIn,
   ZoomOut,
+  ChevronDown,
+  Building2,
+  Plus,
 } from "lucide-react";
+import { SchoolInfo } from "@/types";
 
 interface NavbarProps {
+  schools: SchoolInfo[];
+  currentSchoolId: string;
+  onSelectSchool: (schoolId: string) => void;
+  onAddSchool: () => void;
   zoomLevel: number;
   onZoomChange: (level: number) => void;
   onGenerate: () => void;
@@ -32,6 +40,10 @@ interface NavbarProps {
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
+  schools,
+  currentSchoolId,
+  onSelectSchool,
+  onAddSchool,
   zoomLevel,
   onZoomChange,
   onGenerate,
@@ -45,7 +57,10 @@ export const Navbar: React.FC<NavbarProps> = ({
   onBranchChange,
   branches,
 }) => {
-  const [isDark, setIsDark] = React.useState(false);
+  const [isDark, setIsDark] = useState(false);
+  const [isSchoolMenuOpen, setIsSchoolMenuOpen] = useState(false);
+
+  const currentSchool = schools.find((s) => s.id === currentSchoolId) || schools[0];
 
   const toggleTheme = () => {
     setIsDark(!isDark);
@@ -59,44 +74,101 @@ export const Navbar: React.FC<NavbarProps> = ({
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/80 bg-background/95 backdrop-blur-md transition-colors">
       <div className="flex h-16 items-center justify-between px-4 md:px-6">
-        {/* Logo & Brand */}
+        {/* Logo & Maktab Tanlash (Multi-tenant) */}
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-500 shadow-md shadow-blue-500/20 text-white">
             <Calendar className="h-5 w-5" />
           </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="font-bold text-lg tracking-tight bg-gradient-to-r from-blue-600 via-indigo-600 to-amber-500 bg-clip-text text-transparent">
-                Jadval.AI
-              </span>
-              <span className="rounded-full bg-blue-100 dark:bg-blue-950/80 px-2 py-0.5 text-[10px] font-semibold text-blue-700 dark:text-blue-300">
-                v2.0 Enterprise
-              </span>
-            </div>
-            <p className="text-xs text-muted-foreground hidden sm:block">
-              21-Umumiy o&apos;rta ta&apos;lim maktabi
-            </p>
+
+          <div className="relative">
+            <button
+              onClick={() => setIsSchoolMenuOpen(!isSchoolMenuOpen)}
+              className="flex items-center gap-2 rounded-xl p-1 hover:bg-muted transition-colors text-left group"
+            >
+              <div>
+                <div className="flex items-center gap-1.5">
+                  <span className="font-extrabold text-sm sm:text-base tracking-tight bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+                    Jadval.AI
+                  </span>
+                  <span className="rounded-full bg-blue-100 dark:bg-blue-950/80 px-2 py-0.5 text-[9px] font-bold text-blue-700 dark:text-blue-300">
+                    v2.0
+                  </span>
+                </div>
+                <div className="flex items-center gap-1 text-xs font-semibold text-foreground">
+                  <Building2 className="h-3 w-3 text-blue-600" />
+                  <span>{currentSchool?.name || "Maktabni tanlang"}</span>
+                  <ChevronDown className="h-3 w-3 text-muted-foreground group-hover:text-foreground" />
+                </div>
+              </div>
+            </button>
+
+            {/* Maktablar Ro'yxati Dropdown */}
+            {isSchoolMenuOpen && (
+              <div className="absolute left-0 top-14 z-50 w-72 rounded-2xl border border-border bg-card p-2 shadow-2xl animate-in fade-in slide-in-from-top-2">
+                <div className="px-3 py-2 text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
+                  Faol Maktablar (Multi-Tenant)
+                </div>
+                <div className="space-y-1">
+                  {schools.map((s) => (
+                    <button
+                      key={s.id}
+                      onClick={() => {
+                        onSelectSchool(s.id);
+                        setIsSchoolMenuOpen(false);
+                      }}
+                      className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-xs font-semibold transition-colors ${
+                        s.id === currentSchoolId
+                          ? "bg-blue-600 text-white"
+                          : "hover:bg-muted text-foreground"
+                      }`}
+                    >
+                      <span className="truncate">{s.name}</span>
+                      {s.id === currentSchoolId && (
+                        <span className="text-[10px] bg-white/20 px-2 py-0.5 rounded-full">
+                          Tanlangan
+                        </span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="mt-2 pt-2 border-t border-border">
+                  <button
+                    onClick={() => {
+                      onAddSchool();
+                      setIsSchoolMenuOpen(false);
+                    }}
+                    className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/40 transition-colors"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    <span>+ Yangi maktab qo&apos;shish</span>
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Filial va Ko'rinish filterlari */}
+        {/* Filial va Zoom filterlari */}
         <div className="flex items-center gap-2">
           {/* Filial Tanlash */}
-          <div className="flex items-center gap-1.5 rounded-lg border border-border bg-card px-2.5 py-1.5 text-xs shadow-sm">
-            <SchoolIcon className="h-3.5 w-3.5 text-muted-foreground" />
-            <select
-              value={selectedBranch}
-              onChange={(e) => onBranchChange(e.target.value)}
-              className="bg-transparent font-medium focus:outline-none cursor-pointer"
-            >
-              <option value="ALL">Barcha Filiallar</option>
-              {branches.map((b) => (
-                <option key={b.id} value={b.id}>
-                  {b.name}
-                </option>
-              ))}
-            </select>
-          </div>
+          {branches.length > 0 && (
+            <div className="flex items-center gap-1.5 rounded-lg border border-border bg-card px-2.5 py-1.5 text-xs shadow-sm">
+              <SchoolIcon className="h-3.5 w-3.5 text-muted-foreground" />
+              <select
+                value={selectedBranch}
+                onChange={(e) => onBranchChange(e.target.value)}
+                className="bg-transparent font-medium focus:outline-none cursor-pointer"
+              >
+                <option value="ALL">Barcha Filiallar</option>
+                {branches.map((b) => (
+                  <option key={b.id} value={b.id}>
+                    {b.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
           {/* Zoom Boshqaruvi */}
           <div className="hidden lg:flex items-center rounded-lg border border-border bg-card p-1 shadow-sm">
@@ -121,7 +193,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             </button>
           </div>
 
-          {/* Undo Tugmasi */}
+          {/* Undo */}
           <button
             onClick={onUndo}
             disabled={!canUndo}
@@ -150,7 +222,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             className="flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-medium hover:bg-muted transition-colors shadow-sm"
           >
             <Settings2 className="h-3.5 w-3.5 text-blue-600" />
-            <span className="hidden sm:inline">Maktab Sozlamalari</span>
+            <span className="hidden sm:inline">Maktabni Sozlash</span>
           </button>
 
           {/* Excel Export */}
@@ -176,7 +248,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             <span>{isGenerating ? "Tuzilmoqda..." : "AI Generatsiya"}</span>
           </button>
 
-          {/* Dark / Light Mode */}
+          {/* Dark / Light */}
           <button
             onClick={toggleTheme}
             className="p-2 rounded-lg border border-border bg-card hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"

@@ -1,6 +1,15 @@
-export type Role = "SUPER_ADMIN" | "SCHOOL_ADMIN";
+import { Role, RoomType } from "./index";
 
-export type RoomType = "GENERAL" | "GYM" | "LAB" | "COMP_LAB" | "OUTDOOR_PITCH";
+export type { Role, RoomType };
+
+export interface SchoolInfo {
+  id: string;
+  name: string;
+  slug: string;
+  branchesCount?: number;
+  classesCount?: number;
+  teachersCount?: number;
+}
 
 export interface Branch {
   id: string;
@@ -26,15 +35,15 @@ export interface Subject {
   shortName?: string | null;
   colorTag: string;
   difficultyScore: number; // 1-13 SanPiN
-  allowDoubleLesson: boolean; // 2 soat ketma-ket darsga ruxsat
+  allowDoubleLesson: boolean;
   requiresRoomType?: RoomType | null;
 }
 
 export interface TeacherAvailability {
   id?: string;
   teacherId: string;
-  dayOfWeek: number; // 1-6 (Dushanba-Shanba)
-  period: number; // 1-8
+  dayOfWeek: number;
+  period: number;
   isAvailable: boolean;
 }
 
@@ -100,8 +109,8 @@ export interface Lesson {
   teacherId: string;
   roomId?: string | null;
   branchId: string;
-  dayOfWeek: number; // 1-6 (1: Du, 2: Se, 3: Ch, 4: Pa, 5: Ju, 6: Sh)
-  periodNumber: number; // 1-8
+  dayOfWeek: number;
+  periodNumber: number;
   isLocked?: boolean;
 }
 
@@ -118,8 +127,8 @@ export interface SolverInput {
   rooms: Room[];
   shifts: Shift[];
   branches: Branch[];
-  daysCount?: number; // default 6
-  maxPeriodsPerDay?: number; // default 7
+  daysCount?: number;
+  maxPeriodsPerDay?: number;
 }
 
 export interface SolverResult {
