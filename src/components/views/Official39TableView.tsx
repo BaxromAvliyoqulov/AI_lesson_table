@@ -661,43 +661,43 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
       onDragEnd={handleDragEnd}
     >
       <div className="w-full flex flex-col bg-white text-black p-4 sm:p-6 print:p-0 select-text">
-        {/* ── TOP ACTION & TAB CONTROLS ───────────────────────────────────────── */}
-        <div className="no-print mb-6 p-4 rounded-2xl bg-slate-900 text-white shadow-xl flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 border border-slate-800">
+        {/* ── TOP ACTION & TAB CONTROLS (Toza Oq / Light Mode) ───────────────────────────────────────── */}
+        <div className="no-print mb-6 p-3.5 rounded-2xl bg-slate-50 border border-slate-200 text-slate-900 shadow-sm flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3.5">
           {/* Chap: Asosiy Maktab va Filial Aniq Filtrlari */}
           <div className="flex items-center gap-2 flex-wrap">
-            <div className="flex items-center gap-1.5 p-1 rounded-xl bg-slate-950/90 border border-slate-800">
-              <Building2 className="w-4 h-4 text-amber-400 ml-2" />
+            <div className="flex items-center gap-1.5 p-1 rounded-xl bg-white border border-slate-200 shadow-sm">
+              <Building2 className="w-4 h-4 text-blue-600 ml-2" />
               <select
                 value={filterScope}
                 onChange={(e) => setFilterScope(e.target.value as FilterScope)}
-                className="bg-transparent text-white text-xs font-bold py-1.5 pr-3 outline-none cursor-pointer"
+                className="bg-transparent text-slate-800 text-xs font-bold py-1.5 pr-3 outline-none cursor-pointer"
               >
-                <optgroup label="🏢 Asosiy Maktab" className="bg-slate-900 text-white font-bold">
-                  <option value="MAIN_HIGH" className="bg-slate-900 text-white">
+                <optgroup label="🏢 Asosiy Maktab" className="bg-white text-slate-900 font-bold">
+                  <option value="MAIN_HIGH" className="bg-white text-slate-900">
                     🧑 Asosiy maktab — Katta sinf (5-11)
                   </option>
-                  <option value="MAIN_PRIMARY" className="bg-slate-900 text-white">
+                  <option value="MAIN_PRIMARY" className="bg-white text-slate-900">
                     👦 Asosiy maktab — Boshlang'ich (1-4)
                   </option>
-                  <option value="MAIN_ALL" className="bg-slate-900 text-white">
+                  <option value="MAIN_ALL" className="bg-white text-slate-900">
                     🏢 Asosiy maktab — Hammasi (1-11)
                   </option>
                 </optgroup>
 
-                <optgroup label="🏠 Filial Binosi (D-sinflar)" className="bg-slate-900 text-amber-300 font-bold">
-                  <option value="BRANCH_HIGH" className="bg-slate-900 text-white">
+                <optgroup label="🏠 Filial Binosi (D-sinflar)" className="bg-white text-amber-700 font-bold">
+                  <option value="BRANCH_HIGH" className="bg-white text-slate-900">
                     🧑 Filial — Katta sinf (5-D, 6-D, 7-D)
                   </option>
-                  <option value="BRANCH_PRIMARY" className="bg-slate-900 text-white">
+                  <option value="BRANCH_PRIMARY" className="bg-white text-slate-900">
                     👦 Filial — Boshlang'ich (1-D .. 4-D)
                   </option>
-                  <option value="BRANCH_ALL" className="bg-slate-900 text-white">
+                  <option value="BRANCH_ALL" className="bg-white text-slate-900">
                     🏠 Filial — Hammasi (1-D .. 7-D)
                   </option>
                 </optgroup>
 
-                <optgroup label="🏛️ Umumiy Maktab" className="bg-slate-900 text-purple-300 font-bold">
-                  <option value="ALL" className="bg-slate-900 text-white">
+                <optgroup label="🏛️ Umumiy Maktab" className="bg-white text-purple-700 font-bold">
+                  <option value="ALL" className="bg-white text-slate-900">
                     🏛️ Barcha filiallar (Umumiy maktab)
                   </option>
                 </optgroup>
@@ -705,13 +705,13 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
             </div>
 
             {/* Tezkor Tab Tugmalari */}
-            <div className="hidden lg:flex items-center gap-1">
+            <div className="hidden lg:flex items-center gap-1 bg-white p-1 rounded-xl border border-slate-200 shadow-sm">
               <button
                 onClick={() => setFilterScope("MAIN_HIGH")}
                 className={`px-2.5 py-1.5 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
                   filterScope === "MAIN_HIGH"
-                    ? "bg-blue-600 text-white shadow"
-                    : "text-slate-400 hover:text-white hover:bg-slate-800"
+                    ? "bg-blue-600 text-white shadow-sm"
+                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
                 }`}
               >
                 Asosiy Katta
@@ -720,8 +720,8 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
                 onClick={() => setFilterScope("MAIN_PRIMARY")}
                 className={`px-2.5 py-1.5 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
                   filterScope === "MAIN_PRIMARY"
-                    ? "bg-emerald-600 text-white shadow"
-                    : "text-slate-400 hover:text-white hover:bg-slate-800"
+                    ? "bg-emerald-600 text-white shadow-sm"
+                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
                 }`}
               >
                 Asosiy Boshlang'ich
@@ -730,8 +730,8 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
                 onClick={() => setFilterScope("BRANCH_HIGH")}
                 className={`px-2.5 py-1.5 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
                   filterScope === "BRANCH_HIGH"
-                    ? "bg-amber-600 text-white shadow"
-                    : "text-slate-400 hover:text-white hover:bg-slate-800"
+                    ? "bg-amber-600 text-white shadow-sm"
+                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
                 }`}
               >
                 Filial Katta (5-7D)
@@ -740,8 +740,8 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
                 onClick={() => setFilterScope("BRANCH_PRIMARY")}
                 className={`px-2.5 py-1.5 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
                   filterScope === "BRANCH_PRIMARY"
-                    ? "bg-teal-600 text-white shadow"
-                    : "text-slate-400 hover:text-white hover:bg-slate-800"
+                    ? "bg-teal-600 text-white shadow-sm"
+                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
                 }`}
               >
                 Filial Boshlang'ich (1-4D)
@@ -750,32 +750,32 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
           </div>
 
           {/* O'ng: AI Nazorat, Zoom, Rekvizitlar, Excel va Chop etish tugmalari */}
-          <div className="flex items-center gap-2.5 flex-wrap self-end md:self-auto">
+          <div className="flex items-center gap-2 flex-wrap self-end md:self-auto">
             {/* AI Patrul & Ziddiyatlarni tuzatish tugmasi */}
             {teacherConflictsSet.size > 0 ? (
               <button
                 type="button"
                 onClick={handleAutoFixConflicts}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gradient-to-r from-rose-600 to-amber-600 hover:from-rose-500 hover:to-amber-500 text-white text-xs font-bold shadow-lg shadow-rose-600/30 cursor-pointer animate-pulse transition-all"
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gradient-to-r from-rose-600 to-amber-600 hover:from-rose-500 hover:to-amber-500 text-white text-xs font-bold shadow-md shadow-rose-600/20 cursor-pointer animate-pulse transition-all"
                 title="Parallel darslarni AI algoritmi orqali 0 ziddiyatgacha avtomatik qayta taqsimlash"
               >
                 <Sparkles className="w-4 h-4" />
                 <span>⚡ AI Bilan To'g'rilash ({Math.round(teacherConflictsSet.size / 2)} ta ziddiyat)</span>
               </button>
             ) : (
-              <div className="hidden sm:inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-950/80 border border-emerald-800 text-emerald-300 text-xs font-bold">
-                <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+              <div className="hidden sm:inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-bold shadow-sm">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
                 <span>0 Ziddiyat &bull; AI Nazoratida</span>
               </div>
             )}
 
             {/* Zoom Boshqaruvi */}
-            <div className="flex items-center gap-1 rounded-xl bg-slate-800 border border-slate-700 p-1 shadow-sm" suppressHydrationWarning>
+            <div className="flex items-center gap-1 rounded-xl bg-white border border-slate-200 p-1 shadow-sm" suppressHydrationWarning>
               <button
                 type="button"
                 onClick={() => onZoomChange && onZoomChange(Math.max(50, zoomLevel - 10))}
                 disabled={zoomLevel <= 50}
-                className="p-1.5 rounded-lg hover:bg-slate-700 text-slate-300 hover:text-white disabled:opacity-40 transition-colors cursor-pointer"
+                className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-600 hover:text-slate-900 disabled:opacity-40 transition-colors cursor-pointer"
                 title="Kichraytirish (-10%)"
               >
                 <ZoomOut className="w-3.5 h-3.5" />
@@ -783,7 +783,7 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
               <button
                 type="button"
                 onClick={() => onZoomChange && onZoomChange(100)}
-                className="px-2 text-xs font-semibold tabular-nums text-slate-300 hover:text-white hover:underline cursor-pointer"
+                className="px-2 text-xs font-bold tabular-nums text-slate-700 hover:text-blue-600 hover:underline cursor-pointer"
                 title="100% ga qaytarish"
                 suppressHydrationWarning
               >
@@ -793,7 +793,7 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
                 type="button"
                 onClick={() => onZoomChange && onZoomChange(Math.min(150, zoomLevel + 10))}
                 disabled={zoomLevel >= 150}
-                className="p-1.5 rounded-lg hover:bg-slate-700 text-slate-300 hover:text-white disabled:opacity-40 transition-colors cursor-pointer"
+                className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-600 hover:text-slate-900 disabled:opacity-40 transition-colors cursor-pointer"
                 title="Kattalashtirish (+10%)"
               >
                 <ZoomIn className="w-3.5 h-3.5" />
@@ -814,17 +814,17 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
                 });
                 setIsRequisitesModalOpen(true);
               }}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700 shadow-sm cursor-pointer transition-all"
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white hover:bg-slate-100 text-slate-700 hover:text-slate-900 text-xs font-bold border border-slate-200 shadow-sm cursor-pointer transition-all"
               title="Maktab nomi, direktor va zauch rekvizitlarini o'zgartirish"
             >
-              <Settings className="w-4 h-4 text-amber-400" />
+              <Settings className="w-4 h-4 text-amber-500" />
               <span>Rekvizitlar</span>
             </button>
 
             {onExportExcel && (
               <button
                 onClick={onExportExcel}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-md shadow-emerald-600/20 cursor-pointer transition-all"
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-sm cursor-pointer transition-all"
               >
                 <Download className="w-4 h-4" />
                 <span>Excel yuklab olish</span>
@@ -833,7 +833,7 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
 
             <button
               onClick={handlePrint}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow-md shadow-indigo-600/20 cursor-pointer transition-all"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold shadow-sm cursor-pointer transition-all"
             >
               <Printer className="w-4 h-4" />
               <span>Chop etish (Print / PDF)</span>
@@ -1180,21 +1180,21 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
 
         {/* ── 5. INTERAKTIV REKVIZITLARNI TAHRIRLASH MODALI ─────────────────── */}
         {isRequisitesModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in no-print">
-            <div className="w-full max-w-lg rounded-2xl border border-slate-800 bg-slate-900 text-white p-6 shadow-2xl space-y-4">
-              <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-in fade-in no-print">
+            <div className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white text-slate-900 p-6 shadow-2xl space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                 <div className="flex items-center gap-2">
-                  <Award className="w-5 h-5 text-amber-400" />
+                  <Award className="w-5 h-5 text-amber-500" />
                   <div>
-                    <h3 className="font-bold text-sm text-white">Maktab Rasmiy Rekvizitlari</h3>
-                    <p className="text-[11px] text-slate-400">
+                    <h3 className="font-bold text-sm text-slate-900">Maktab Rasmiy Rekvizitlari</h3>
+                    <p className="text-[11px] text-slate-500">
                       Hujjat sarlavhasi va imzolarida aks etuvchi rasmiy ma'lumotlar
                     </p>
                   </div>
                 </div>
                 <button
                   onClick={() => setIsRequisitesModalOpen(false)}
-                  className="p-1 rounded hover:bg-slate-800 text-slate-400 hover:text-white"
+                  className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -1203,7 +1203,7 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
               <form onSubmit={handleSaveRequisites} className="space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-semibold text-slate-300 mb-1">
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
                       Maktab nomi:
                     </label>
                     <input
@@ -1211,12 +1211,12 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
                       required
                       value={requisitesForm.name}
                       onChange={(e) => setRequisitesForm({ ...requisitesForm, name: e.target.value })}
-                      className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white text-xs outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 text-xs outline-none focus:bg-white focus:ring-2 focus:ring-blue-500 font-medium"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-slate-300 mb-1">
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
                       Tuman / Hudud:
                     </label>
                     <input
@@ -1224,14 +1224,14 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
                       required
                       value={requisitesForm.region}
                       onChange={(e) => setRequisitesForm({ ...requisitesForm, region: e.target.value })}
-                      className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white text-xs outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 text-xs outline-none focus:bg-white focus:ring-2 focus:ring-blue-500 font-medium"
                     />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-semibold text-slate-300 mb-1">
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
                       Maktab Direktori F.I.Sh:
                     </label>
                     <input
@@ -1239,12 +1239,12 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
                       required
                       value={requisitesForm.directorName}
                       onChange={(e) => setRequisitesForm({ ...requisitesForm, directorName: e.target.value })}
-                      className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white text-xs outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 text-xs outline-none focus:bg-white focus:ring-2 focus:ring-blue-500 font-medium"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-slate-300 mb-1">
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
                       O'quv ishlari bo'yicha zauch F.I.Sh:
                     </label>
                     <input
@@ -1252,26 +1252,26 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
                       required
                       value={requisitesForm.vicePrincipalName}
                       onChange={(e) => setRequisitesForm({ ...requisitesForm, vicePrincipalName: e.target.value })}
-                      className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white text-xs outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 text-xs outline-none focus:bg-white focus:ring-2 focus:ring-blue-500 font-medium"
                     />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div>
-                    <label className="block text-xs font-semibold text-slate-300 mb-1">
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
                       Ruhshunos F.I.Sh:
                     </label>
                     <input
                       type="text"
                       value={requisitesForm.psychologistName}
                       onChange={(e) => setRequisitesForm({ ...requisitesForm, psychologistName: e.target.value })}
-                      className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white text-xs outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 text-xs outline-none focus:bg-white focus:ring-2 focus:ring-blue-500 font-medium"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-slate-300 mb-1">
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
                       O'quv yili:
                     </label>
                     <input
@@ -1279,12 +1279,12 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
                       required
                       value={requisitesForm.academicYear}
                       onChange={(e) => setRequisitesForm({ ...requisitesForm, academicYear: e.target.value })}
-                      className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white text-xs outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 text-xs outline-none focus:bg-white focus:ring-2 focus:ring-blue-500 font-medium"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-slate-300 mb-1">
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
                       Tasdiqlash sanasi:
                     </label>
                     <input
@@ -1292,22 +1292,22 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
                       required
                       value={requisitesForm.approvalDate}
                       onChange={(e) => setRequisitesForm({ ...requisitesForm, approvalDate: e.target.value })}
-                      className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white text-xs outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 text-xs outline-none focus:bg-white focus:ring-2 focus:ring-blue-500 font-medium"
                     />
                   </div>
                 </div>
 
-                <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-800">
+                <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
                   <button
                     type="button"
                     onClick={() => setIsRequisitesModalOpen(false)}
-                    className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-400 hover:bg-slate-800"
+                    className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition-colors"
                   >
                     Bekor qilish
                   </button>
                   <button
                     type="submit"
-                    className="px-5 py-2 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-600/20 cursor-pointer flex items-center gap-1.5"
+                    className="px-5 py-2 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-500 text-white shadow-md shadow-blue-600/20 cursor-pointer flex items-center gap-1.5 transition-all"
                   >
                     <Save className="w-4 h-4" />
                     <span>Rekvizitlarni saqlash</span>
@@ -1320,23 +1320,23 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
 
         {/* ── 6. INTERAKTIV CELL TAHRIRLASH MODALI ──────────────────────────── */}
         {cellModal && cellModal.isOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in no-print">
-            <div className="w-full max-w-md rounded-2xl border border-slate-800 bg-slate-900 text-white p-6 shadow-2xl space-y-4">
-              <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-in fade-in no-print">
+            <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white text-slate-900 p-6 shadow-2xl space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                 <div className="flex items-center gap-2">
-                  <Edit2 className="w-5 h-5 text-amber-400" />
+                  <Edit2 className="w-5 h-5 text-blue-600" />
                   <div>
-                    <h3 className="font-bold text-sm text-white">
+                    <h3 className="font-bold text-sm text-slate-900">
                       {cellModal.cls.name} &bull; {DAYS.find((d) => d.id === cellModal.day)?.name} {cellModal.period}-dars
                     </h3>
-                    <p className="text-[11px] text-slate-400">
+                    <p className="text-[11px] text-slate-500">
                       {cellModal.lesson ? "Dars ma'lumotlarini tahrirlash" : "Yangi dars tayinlash"}
                     </p>
                   </div>
                 </div>
                 <button
                   onClick={() => setCellModal(null)}
-                  className="p-1 rounded hover:bg-slate-800 text-slate-400 hover:text-white"
+                  className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -1344,13 +1344,13 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
 
               <form onSubmit={handleSaveCell} className="space-y-4">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
                     Fan:
                   </label>
                   <select
                     value={selectedSubjectId}
                     onChange={(e) => setSelectedSubjectId(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white text-xs outline-none focus:ring-2 focus:ring-amber-500"
+                    className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 text-xs font-bold outline-none focus:bg-white focus:ring-2 focus:ring-blue-500"
                   >
                     {subjects.map((s) => (
                       <option key={s.id} value={s.id}>
@@ -1361,13 +1361,13 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
                     O'qituvchi (№ Tartib raqami bilan):
                   </label>
                   <select
                     value={selectedTeacherId}
                     onChange={(e) => setSelectedTeacherId(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white text-xs outline-none focus:ring-2 focus:ring-amber-500"
+                    className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 text-xs font-bold outline-none focus:bg-white focus:ring-2 focus:ring-blue-500"
                   >
                     {teachers.map((t, idx) => (
                       <option key={t.id} value={t.id}>
@@ -1379,24 +1379,24 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
 
                 {/* Zamena va Lock tugmalari (agar dars mavjud bo'lsa) */}
                 {cellModal.lesson && (
-                  <div className="flex items-center gap-2 pt-2 border-t border-slate-800">
+                  <div className="flex items-center gap-2 pt-2 border-t border-slate-100">
                     <button
                       type="button"
                       onClick={() => handleToggleLock(cellModal.lesson!.id)}
-                      className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border transition-colors cursor-pointer ${
+                      className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold border transition-colors cursor-pointer ${
                         cellModal.lesson.isLocked
-                          ? "bg-amber-500/20 text-amber-300 border-amber-500/40"
-                          : "bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700"
+                          ? "bg-amber-50 text-amber-700 border-amber-300"
+                          : "bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200"
                       }`}
                     >
                       {cellModal.lesson.isLocked ? (
                         <>
-                          <Lock className="w-3.5 h-3.5" />
+                          <Lock className="w-3.5 h-3.5 text-amber-600" />
                           <span>Qulflangan</span>
                         </>
                       ) : (
                         <>
-                          <Unlock className="w-3.5 h-3.5" />
+                          <Unlock className="w-3.5 h-3.5 text-slate-500" />
                           <span>Qulflash</span>
                         </>
                       )}
@@ -1409,7 +1409,7 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
                           onOpenZamena(cellModal.lesson!);
                           setCellModal(null);
                         }}
-                        className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 border border-blue-500/30 transition-colors cursor-pointer"
+                        className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 transition-colors cursor-pointer"
                       >
                         <UserCheck className="w-3.5 h-3.5" />
                         <span>Zamena</span>
@@ -1419,7 +1419,7 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
                     <button
                       type="button"
                       onClick={() => handleDeleteLesson(cellModal.lesson!.id)}
-                      className="p-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 transition-colors cursor-pointer"
+                      className="p-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 transition-colors cursor-pointer"
                       title="Darsni o'chirish"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -1427,17 +1427,17 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
                   </div>
                 )}
 
-                <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-800">
+                <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
                   <button
                     type="button"
                     onClick={() => setCellModal(null)}
-                    className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-400 hover:bg-slate-800"
+                    className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition-colors"
                   >
                     Bekor qilish
                   </button>
                   <button
                     type="submit"
-                    className="px-5 py-2 rounded-xl text-xs font-bold bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-lg shadow-amber-500/20 cursor-pointer"
+                    className="px-5 py-2 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-500 text-white shadow-md shadow-blue-600/20 cursor-pointer transition-all"
                   >
                     Saqlash
                   </button>
@@ -1449,25 +1449,25 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
 
         {/* ── 6. SINF RAHBARINI ALMASHTIRISH MODALI ───────────────────────── */}
         {homeroomModal && homeroomModal.isOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in no-print">
-            <div className="w-full max-w-md rounded-2xl border border-slate-800 bg-slate-900 text-white p-6 shadow-2xl space-y-4">
-              <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-in fade-in no-print">
+            <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white text-slate-900 p-6 shadow-2xl space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                 <div className="flex items-center gap-2">
-                  <div className="p-2 rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                  <div className="p-2 rounded-xl bg-amber-50 text-amber-600 border border-amber-200">
                     <Users className="w-5 h-5" />
                   </div>
                   <div>
-                    <h3 className="font-bold text-sm text-white">
+                    <h3 className="font-bold text-sm text-slate-900">
                       {homeroomModal.cls.name} — Sinf Rahbarini Tayinlash
                     </h3>
-                    <p className="text-[11px] text-slate-400">
+                    <p className="text-[11px] text-slate-500">
                       Sinf rahbari o'zgarganda Juma kungi Sinf soati va imzolar avtomatik yangilanadi
                     </p>
                   </div>
                 </div>
                 <button
                   onClick={() => setHomeroomModal(null)}
-                  className="p-1 rounded hover:bg-slate-800 text-slate-400 hover:text-white"
+                  className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -1475,13 +1475,13 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
 
               <div className="space-y-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
                     Sinf Rahbari (O'qituvchi):
                   </label>
                   <select
                     value={selectedHomeroomTeacherId}
                     onChange={(e) => setSelectedHomeroomTeacherId(e.target.value)}
-                    className="w-full px-3 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-white text-xs font-medium focus:ring-2 focus:ring-amber-500 outline-none"
+                    className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 text-xs font-bold focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none"
                   >
                     <option value="">-- O'qituvchini tanlang --</option>
                     {teachers.map((t) => {
@@ -1495,9 +1495,9 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
                   </select>
                 </div>
 
-                <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-200 text-[11px] leading-relaxed">
+                <div className="p-3 rounded-xl bg-blue-50 border border-blue-200 text-blue-900 text-[11px] leading-relaxed">
                   <p className="font-bold mb-0.5">⚡ Avtomatik Zanjir (SaaS Reactive Sync):</p>
-                  <ul className="list-disc pl-4 space-y-0.5 text-[10px] text-amber-300/90">
+                  <ul className="list-disc pl-4 space-y-0.5 text-[10px] text-blue-800">
                     <li>Jadvalning eng pastki qatoridagi <strong>Sinf rahbar</strong> F.I.Sh yangilanadi.</li>
                     <li>Juma kuni 1-dars <strong>Sinf soati</strong> darsiga ushbu ustoz va uning tartib raqami (№) biriktiriladi.</li>
                     <li>O'qituvchilar va fanlar reestrida o'zgarishlar sinxron aks etadi.</li>
@@ -1505,11 +1505,11 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
                 </div>
               </div>
 
-              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-800">
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
                 <button
                   type="button"
                   onClick={() => setHomeroomModal(null)}
-                  className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-400 hover:bg-slate-800"
+                  className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition-colors"
                 >
                   Bekor qilish
                 </button>
@@ -1517,7 +1517,7 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
                   type="button"
                   onClick={handleSaveHomeroomTeacher}
                   disabled={!selectedHomeroomTeacherId}
-                  className="px-5 py-2 rounded-xl text-xs font-bold bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-slate-950 shadow-lg shadow-amber-500/20 cursor-pointer transition-all"
+                  className="px-5 py-2 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white shadow-md shadow-blue-600/20 cursor-pointer transition-all"
                 >
                   Saqlash va Sinxronlash
                 </button>
