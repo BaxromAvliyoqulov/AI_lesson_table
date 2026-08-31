@@ -200,7 +200,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           )}
 
           {/* Zoom Boshqaruvi */}
-          <div className="hidden lg:flex items-center rounded-lg border border-border bg-card p-1 shadow-sm">
+          <div className="hidden lg:flex items-center rounded-lg border border-border bg-card p-1 shadow-sm" suppressHydrationWarning>
             <button
               onClick={() => onZoomChange(Math.max(50, zoomLevel - 10))}
               disabled={zoomLevel <= 50}
@@ -213,6 +213,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               onClick={() => onZoomChange(100)}
               className="px-2 text-xs font-semibold tabular-nums text-muted-foreground hover:text-foreground hover:underline cursor-pointer"
               title="100% ga qaytarish"
+              suppressHydrationWarning
             >
               {zoomLevel}%
             </button>

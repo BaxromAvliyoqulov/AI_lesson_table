@@ -661,7 +661,7 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
           {/* O'ng: Zoom, Rekvizitlar, Excel va Chop etish tugmalari */}
           <div className="flex items-center gap-2.5 flex-wrap self-end md:self-auto">
             {/* Zoom Boshqaruvi */}
-            <div className="flex items-center gap-1 rounded-xl bg-slate-800 border border-slate-700 p-1 shadow-sm">
+            <div className="flex items-center gap-1 rounded-xl bg-slate-800 border border-slate-700 p-1 shadow-sm" suppressHydrationWarning>
               <button
                 type="button"
                 onClick={() => onZoomChange && onZoomChange(Math.max(50, zoomLevel - 10))}
@@ -676,6 +676,7 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
                 onClick={() => onZoomChange && onZoomChange(100)}
                 className="px-2 text-xs font-semibold tabular-nums text-slate-300 hover:text-white hover:underline cursor-pointer"
                 title="100% ga qaytarish"
+                suppressHydrationWarning
               >
                 {zoomLevel}%
               </button>
@@ -735,6 +736,7 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
         <div
           className="w-full flex flex-col origin-top-left transition-transform duration-150"
           style={{ zoom: `${zoomLevel}%` }}
+          suppressHydrationWarning
         >
           {/* ── 1. RASMIY HUJJAT SARLAVHASI (TASDIQLAYMAN & MAKTAB NOMI) ─────────── */}
           <div className="w-full mb-4 font-serif">
