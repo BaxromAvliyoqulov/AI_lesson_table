@@ -39,10 +39,13 @@ import {
   Settings,
   Award,
   Save,
-  ChevronDown,
   ZoomIn,
   ZoomOut,
+  AlertTriangle,
+  Sparkles,
+  CheckCircle2,
 } from "lucide-react";
+import { CSPSolver } from "@/lib/solver/csp-solver";
 
 export type FilterScope =
   | "MAIN_HIGH"
@@ -105,6 +108,7 @@ const OfficialTableCell: React.FC<{
   teacherNumber?: number;
   isHoveredTeacher: boolean;
   isPrimarySaturday: boolean;
+  hasConflict: boolean;
   onCellClick: (cls: SchoolClass, day: number, period: number, lesson?: Lesson) => void;
 }> = ({
   cls,
@@ -116,6 +120,7 @@ const OfficialTableCell: React.FC<{
   teacherNumber,
   isHoveredTeacher,
   isPrimarySaturday,
+  hasConflict,
   onCellClick,
 }) => {
   const cellId = `${cls.id}_${day}_${period}`;
@@ -150,9 +155,11 @@ const OfficialTableCell: React.FC<{
     );
   }
 
-  // Droppable va Hover vizual ko'rsatkichlari
+  // Droppable, Hover va Ziddiyat (Conflict) vizual ko'rsatkichlari
   let bgClass = "bg-white";
-  if (isHoveredTeacher) {
+  if (hasConflict) {
+    bgClass = "bg-rose-100 ring-2 ring-rose-500 text-rose-900 font-bold z-20";
+  } else if (isHoveredTeacher) {
     bgClass = "bg-amber-100 ring-2 ring-amber-500 z-10";
   } else if (isOver) {
     bgClass = "bg-emerald-100 ring-2 ring-emerald-500 z-10";
@@ -175,13 +182,18 @@ const OfficialTableCell: React.FC<{
           isDragging ? "opacity-30" : ""
         }`}
         title={
-          lesson
+          hasConflict
+            ? `⚠️ ZIDDIYAT: ${teacher?.fullName || "O'qituvchi"} ayni shu paytda boshqa sinfda ham darsga qo'yilgan!`
+            : lesson
             ? `${subject?.name || "Fan"} — ${teacher?.fullName || "O'qituvchi"}`
             : "Bo'sh katakcha (Dars qo'shish uchun bosing)"
         }
       >
         <div className="flex items-center justify-between gap-0.5">
           <span className="truncate">{subject?.shortName || subject?.name || (lesson ? "Fan" : "—")}</span>
+          {hasConflict && (
+            <AlertTriangle className="w-2.5 h-2.5 text-rose-600 shrink-0 inline no-print animate-bounce" />
+          )}
           {lesson?.isLocked && (
             <Lock className="w-2.5 h-2.5 text-indigo-600 shrink-0 inline no-print" />
           )}
@@ -192,9 +204,21 @@ const OfficialTableCell: React.FC<{
       <td
         onClick={() => onCellClick(cls, day, period, lesson)}
         className={`border border-black px-0.5 py-0.5 text-center font-bold text-[10px] w-6 cursor-pointer transition-colors select-none ${
-          isHoveredTeacher ? "bg-amber-200 text-amber-900 font-extrabold" : teacherNumber ? "bg-amber-50/70 text-black font-mono" : "text-gray-300"
+          hasConflict
+            ? "bg-rose-200 text-rose-950 font-extrabold"
+            : isHoveredTeacher
+            ? "bg-amber-200 text-amber-900 font-extrabold"
+            : teacherNumber
+            ? "bg-amber-50/70 text-black font-mono"
+            : "text-gray-300"
         } ${isDragging ? "opacity-30" : ""}`}
-        title={teacher ? `№${teacherNumber}: ${teacher.fullName}` : ""}
+        title={
+          hasConflict
+            ? `⚠️ Ziddiyat: №${teacherNumber} ${teacher?.fullName} band!`
+            : teacher
+            ? `№${teacherNumber}: ${teacher.fullName}`
+            : ""
+        }
       >
         {teacherNumber || ""}
       </td>
@@ -272,6 +296,37 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
     }
     return map;
   }, [lessons]);
+
+  // Real-vaqt parallel dars ziddiyatlarini tekshirish (AI Patrul)
+  const teacherConflictsSet = useMemo(() => {
+    const map = new Map<string, number>();
+    const conflicts = new Set<string>();
+    for (const l of lessons) {
+      const key = `${l.teacherId}_${l.dayOfWeek}_${l.periodNumber}`;
+      map.set(key, (map.get(key) || 0) + 1);
+    }
+    for (const l of lessons) {
+      const key = `${l.teacherId}_${l.dayOfWeek}_${l.periodNumber}`;
+      if ((map.get(key) || 0) > 1) {
+        conflicts.add(l.id);
+      }
+    }
+    return conflicts;
+  }, [lessons]);
+
+  const handleAutoFixConflicts = () => {
+    if (!onLessonsChange) return;
+    const solver = new CSPSolver({
+      classes,
+      teachers,
+      subjects,
+      rooms,
+      branches,
+      shifts,
+    });
+    const result = solver.solve();
+    onLessonsChange(result.lessons);
+  };
 
   // Asosiy bino va Filial (D sinflar) bo'yicha aniq filtrlangan sinflar
   const displayClasses = useMemo(() => {
@@ -658,8 +713,26 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
             </div>
           </div>
 
-          {/* O'ng: Zoom, Rekvizitlar, Excel va Chop etish tugmalari */}
+          {/* O'ng: AI Nazorat, Zoom, Rekvizitlar, Excel va Chop etish tugmalari */}
           <div className="flex items-center gap-2.5 flex-wrap self-end md:self-auto">
+            {/* AI Patrul & Ziddiyatlarni tuzatish tugmasi */}
+            {teacherConflictsSet.size > 0 ? (
+              <button
+                type="button"
+                onClick={handleAutoFixConflicts}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gradient-to-r from-rose-600 to-amber-600 hover:from-rose-500 hover:to-amber-500 text-white text-xs font-bold shadow-lg shadow-rose-600/30 cursor-pointer animate-pulse transition-all"
+                title="Parallel darslarni AI algoritmi orqali 0 ziddiyatgacha avtomatik qayta taqsimlash"
+              >
+                <Sparkles className="w-4 h-4" />
+                <span>⚡ AI Bilan To'g'rilash ({Math.round(teacherConflictsSet.size / 2)} ta ziddiyat)</span>
+              </button>
+            ) : (
+              <div className="hidden sm:inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-950/80 border border-emerald-800 text-emerald-300 text-xs font-bold">
+                <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                <span>0 Ziddiyat &bull; AI Nazoratida</span>
+              </div>
+            )}
+
             {/* Zoom Boshqaruvi */}
             <div className="flex items-center gap-1 rounded-xl bg-slate-800 border border-slate-700 p-1 shadow-sm" suppressHydrationWarning>
               <button
@@ -906,6 +979,7 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
                               teacherNumber={teacherNum}
                               isHoveredTeacher={isHoveredTeacher}
                               isPrimarySaturday={isPrimarySaturday}
+                              hasConflict={lesson ? teacherConflictsSet.has(lesson.id) : false}
                               onCellClick={handleCellClick}
                             />
                           );

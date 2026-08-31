@@ -54,7 +54,7 @@ interface SchoolStoreState {
   isGenerating: boolean;
 }
 
-const STORAGE_KEY = "dars_jadval_ai_store_v6";
+const STORAGE_KEY = "dars_jadval_ai_store_v7";
 
 // Initial state generator
 function createInitialState(): SchoolStoreState {
