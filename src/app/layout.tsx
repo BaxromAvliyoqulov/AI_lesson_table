@@ -15,9 +15,12 @@ export const metadata: Metadata = {
     "jadval tuzish",
   ],
   icons: {
-    icon: "/favicon.svg",
-    shortcut: "/favicon.svg",
-    apple: "/favicon.svg",
+    icon: [
+      { url: "/favicon.svg", type: "image/svg+xml" },
+      { url: "/favicon.png", type: "image/png" },
+    ],
+    shortcut: "/favicon.png",
+    apple: "/apple-touch-icon.png",
   },
   manifest: "/manifest.json",
   openGraph: {
