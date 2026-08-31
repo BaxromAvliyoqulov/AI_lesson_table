@@ -9,7 +9,6 @@ import {
   PointerSensor,
   DragStartEvent,
   DragEndEvent,
-  DragOverEvent,
   useDraggable,
   useDroppable,
 } from "@dnd-kit/core";
@@ -21,7 +20,6 @@ import {
   Lesson,
   Branch,
   Shift,
-  DragValidationResult,
 } from "@/types";
 import {
   Printer,
@@ -30,15 +28,13 @@ import {
   Edit2,
   Lock,
   Unlock,
-  Check,
-  X,
   Building2,
-  Sparkles,
   UserCheck,
   Trash2,
-  Plus,
-  AlertTriangle,
-  Info,
+  GraduationCap,
+  Users,
+  Layers,
+  X,
 } from "lucide-react";
 
 interface Official39TableViewProps {
@@ -155,7 +151,7 @@ const OfficialTableCell: React.FC<{
         {...(lesson ? listeners : {})}
         {...(lesson ? attributes : {})}
         onClick={() => onCellClick(cls, day, period, lesson)}
-        className={`border border-black px-1 py-0.5 text-left font-medium text-[10px] truncate max-w-[70px] cursor-pointer transition-colors relative group select-none ${bgClass} ${
+        className={`border border-black px-1 py-0.5 text-left font-medium text-[10px] truncate max-w-[70px] cursor-pointer transition-colors relative select-none ${bgClass} ${
           isDragging ? "opacity-30" : ""
         }`}
         title={
@@ -204,6 +200,8 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
   psychologistName = "F.I.Sh",
   academicYear = "2025 - 2026",
 }) => {
+  // Bosqich filtri: "HIGH" (5-11), "PRIMARY" (1-4), "ALL" (1-11)
+  const [stageFilter, setStageFilter] = useState<"HIGH" | "PRIMARY" | "ALL">("HIGH");
   const [selectedBranch, setSelectedBranch] = useState<string>("ALL");
   const [hoveredTeacherId, setHoveredTeacherId] = useState<string | null>(null);
   const [activeDragLesson, setActiveDragLesson] = useState<Lesson | null>(null);
@@ -224,7 +222,7 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
   const teacherMap = useMemo(() => new Map(teachers.map((t) => [t.id, t])), [teachers]);
   const roomMap = useMemo(() => new Map(rooms.map((r) => [r.id, r])), [rooms]);
 
-  // Har bir o'qituvchiga tartib raqami (1..40)
+  // Har bir o'qituvchiga tartib raqami (1..N)
   const teacherNumberMap = useMemo(() => {
     const map = new Map<string, number>();
     teachers.forEach((t, i) => map.set(t.id, i + 1));
@@ -240,11 +238,35 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
     return map;
   }, [lessons]);
 
-  // Filial bo'yicha filtrlangan sinflar
+  // Bosqich va Filial bo'yicha filtrlangan sinflar
   const displayClasses = useMemo(() => {
-    if (selectedBranch === "ALL") return classes;
-    return classes.filter((c) => c.branchId === selectedBranch);
-  }, [classes, selectedBranch]);
+    let list = classes;
+    if (selectedBranch !== "ALL") {
+      list = list.filter((c) => c.branchId === selectedBranch);
+    }
+    if (stageFilter === "PRIMARY") {
+      list = list.filter((c) => c.isPrimary || c.grade <= 4);
+    } else if (stageFilter === "HIGH") {
+      list = list.filter((c) => !c.isPrimary && c.grade >= 5);
+    }
+    return list;
+  }, [classes, selectedBranch, stageFilter]);
+
+  // Boshlang'ich sinflar uchun 5 kunlik hafta (Dushanba-Juma)
+  const displayDays = useMemo(() => {
+    if (stageFilter === "PRIMARY") {
+      return DAYS.slice(0, 5); // Faqat Dushanba-Juma
+    }
+    return DAYS; // Dushanba-Shanba
+  }, [stageFilter]);
+
+  // Boshlang'ich sinflar uchun odatda 5 dars, yuqori sinflar uchun 6 dars
+  const displayPeriods = useMemo(() => {
+    if (stageFilter === "PRIMARY") {
+      return PERIOD_TIMES.slice(0, 5);
+    }
+    return PERIOD_TIMES;
+  }, [stageFilter]);
 
   // Har bir sinf uchun jami dars soatlari
   const classTotalHours = useMemo(() => {
@@ -255,6 +277,25 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
     }
     return map;
   }, [displayClasses, lessons]);
+
+  // Joriy ko'rinishdagi o'qituvchilar ro'yxati (o'ng tarafdagi jadval uchun)
+  const displayTeachers = useMemo(() => {
+    if (stageFilter === "ALL") return teachers;
+    // Shu bosqichdagi sinflarga dars beradigan yoki sinf rahbari bo'lgan o'qituvchilar
+    const activeTeacherIds = new Set<string>();
+    for (const cls of displayClasses) {
+      if (cls.homeroomTeacherId) activeTeacherIds.add(cls.homeroomTeacherId);
+      cls.subjects.forEach((s) => activeTeacherIds.add(s.teacherId));
+    }
+    // Agar dars jadvali tuzilgan bo'lsa, mavjud darslardagi o'qituvchilarni ham qo'shamiz
+    for (const l of lessons) {
+      if (displayClasses.some((c) => c.id === l.classId)) {
+        activeTeacherIds.add(l.teacherId);
+      }
+    }
+    const filtered = teachers.filter((t) => activeTeacherIds.has(t.id));
+    return filtered.length > 0 ? filtered : teachers;
+  }, [teachers, displayClasses, lessons, stageFilter]);
 
   // DnD sensorlari
   const sensors = useSensors(
@@ -414,6 +455,13 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
     window.print();
   };
 
+  const stageTitle =
+    stageFilter === "PRIMARY"
+      ? "BOSHLANG'ICH SINFLAR (1-4)"
+      : stageFilter === "HIGH"
+      ? "YUQORI VA O'RTA SINFLAR (5-11)"
+      : "UMUMIY MAKTAB (1-11 SINFLAR)";
+
   return (
     <DndContext
       sensors={sensors}
@@ -421,47 +469,82 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
       onDragEnd={handleDragEnd}
     >
       <div className="w-full flex flex-col bg-white text-black p-4 sm:p-6 print:p-0 select-text">
-        {/* ── TOP ACTION BAR ─────────────────────────────────────────────────── */}
-        <div className="no-print mb-6 p-4 rounded-2xl bg-slate-900 text-white shadow-xl flex flex-wrap items-center justify-between gap-4 border border-slate-800">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white shadow-md">
-              <FileSpreadsheet className="w-5 h-5" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h2 className="font-bold text-sm sm:text-base text-white">
-                  39-Maktab Rasmiy Dars Jadvali (Interaktiv)
-                </h2>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                  ✨ Drag & Drop Faol
-                </span>
-              </div>
-              <p className="text-xs text-slate-400">
-                Katakchalarni ushlab surishingiz (Drag & Drop), ustiga bosib tahrirlashingiz yoki qulflashingiz mumkin
-              </p>
-            </div>
+        {/* ── TOP ACTION & TAB CONTROLS ───────────────────────────────────────── */}
+        <div className="no-print mb-6 p-4 rounded-2xl bg-slate-900 text-white shadow-xl flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 border border-slate-800">
+          {/* Chap: Bosqich Tablari (Boshlang'ich / Katta sinflar / Barchasi) */}
+          <div className="flex items-center gap-1.5 p-1 rounded-xl bg-slate-950/80 border border-slate-800 self-start">
+            <button
+              onClick={() => setStageFilter("HIGH")}
+              className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                stageFilter === "HIGH"
+                  ? "bg-blue-600 text-white shadow-md shadow-blue-600/30"
+                  : "text-slate-400 hover:text-white hover:bg-slate-800/60"
+              }`}
+            >
+              <GraduationCap className="w-4 h-4" />
+              <span>🧑 Katta sinflar (5-11)</span>
+              <span className="ml-1 px-1.5 py-0.2 rounded-full text-[10px] bg-blue-950 text-blue-300 font-mono">
+                {classes.filter((c) => !c.isPrimary && c.grade >= 5).length}
+              </span>
+            </button>
+
+            <button
+              onClick={() => setStageFilter("PRIMARY")}
+              className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                stageFilter === "PRIMARY"
+                  ? "bg-emerald-600 text-white shadow-md shadow-emerald-600/30"
+                  : "text-slate-400 hover:text-white hover:bg-slate-800/60"
+              }`}
+            >
+              <Users className="w-4 h-4" />
+              <span>👦 Boshlang'ich (1-4)</span>
+              <span className="ml-1 px-1.5 py-0.2 rounded-full text-[10px] bg-emerald-950 text-emerald-300 font-mono">
+                {classes.filter((c) => c.isPrimary || c.grade <= 4).length}
+              </span>
+            </button>
+
+            <button
+              onClick={() => setStageFilter("ALL")}
+              className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                stageFilter === "ALL"
+                  ? "bg-purple-600 text-white shadow-md shadow-purple-600/30"
+                  : "text-slate-400 hover:text-white hover:bg-slate-800/60"
+              }`}
+            >
+              <Layers className="w-4 h-4" />
+              <span>🏫 Barchasi (1-11)</span>
+              <span className="ml-1 px-1.5 py-0.2 rounded-full text-[10px] bg-purple-950 text-purple-300 font-mono">
+                {classes.length}
+              </span>
+            </button>
           </div>
 
-          <div className="flex items-center gap-2.5 flex-wrap">
-            {branches.length > 1 && (
-              <select
-                value={selectedBranch}
-                onChange={(e) => setSelectedBranch(e.target.value)}
-                className="px-3 py-1.5 rounded-xl bg-slate-800 border border-slate-700 text-white text-xs outline-none cursor-pointer"
-              >
-                <option value="ALL">Barcha binolar</option>
-                {branches.map((b) => (
-                  <option key={b.id} value={b.id}>
-                    {b.name}
+          {/* O'ng: Filial filtri, Excel va Chop etish tugmalari */}
+          <div className="flex items-center gap-2.5 flex-wrap self-end md:self-auto">
+            {branches.length > 0 && (
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 border border-slate-700">
+                <Building2 className="w-3.5 h-3.5 text-blue-400" />
+                <select
+                  value={selectedBranch}
+                  onChange={(e) => setSelectedBranch(e.target.value)}
+                  className="bg-transparent text-white text-xs font-semibold outline-none cursor-pointer"
+                >
+                  <option value="ALL" className="bg-slate-900 text-white">
+                    🏛️ Barcha binolar
                   </option>
-                ))}
-              </select>
+                  {branches.map((b) => (
+                    <option key={b.id} value={b.id} className="bg-slate-900 text-white">
+                      {b.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
             )}
 
             {onExportExcel && (
               <button
                 onClick={onExportExcel}
-                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-md shadow-emerald-600/20 cursor-pointer transition-all"
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-md shadow-emerald-600/20 cursor-pointer transition-all"
               >
                 <Download className="w-4 h-4" />
                 <span>Excel yuklab olish</span>
@@ -470,7 +553,7 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
 
             <button
               onClick={handlePrint}
-              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow-md shadow-indigo-600/20 cursor-pointer transition-all"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow-md shadow-indigo-600/20 cursor-pointer transition-all"
             >
               <Printer className="w-4 h-4" />
               <span>Chop etish (Print / PDF)</span>
@@ -490,7 +573,7 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
               <p className="text-[11px] text-gray-700 mt-0.5">2026-yil 28-mart</p>
             </div>
 
-            {/* O'rta: Maktab nomi */}
+            {/* O'rta: Maktab nomi va Bosqich */}
             <div className="text-center flex-1 px-4">
               <p className="text-xs sm:text-sm font-semibold tracking-wide">
                 {region} <span className="font-bold text-base">{schoolName}</span>ning
@@ -498,8 +581,8 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
               <p className="text-xs sm:text-sm font-semibold">
                 {academicYear} o'quv yili uchun tuzilgan
               </p>
-              <h1 className="text-xl sm:text-2xl font-extrabold tracking-[0.3em] uppercase mt-1">
-                D A R S &nbsp;&nbsp; J A D V A L I
+              <h1 className="text-xl sm:text-2xl font-extrabold tracking-[0.25em] uppercase mt-1">
+                {stageTitle} &nbsp;&nbsp; D A R S &nbsp;&nbsp; J A D V A L I
               </h1>
             </div>
 
@@ -551,19 +634,19 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
               </thead>
 
               <tbody>
-                {DAYS.map((day) => (
+                {displayDays.map((day) => (
                   <React.Fragment key={day.id}>
-                    {PERIOD_TIMES.map((periodInfo, pIndex) => (
+                    {displayPeriods.map((periodInfo, pIndex) => (
                       <tr
                         key={`${day.id}_${periodInfo.period}`}
                         className={`hover:bg-blue-50/30 transition-colors ${
-                          pIndex === PERIOD_TIMES.length - 1 ? "border-b-2 border-black" : "border-b border-gray-300"
+                          pIndex === displayPeriods.length - 1 ? "border-b-2 border-black" : "border-b border-gray-300"
                         }`}
                       >
                         {/* Vertikal Kun ustuni */}
                         {pIndex === 0 && (
                           <td
-                            rowSpan={6}
+                            rowSpan={displayPeriods.length}
                             className="border border-black bg-gray-100 font-bold text-[10px] tracking-wider text-center align-middle select-none w-6 p-1"
                             style={{
                               writingMode: "vertical-lr",
@@ -670,7 +753,8 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
                   </tr>
                 </thead>
                 <tbody>
-                  {teachers.map((teacher, index) => {
+                  {displayTeachers.map((teacher) => {
+                    const num = teacherNumberMap.get(teacher.id) || 1;
                     const isHovered = hoveredTeacherId === teacher.id;
                     return (
                       <tr
@@ -680,14 +764,14 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
                         className={`border-b border-gray-200 transition-colors cursor-pointer ${
                           isHovered
                             ? "bg-amber-200 font-bold"
-                            : index % 2 === 0
+                            : num % 2 === 0
                             ? "bg-white"
                             : "bg-gray-50"
                         }`}
                         title={`${teacher.fullName}ning barcha darslarini jadvalda ko'rish`}
                       >
                         <td className="border-r border-black p-1 text-center font-mono font-bold text-gray-700">
-                          {index + 1}
+                          {num}
                         </td>
                         <td className="p-1 font-medium truncate max-w-[190px]">
                           {teacher.fullName}
