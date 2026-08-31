@@ -108,12 +108,12 @@ export default function HomePage() {
       branches: schoolBranches,
       shifts: schoolShifts,
       schoolName: currentSchool?.name || "39-umumiy o'rta ta'lim maktabi",
-      region: "Muzrabot tumani",
-      directorFullName: "M. Ramazonov",
-      academicVicePrincipalName: "N. Narziqulov",
-      psychologistName: "F.I.Sh",
-      academicYear: "2025-2026",
-      termName: "1-chorak",
+      region: currentSchool?.region || "Muzrabot tumani",
+      directorFullName: currentSchool?.directorName || "M. Ramazonov",
+      academicVicePrincipalName: currentSchool?.vicePrincipalName || "N. Narziqulov",
+      psychologistName: currentSchool?.psychologistName || "F.I.Sh",
+      academicYear: currentSchool?.academicYear || "2025-2026",
+      termName: "1-yarim yillik",
     });
     showToast("✅ 39-maktab rasmiy Excel andozasi bo'yicha jadval yuklandi!");
   };

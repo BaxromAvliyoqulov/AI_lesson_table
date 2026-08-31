@@ -27,14 +27,13 @@ const DAYS = [
   { id: 6, name: "SHANBA" },
 ];
 
-const PERIOD_TIMES_DEFAULT: Record<number, string> = {
+const PERIOD_TIMES: Record<number, string> = {
   1: "08:00-08:45",
   2: "08:50-09:35",
   3: "09:40-10:25",
   4: "10:35-11:20",
   5: "11:25-12:10",
   6: "12:15-13:00",
-  7: "13:05-13:50",
 };
 
 export async function exportScheduleToExcel(options: ExcelExportOptions) {
@@ -44,13 +43,13 @@ export async function exportScheduleToExcel(options: ExcelExportOptions) {
     teachers,
     lessons,
     branches = [],
-    schoolName = "39-umumiy o'rta ta'lim maktabi",
+    schoolName = "39 - umumiy o'rta ta'lim maktabi",
     region = "Muzrabot tumani",
     directorFullName = "M. Ramazonov",
     academicVicePrincipalName = "N. Narziqulov",
     psychologistName = "F.I.Sh",
-    academicYear = "2025-2026",
-    termName = "1-chorak",
+    academicYear = "2025 - 2026",
+    termName = "1-yarim yillik",
   } = options;
 
   const workbook = new ExcelJS.Workbook();
@@ -59,112 +58,240 @@ export async function exportScheduleToExcel(options: ExcelExportOptions) {
 
   const subjectMap = new Map(subjects.map((s) => [s.id, s]));
 
-  // O'qituvchilarning t/r tartib raqami (displayNumber)
-  const teacherNumberMap = new Map<string, number>();
-  teachers.forEach((t, i) => {
-    teacherNumberMap.set(t.id, i + 1);
-  });
+  // O'qituvchilarning o'tadigan fanlari ro'yxati (Fan nomi / qisqartmasi)
+  const teacherSubjectsMap = new Map<string, string>();
+  for (const t of teachers) {
+    const subjectNames = new Set<string>();
+    if (t.subjectIds && t.subjectIds.length > 0) {
+      t.subjectIds.forEach((sid) => {
+        const s = subjectMap.get(sid);
+        if (s && s.id !== "sub_sinf_soati") {
+          subjectNames.add(s.shortName || s.name);
+        }
+      });
+    }
+    for (const cls of classes) {
+      cls.subjects.forEach((cs) => {
+        if (cs.teacherId === t.id && cs.subjectId !== "sub_sinf_soati") {
+          const s = subjectMap.get(cs.subjectId);
+          if (s) subjectNames.add(s.shortName || s.name);
+        }
+      });
+    }
+    for (const l of lessons) {
+      if (l.teacherId === t.id && l.subjectId !== "sub_sinf_soati") {
+        const s = subjectMap.get(l.subjectId);
+        if (s) subjectNames.add(s.shortName || s.name);
+      }
+    }
+    teacherSubjectsMap.set(
+      t.id,
+      subjectNames.size === 0 ? "—" : Array.from(subjectNames).join(", ")
+    );
+  }
 
-  // Filiallar bo'yicha guruhlash
-  const branchList = branches.length > 0 ? branches : [{ id: "main", schoolId: "", name: "Asosiy bino", isMain: true }];
+  // Filiallar bo'yicha varaqlar (Sheets)
+  const branchList =
+    branches.length > 0
+      ? branches
+      : [{ id: "main", schoolId: "", name: "Asosiy bino", isMain: true }];
 
   for (const branch of branchList) {
-    const branchClasses = classes.filter((c) => (branches.length > 0 ? c.branchId === branch.id : true));
+    const branchClasses = classes.filter((c) =>
+      branches.length > 0 ? c.branchId === branch.id : true
+    );
     if (branchClasses.length === 0) continue;
 
-    const sheetName = branch.isMain ? "Asosiy bino" : branch.name.slice(0, 25);
-    const ws = workbook.addWorksheet(sheetName, {
-      pageSetup: { paperSize: 9, orientation: "landscape", fitToPage: true },
+    // Faol o'qituvchilar va 1..N ketma-ket raqamlash
+    const activeTeacherIds = new Set<string>();
+    for (const cls of branchClasses) {
+      if (cls.homeroomTeacherId) activeTeacherIds.add(cls.homeroomTeacherId);
+      cls.subjects.forEach((s) => activeTeacherIds.add(s.teacherId));
+    }
+    for (const l of lessons) {
+      if (branchClasses.some((c) => c.id === l.classId)) {
+        activeTeacherIds.add(l.teacherId);
+      }
+    }
+    const branchTeachers = teachers.filter((t) => activeTeacherIds.has(t.id));
+    const finalTeachers = branchTeachers.length > 0 ? branchTeachers : teachers;
+
+    const teacherNumberMap = new Map<string, number>();
+    finalTeachers.forEach((t, i) => {
+      teacherNumberMap.set(t.id, i + 1);
     });
 
-    // ── 1. SARLAVHA BLOKI (TASDIQLAYMAN + MAKTAB REKVIZITLARI) ───────────────
-    // A1: "TASDIQLAYMAN"
-    const totalClassCols = branchClasses.length * 2;
-    const rightColLetter = String.fromCharCode(65 + Math.min(totalClassCols + 5, 25));
+    const sheetTitle = branch.isMain ? "Asosiy maktab" : branch.name.slice(0, 25);
+    const ws = workbook.addWorksheet(sheetTitle, {
+      pageSetup: {
+        paperSize: 9, // A4
+        orientation: "landscape",
+        fitToPage: true,
+        fitToWidth: 1,
+        fitToHeight: 0,
+        margins: {
+          left: 0.3,
+          right: 0.3,
+          top: 0.4,
+          bottom: 0.4,
+          header: 0.2,
+          footer: 0.2,
+        },
+      },
+    });
 
-    ws.mergeCells("A1:D1");
-    ws.getCell("A1").value = "";
+    const totalClassCols = branchClasses.length * 2; // Har bir sinf uchun 2 ta ustun (Fan, №)
+    const lastClassColNum = 3 + totalClassCols;
+    const reestrStartCol = lastClassColNum + 2; // 1 ta bo'sh oraliq ustun
 
-    // O'ng tomonda TASDIQLAYMAN
-    const approveStartCol = Math.max(totalClassCols - 1, 6);
-    ws.getCell(1, approveStartCol).value = "TASDIQLAYMAN";
-    ws.getCell(1, approveStartCol).font = { bold: true, size: 10, name: "Times New Roman" };
+    // ── 1. SARLAVHALAR VA TASDIQLASH SHTAMPI ──────────────────────────────────
+    // TASDIQLAYMAN (O'ng tomonda)
+    const approveCol = Math.max(lastClassColNum - 3, 5);
+    ws.mergeCells(1, approveCol, 1, lastClassColNum);
+    const cellApprove = ws.getCell(1, approveCol);
+    cellApprove.value = "TASDIQLAYMAN";
+    cellApprove.font = { bold: true, size: 10, name: "Times New Roman" };
+    cellApprove.alignment = { horizontal: "left" };
 
-    ws.getCell(2, approveStartCol).value = `Maktab direktori: __________ ${directorFullName}`;
-    ws.getCell(2, approveStartCol).font = { size: 9, name: "Times New Roman" };
+    ws.mergeCells(2, approveCol, 2, lastClassColNum);
+    const cellDir = ws.getCell(2, approveCol);
+    cellDir.value = `Maktab direktori: __________ ${directorFullName}`;
+    cellDir.font = { size: 9, name: "Times New Roman" };
+    cellDir.alignment = { horizontal: "left" };
 
-    ws.getCell(3, approveStartCol).value = `"____"____________2026 yil`;
-    ws.getCell(3, approveStartCol).font = { size: 9, name: "Times New Roman" };
+    ws.mergeCells(3, approveCol, 3, lastClassColNum);
+    const cellDate = ws.getCell(3, approveCol);
+    cellDate.value = `2026-yil 28-mart`;
+    cellDate.font = { size: 9, name: "Times New Roman" };
+    cellDate.alignment = { horizontal: "left" };
 
-    // Markazda sarlavha
-    ws.mergeCells(4, 1, 4, totalClassCols + 5);
-    const titleCell = ws.getCell(4, 1);
-    titleCell.value = `D A R S   J A D V A L I`;
-    titleCell.font = { bold: true, size: 13, name: "Times New Roman" };
-    titleCell.alignment = { horizontal: "center", vertical: "middle" };
+    // Sarlavha (Markazda)
+    ws.mergeCells(4, 1, 4, lastClassColNum);
+    const subTitle = ws.getCell(4, 1);
+    subTitle.value = `${region} ${schoolName}${branch.isMain ? "" : ` (${branch.name})`} ning ${academicYear} o'quv yili uchun tuzilgan`;
+    subTitle.font = { bold: true, size: 10, name: "Times New Roman" };
+    subTitle.alignment = { horizontal: "center", vertical: "middle" };
 
-    ws.mergeCells(5, 1, 5, totalClassCols + 5);
-    const subTitleCell = ws.getCell(5, 1);
-    subTitleCell.value = `${region} ${schoolName}${branch.isMain ? "" : ` (${branch.name})`} ning ${academicYear} o'quv yili, ${termName} uchun tuzilgan`;
-    subTitleCell.font = { bold: true, size: 10, name: "Times New Roman" };
-    subTitleCell.alignment = { horizontal: "center", vertical: "middle" };
+    ws.mergeCells(5, 1, 5, lastClassColNum);
+    const mainTitle = ws.getCell(5, 1);
+    mainTitle.value = `D A R S   J A D V A L I`;
+    mainTitle.font = { bold: true, size: 14, name: "Times New Roman" };
+    mainTitle.alignment = { horizontal: "center", vertical: "middle" };
 
-    ws.addRow([]); // Qator 6 — bo'sh
+    ws.addRow([]); // Qator 6 — bo'sh oraliq
+    ws.getRow(6).height = 8;
 
-    // ── 2. TABLE HEADERS (Qator 7 & 8) ────────────────────────────────────────
-    // Qator 7: Sinf nomlari
-    const row7Values: (string | number)[] = ["Kun", "t/r", "Vaqt"];
+    // ── 2. JADVAL SARLAVHALARI (Qator 7 & 8) ──────────────────────────────────
+    // Qator 7: Sarlavhalar va Sinf nomlari
+    const row7Values: (string | number)[] = ["Kun", "Dars", "Vaqti"];
     branchClasses.forEach((cls) => {
-      row7Values.push(cls.name, ""); // Har bir sinf 2 ta katak (Fan + O'qituvchi raqami)
+      row7Values.push(cls.name, "");
     });
-    row7Values.push("", "t/r", "O'qituvchilarning I.F.Sh");
+    // Bo'sh oraliq + Reestr sarlavhasi
+    row7Values.push("", "O'QITUVCHILAR VA FANLAR REESTRI", "", "");
 
     const row7 = ws.addRow(row7Values);
-    row7.height = 24;
+    row7.height = 25;
 
-    // Qator 7 dizayni & Sinf merge
+    // Sinf nomlarini merge qilish
     let colIdx = 4;
     branchClasses.forEach(() => {
       ws.mergeCells(7, colIdx, 7, colIdx + 1);
       colIdx += 2;
     });
 
-    row7.eachCell((cell) => {
-      cell.font = { bold: true, size: 10, name: "Times New Roman", color: { argb: "FFFFFFFF" } };
-      cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF1E2A4A" } };
+    // Reestr sarlavhasini merge qilish
+    ws.mergeCells(7, reestrStartCol, 7, reestrStartCol + 2);
+
+    // Qator 7 dizayni
+    row7.eachCell((cell, colNumber) => {
+      cell.font = { bold: true, size: 10, name: "Times New Roman", color: { argb: "FF000000" } };
       cell.alignment = { horizontal: "center", vertical: "middle" };
-      cell.border = {
-        top: { style: "thin" },
-        bottom: { style: "thin" },
-        left: { style: "thin" },
-        right: { style: "thin" },
-      };
+      if (colNumber <= lastClassColNum) {
+        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF3F4F6" } };
+        cell.border = {
+          top: { style: "medium", color: { argb: "FF000000" } },
+          bottom: { style: "thin", color: { argb: "FF000000" } },
+          left: { style: "thin", color: { argb: "FF000000" } },
+          right: { style: "thin", color: { argb: "FF000000" } },
+        };
+      } else if (colNumber >= reestrStartCol) {
+        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFE5E7EB" } };
+        cell.border = {
+          top: { style: "medium", color: { argb: "FF000000" } },
+          bottom: { style: "thin", color: { argb: "FF000000" } },
+          left: { style: "thin", color: { argb: "FF000000" } },
+          right: { style: "thin", color: { argb: "FF000000" } },
+        };
+      }
     });
 
-    // ── 3. DATA ROWS (KUNLAR VA PERIODLAR) ────────────────────────────────────
-    let currentExcelRow = 8;
-    const PERIODS = [1, 2, 3, 4, 5, 6, 7];
+    // Qator 8: Fan | № kichik sarlavhalari
+    const row8Values: (string | number)[] = ["", "", ""];
+    branchClasses.forEach(() => {
+      row8Values.push("Fan", "№");
+    });
+    row8Values.push("", "№", "O'qituvchi F.I.Sh", "O'tadigan Fani / Fanlari");
+
+    const row8 = ws.addRow(row8Values);
+    row8.height = 20;
+
+    // Kun, Dars, Vaqti ustunlarini vertikal merge qilish (Row 7 va 8)
+    ws.mergeCells(7, 1, 8, 1);
+    ws.mergeCells(7, 2, 8, 2);
+    ws.mergeCells(7, 3, 8, 3);
+
+    row8.eachCell((cell, colNumber) => {
+      cell.font = { bold: true, size: 9, name: "Times New Roman", color: { argb: "FF374151" } };
+      cell.alignment = { horizontal: "center", vertical: "middle" };
+      if (colNumber <= lastClassColNum) {
+        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFE5E7EB" } };
+        cell.border = {
+          top: { style: "thin", color: { argb: "FF000000" } },
+          bottom: { style: "medium", color: { argb: "FF000000" } },
+          left: { style: "thin", color: { argb: "FF000000" } },
+          right: { style: "thin", color: { argb: "FF000000" } },
+        };
+      } else if (colNumber >= reestrStartCol) {
+        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF3F4F6" } };
+        cell.border = {
+          top: { style: "thin", color: { argb: "FF000000" } },
+          bottom: { style: "medium", color: { argb: "FF000000" } },
+          left: { style: "thin", color: { argb: "FF000000" } },
+          right: { style: "thin", color: { argb: "FF000000" } },
+        };
+      }
+    });
+
+    // ── 3. DATA ROWS (Dushanba..Shanba, 1..6 Darslar) ────────────────────────
+    let currentExcelRow = 9;
+    const PERIOD_COUNT = 6;
+    let teacherRowIdx = 0;
 
     DAYS.forEach((day) => {
       const dayStartRow = currentExcelRow;
-      const isPrimaryWeekend = day.id === 6; // Shanba kuni 1-4 sinflar dam oladi
 
-      PERIODS.forEach((period) => {
+      for (let period = 1; period <= PERIOD_COUNT; period++) {
+        const isLastPeriodOfDay = period === PERIOD_COUNT;
         const rowData: (string | number)[] = [
           day.name,
           period,
-          PERIOD_TIMES_DEFAULT[period] || "",
+          PERIOD_TIMES[period] || "",
         ];
 
         branchClasses.forEach((cls) => {
           const isPrimary = cls.isPrimary || cls.grade <= 4;
-          if (isPrimaryWeekend && isPrimary) {
+          // Shanba kuni boshlang'ich sinflar dam
+          if (day.id === 6 && isPrimary) {
             rowData.push("—", "—");
             return;
           }
 
           const lesson = lessons.find(
-            (l) => l.classId === cls.id && l.dayOfWeek === day.id && l.periodNumber === period
+            (l) =>
+              l.classId === cls.id &&
+              l.dayOfWeek === day.id &&
+              l.periodNumber === period
           );
 
           if (lesson) {
@@ -176,112 +303,194 @@ export async function exportScheduleToExcel(options: ExcelExportOptions) {
           }
         });
 
-        // O'ng tomondagi O'qituvchilar reestri
-        const teacherIdx = currentExcelRow - 8;
-        if (teacherIdx < teachers.length) {
-          const t = teachers[teacherIdx];
-          rowData.push("", teacherIdx + 1, t.fullName);
+        // O'ng tomondagi O'qituvchilar Reestri qatorlari
+        if (teacherRowIdx < finalTeachers.length) {
+          const t = finalTeachers[teacherRowIdx];
+          const tSubjects = teacherSubjectsMap.get(t.id) || "—";
+          rowData.push("", teacherRowIdx + 1, t.fullName, tSubjects);
+          teacherRowIdx++;
         } else {
-          rowData.push("", "", "");
+          rowData.push("", "", "", "");
         }
 
         const dataRow = ws.addRow(rowData);
-        dataRow.height = 20;
+        dataRow.height = 22; // Ideal balandlik
 
-        dataRow.eachCell((cell, cNum) => {
+        // Chiziqlar va stillar
+        const bottomStyle = isLastPeriodOfDay ? "medium" : "thin";
+
+        dataRow.eachCell((cell, colNumber) => {
           cell.font = { size: 9, name: "Times New Roman" };
-          cell.alignment = { horizontal: "center", vertical: "middle" };
-          cell.border = {
-            top: { style: "thin", color: { argb: "FFD1D5DB" } },
-            bottom: { style: "thin", color: { argb: "FFD1D5DB" } },
-            left: { style: "thin", color: { argb: "FFD1D5DB" } },
-            right: { style: "thin", color: { argb: "FFD1D5DB" } },
-          };
+          cell.alignment = { horizontal: "center", vertical: "middle", wrapText: true };
+
+          if (colNumber <= lastClassColNum) {
+            cell.border = {
+              top: { style: "thin", color: { argb: "FF000000" } },
+              bottom: { style: bottomStyle, color: { argb: "FF000000" } },
+              left: { style: "thin", color: { argb: "FF000000" } },
+              right: { style: "thin", color: { argb: "FF000000" } },
+            };
+
+            // Dars vaqti va tartib raqamiga yengil fon
+            if (colNumber === 2 || colNumber === 3) {
+              cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFAFAFA" } };
+            }
+          } else if (colNumber >= reestrStartCol && cell.value) {
+            cell.border = {
+              top: { style: "thin", color: { argb: "FF000000" } },
+              bottom: { style: "thin", color: { argb: "FF000000" } },
+              left: { style: "thin", color: { argb: "FF000000" } },
+              right: { style: "thin", color: { argb: "FF000000" } },
+            };
+
+            // O'qituvchi F.I.Sh va Fanlari chapdan tekislansin
+            if (colNumber === reestrStartCol + 1 || colNumber === reestrStartCol + 2) {
+              cell.alignment = { horizontal: "left", vertical: "middle", wrapText: true };
+            }
+          }
         });
 
-        // O'qituvchi ismi ustuni — chapdan tekislash
-        const teacherNameCol = totalClassCols + 6;
-        dataRow.getCell(teacherNameCol).alignment = { horizontal: "left", vertical: "middle" };
-
         currentExcelRow++;
-      });
+      }
 
-      // Kun ustunini vertikal merge qilish
+      // Kun ustunini vertikal birlashtirish (DUSHANBA, SESHANBA...)
       ws.mergeCells(dayStartRow, 1, currentExcelRow - 1, 1);
       const dayCell = ws.getCell(dayStartRow, 1);
-      dayCell.alignment = { horizontal: "center", vertical: "middle", textRotation: 90 };
-      dayCell.font = { bold: true, size: 9, name: "Times New Roman" };
-      dayCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF3F4F6" } };
-
-      // Kunlar orasidagi ajratuvchi qator
-      const separatorRow = ws.addRow([]);
-      separatorRow.height = 6;
-      currentExcelRow++;
+      dayCell.alignment = {
+        horizontal: "center",
+        vertical: "middle",
+        textRotation: 90,
+      };
+      dayCell.font = { bold: true, size: 9.5, name: "Times New Roman" };
+      dayCell.fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: "FFF1F5F9" },
+      };
+      dayCell.border = {
+        top: { style: "medium", color: { argb: "FF000000" } },
+        bottom: { style: "medium", color: { argb: "FF000000" } },
+        left: { style: "medium", color: { argb: "FF000000" } },
+        right: { style: "medium", color: { argb: "FF000000" } },
+      };
     });
 
-    // ── 4. JAMI DARS SOATLARI QATORI ──────────────────────────────────────────
-    const totalRowValues: (string | number)[] = ["Jami soat", "", ""];
+    // ── 4. JAMI DARS SOATLARI STATISTIKA QATORI ───────────────────────────────
+    const totalRowValues: (string | number)[] = ["Dars soati", "", ""];
     branchClasses.forEach((cls) => {
       const count = lessons.filter((l) => l.classId === cls.id).length;
-      totalRowValues.push(`${count} soat`, "");
+      totalRowValues.push(`${count}`, "");
     });
-    totalRowValues.push("", "", "");
+    totalRowValues.push("", "", "", "");
 
     const totalRow = ws.addRow(totalRowValues);
     totalRow.height = 22;
 
+    // Dars soati sarlavhasini A..C merge
+    ws.mergeCells(currentExcelRow, 1, currentExcelRow, 3);
     let totCol = 4;
     branchClasses.forEach(() => {
       ws.mergeCells(currentExcelRow, totCol, currentExcelRow, totCol + 1);
       totCol += 2;
     });
 
-    totalRow.eachCell((cell) => {
-      cell.font = { bold: true, size: 9, name: "Times New Roman" };
-      cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFE5E7EB" } };
-      cell.alignment = { horizontal: "center", vertical: "middle" };
-      cell.border = { top: { style: "medium" }, bottom: { style: "medium" } };
+    totalRow.eachCell((cell, colNumber) => {
+      if (colNumber <= lastClassColNum) {
+        cell.font = { bold: true, size: 9.5, name: "Times New Roman" };
+        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFE2E8F0" } };
+        cell.alignment = { horizontal: "center", vertical: "middle" };
+        cell.border = {
+          top: { style: "medium", color: { argb: "FF000000" } },
+          bottom: { style: "thin", color: { argb: "FF000000" } },
+          left: { style: "thin", color: { argb: "FF000000" } },
+          right: { style: "thin", color: { argb: "FF000000" } },
+        };
+      }
+    });
+    currentExcelRow++;
+
+    // ── 5. SINF RAHBARLARI QATORI ─────────────────────────────────────────────
+    const homeroomRowValues: (string | number)[] = ["Sinf rahbar", "", ""];
+    branchClasses.forEach((cls) => {
+      const homeroomTeacher =
+        teachers.find((t) => t.id === cls.homeroomTeacherId) ||
+        teachers.find((t) => t.homeroomClassId === cls.id);
+      const shortName = homeroomTeacher
+        ? homeroomTeacher.fullName.split(" ").slice(0, 2).join(" ")
+        : "—";
+      homeroomRowValues.push(shortName, "");
+    });
+    homeroomRowValues.push("", "", "", "");
+
+    const homeroomRow = ws.addRow(homeroomRowValues);
+    homeroomRow.height = 22;
+
+    ws.mergeCells(currentExcelRow, 1, currentExcelRow, 3);
+    let hrCol = 4;
+    branchClasses.forEach(() => {
+      ws.mergeCells(currentExcelRow, hrCol, currentExcelRow, hrCol + 1);
+      hrCol += 2;
     });
 
-    // ── 5. IMZO QATORLARI (FOOTER) ────────────────────────────────────────────
-    ws.addRow([]); // bo'sh
-    ws.addRow([]); // bo'sh
+    homeroomRow.eachCell((cell, colNumber) => {
+      if (colNumber <= lastClassColNum) {
+        cell.font = { bold: true, size: 8.5, name: "Times New Roman" };
+        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFFFFFF" } };
+        cell.alignment = { horizontal: "center", vertical: "middle", wrapText: true };
+        cell.border = {
+          top: { style: "thin", color: { argb: "FF000000" } },
+          bottom: { style: "medium", color: { argb: "FF000000" } },
+          left: { style: "thin", color: { argb: "FF000000" } },
+          right: { style: "thin", color: { argb: "FF000000" } },
+        };
+      }
+    });
+    currentExcelRow++;
 
-    const signRow1 = ws.addRow([
+    // ── 6. RASMIY IMZOLAR (FOOTER SIGNATURES) ─────────────────────────────────
+    ws.addRow([]); // Bo'sh
+    ws.getRow(currentExcelRow).height = 14;
+    currentExcelRow++;
+
+    const signRow = ws.addRow([
       "",
-      `O'quv ishlari bo'yicha direktor o'rinbosari: ____________________ ${academicVicePrincipalName}`,
+      `O'quv ishlar bo'yicha direktor o'rinbosari: ____________________ ${academicVicePrincipalName}`,
     ]);
-    signRow1.font = { bold: true, size: 10, name: "Times New Roman" };
+    signRow.height = 24;
+    signRow.font = { bold: true, size: 10, name: "Times New Roman" };
 
-    const signRow2 = ws.addRow([
-      "",
-      `Ruhshunos: ____________________ ${psychologistName}`,
-    ]);
-    signRow2.font = { bold: true, size: 10, name: "Times New Roman" };
+    // Ruhshunos imzosi (Reestr tagiga)
+    ws.getCell(currentExcelRow, reestrStartCol).value = `Ruhshunos: ____________________ ${psychologistName}`;
+    ws.getCell(currentExcelRow, reestrStartCol).font = {
+      bold: true,
+      size: 10,
+      name: "Times New Roman",
+    };
 
-    // ── 6. USTUNLAR KENGLIGI ──────────────────────────────────────────────────
+    // ── 7. KENG KELTIRILGAN IDEAL USTUN KENGLIKLARI (Auto Zero-Adjustment) ───────
     const colWidths: { width: number }[] = [
-      { width: 5 },  // Kun
-      { width: 5 },  // t/r
-      { width: 12 }, // Vaqt
+      { width: 7 },   // Col A: Kun
+      { width: 5.5 }, // Col B: Dars
+      { width: 13.5 },// Col C: Vaqti
     ];
 
     branchClasses.forEach(() => {
-      colWidths.push({ width: 13 }); // Fan nomi
-      colWidths.push({ width: 5 });  // O'qituvchi raqami
+      colWidths.push({ width: 15.5 }); // Fan nomi (Hech qachon qisilib qolmaydi)
+      colWidths.push({ width: 5.5 });  // O'qituvchi tartib raqami (№)
     });
 
-    colWidths.push({ width: 3 });  // Bo'sh separator
-    colWidths.push({ width: 5 });  // O'qituvchi t/r
-    colWidths.push({ width: 28 }); // O'qituvchi to'liq F.I.Sh
+    colWidths.push({ width: 3.5 });  // Bo'sh oraliq ustun
+    colWidths.push({ width: 5.5 });  // Reestr №
+    colWidths.push({ width: 28 });   // Reestr O'qituvchi F.I.Sh
+    colWidths.push({ width: 30 });   // Reestr O'tadigan Fanlari
 
     ws.columns = colWidths;
 
-    // Freeze header
-    ws.views = [{ state: "frozen", ySplit: 7, xSplit: 3 }];
+    // Freeze Panes (Header va chap ustunlar doim ko'rinib turishi uchun)
+    ws.views = [{ state: "frozen", ySplit: 8, xSplit: 3 }];
   }
 
-  // Faylni yuklab olish
+  // Excel faylni generatsiya qilish va yuklab olish
   const buffer = await workbook.xlsx.writeBuffer();
   const blob = new Blob([buffer], {
     type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -289,14 +498,10 @@ export async function exportScheduleToExcel(options: ExcelExportOptions) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  const sanitizedName = (schoolName || "Maktab").replace(/\s+/g, "_");
-  a.download = `${sanitizedName}_Dars_Jadvali_${academicYear}_${new Date().toISOString().slice(0, 10)}.xlsx`;
+  const sanitizedName = (schoolName || "Maktab").replace(/[\s/\\?%*:|"<>]+/g, "_");
+  a.download = `${sanitizedName}_Rasmiy_Dars_Jadvali_${new Date().toISOString().slice(0, 10)}.xlsx`;
   document.body.appendChild(a);
   a.click();
-  document.body.removeChild(anchorOrFallback(a));
+  document.body.removeChild(a);
   URL.revokeObjectURL(url);
-}
-
-function anchorOrFallback(a: HTMLAnchorElement): HTMLElement {
-  return a;
 }
