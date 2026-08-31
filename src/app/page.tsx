@@ -89,7 +89,7 @@ export default function HomePage() {
     }, 400);
   };
 
-  // Excel Export
+  // Excel Export (39-maktab rasmiy andozasi)
   const handleExport = () => {
     if (schoolLessons.length === 0) {
       showToast("Avval dars jadvalini generatsiya qiling!", "error");
@@ -104,9 +104,17 @@ export default function HomePage() {
       teachers: schoolTeachers,
       rooms: schoolRooms,
       lessons: schoolLessons,
-      schoolName: currentSchool?.name || "Maktab",
+      branches: schoolBranches,
+      shifts: schoolShifts,
+      schoolName: currentSchool?.name || "39-umumiy o'rta ta'lim maktabi",
+      region: "Muzrabot tumani",
+      directorFullName: "M. Ramazonov",
+      academicVicePrincipalName: "N. Narziqulov",
+      psychologistName: "F.I.Sh",
+      academicYear: "2025-2026",
+      termName: "1-chorak",
     });
-    showToast("Excel fayl muvaffaqiyatli yuklab olindi!");
+    showToast("✅ 39-maktab rasmiy Excel andozasi bo'yicha jadval yuklandi!");
   };
 
   // Create school
@@ -330,6 +338,8 @@ export default function HomePage() {
               teachers={schoolTeachers}
               rooms={schoolRooms}
               lessons={schoolLessons}
+              branches={schoolBranches}
+              shifts={schoolShifts}
               onLessonsChange={store.setLessons}
               onOpenZamena={(l) => setSelectedZamenaLesson(l)}
               zoomLevel={store.zoomLevel}

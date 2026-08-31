@@ -18,10 +18,12 @@ import {
   Subject,
   Teacher,
   Room,
+  Branch,
+  Shift,
   DragValidationResult,
 } from "@/types";
 import { LessonCard } from "./LessonCard";
-import { AlertCircle, CheckCircle2, ShieldAlert, X } from "lucide-react";
+import { AlertCircle, CheckCircle2, ShieldAlert, X, Building2, Clock } from "lucide-react";
 
 interface MasterGridProps {
   classes: SchoolClass[];
@@ -29,6 +31,8 @@ interface MasterGridProps {
   teachers: Teacher[];
   rooms: Room[];
   lessons: Lesson[];
+  branches?: Branch[];
+  shifts?: Shift[];
   onLessonsChange: (lessons: Lesson[]) => void;
   onOpenZamena: (lesson: Lesson) => void;
   zoomLevel: number;
@@ -132,6 +136,8 @@ export const MasterGrid: React.FC<MasterGridProps> = ({
   teachers,
   rooms,
   lessons,
+  branches,
+  shifts,
   onLessonsChange,
   onOpenZamena,
   zoomLevel,
@@ -153,6 +159,8 @@ export const MasterGrid: React.FC<MasterGridProps> = ({
   const subjectMap = useMemo(() => new Map(subjects.map((s) => [s.id, s])), [subjects]);
   const teacherMap = useMemo(() => new Map(teachers.map((t) => [t.id, t])), [teachers]);
   const roomMap = useMemo(() => new Map(rooms.map((r) => [r.id, r])), [rooms]);
+  const branchMap = useMemo(() => new Map((branches || []).map((b) => [b.id, b])), [branches]);
+  const shiftMap = useMemo(() => new Map((shifts || []).map((s) => [s.id, s])), [shifts]);
 
   // Filial bo'yicha sinflarni filtrlash
   const filteredClasses = useMemo(() => {
@@ -501,21 +509,48 @@ export const MasterGrid: React.FC<MasterGridProps> = ({
                   <th className="sticky left-0 z-40 w-36 border border-border bg-card/95 p-3 text-xs font-bold text-muted-foreground uppercase tracking-wider backdrop-blur-md">
                     Kun / Soat
                   </th>
-                  {filteredClasses.map((cls) => (
-                    <th
-                      key={cls.id}
-                      className="min-w-[140px] border border-border p-3 text-center text-xs font-bold text-foreground"
-                    >
-                      <div className="flex flex-col items-center">
-                        <span className="text-sm font-extrabold text-blue-600 dark:text-blue-400">
-                          {cls.name}
-                        </span>
-                        <span className="text-[10px] font-normal text-muted-foreground">
-                          {cls.grade}-sinf
-                        </span>
-                      </div>
-                    </th>
-                  ))}
+                  {filteredClasses.map((cls) => {
+                    const branch = branchMap.get(cls.branchId);
+                    const shift = shiftMap.get(cls.shiftId);
+                    const isBranchNonMain = branch && !branch.isMain;
+
+                    return (
+                      <th
+                        key={cls.id}
+                        className={`min-w-[145px] border border-border p-2.5 text-center text-xs font-bold text-foreground transition-colors ${
+                          isBranchNonMain ? "bg-indigo-500/5 dark:bg-indigo-950/20" : ""
+                        }`}
+                      >
+                        <div className="flex flex-col items-center gap-1">
+                          <span className="text-sm font-extrabold text-blue-600 dark:text-blue-400 tracking-tight">
+                            {cls.name}
+                          </span>
+                          <div className="flex items-center gap-1 flex-wrap justify-center">
+                            <span className="text-[10px] font-medium text-muted-foreground">
+                              {cls.grade}-sinf
+                            </span>
+                            {branch && (
+                              <span
+                                className={`text-[9px] px-1.5 py-0.2 rounded-md font-semibold ${
+                                  branch.isMain
+                                    ? "bg-muted/80 text-muted-foreground"
+                                    : "bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20"
+                                }`}
+                                title={branch.name}
+                              >
+                                {branch.name.length > 11 ? branch.name.slice(0, 9) + "..." : branch.name}
+                              </span>
+                            )}
+                            {shift && (
+                              <span className="text-[9px] px-1 py-0.2 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 font-medium">
+                                {shift.name.includes("2") ? "2-smena" : "1-smena"}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </th>
+                    );
+                  })}
                 </tr>
               </thead>
 
