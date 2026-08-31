@@ -47,27 +47,52 @@ export class CSPSolver {
     // teacherId_day -> branchId
     const teacherDayBranch = new Map<string, string>();
 
-    // Check if a teacher can take a lesson in (day, period, branchId)
-    const isFree = (teacherId: string, day: number, period: number, branchId: string): boolean => {
+    // Check if a teacher can take a lesson in (day, period, branchId, classId)
+    const isFree = (
+      teacherId: string,
+      day: number,
+      period: number,
+      branchId: string,
+      classId?: string
+    ): boolean => {
       const t = this.teacherMap.get(teacherId);
       if (!t) return false;
-      
-      // 1. Metod kuni cheklovi
+
+      // 1. Metod kuni cheklovi (0 ta dars)
       if (t.methodDayOfWeek === day) return false;
-      
-      // 2. Vaqt bo'yicha bandlik
+
+      // 2. Vaqt bo'yicha bandlik (Bir paytda bitta dars)
       if (teacherOccupied.has(`${teacherId}_${day}_${period}`)) return false;
 
-      // 3. Bino / Filial logistika qoidasi (Daily Building Lock)
+      // 3. Binolar ruxsati (Branch whitelist)
+      if (t.branchIds && t.branchIds.length > 0 && !t.branchIds.includes(branchId)) {
+        return false;
+      }
+
+      // 4. Sinflar toifasi (Boshlang'ich vs Katta sinflar)
+      if (classId) {
+        const cls = this.classMap.get(classId);
+        if (cls) {
+          const isClsPrimary = cls.isPrimary || cls.grade <= 4;
+          if (t.teachingStages === "PRIMARY" && !isClsPrimary) return false;
+          if (t.teachingStages === "HIGH" && isClsPrimary) return false;
+        }
+      }
+
+      // 5. Bino / Filial logistika qoidasi (Travel Policy)
       const dayBranchKey = `${teacherId}_${day}`;
       const existingBranch = teacherDayBranch.get(dayBranchKey);
       if (existingBranch && existingBranch !== branchId) {
-        // Agar o'qituvchi shu kuni boshqa binoda dars o'tayotgan bo'lsa,
-        // darslar ketma-ket (yonma-yon) bo'lmasligi kerak (kamida 1 soat yo'l darchasi)
-        const hasAdjacentInOtherBranch =
-          teacherOccupied.has(`${teacherId}_${day}_${period - 1}`) ||
-          teacherOccupied.has(`${teacherId}_${day}_${period + 1}`);
-        if (hasAdjacentInOtherBranch) return false;
+        if (t.travelPolicy === "BY_DAY") {
+          // Bitta kunda faqat bitta binoda dars o'tishi shart
+          return false;
+        } else {
+          // Smena yoki 1 soatlik yo'l darchasi (Travel Window)
+          const hasAdjacentInOtherBranch =
+            teacherOccupied.has(`${teacherId}_${day}_${period - 1}`) ||
+            teacherOccupied.has(`${teacherId}_${day}_${period + 1}`);
+          if (hasAdjacentInOtherBranch) return false;
+        }
       }
 
       return true;
@@ -241,7 +266,7 @@ export class CSPSolver {
 
       const emptySlots = slots.filter((s) => !s.isLocked && s.teacherId === null);
       const freeSlots = emptySlots.filter((s) =>
-        isFree(req.teacherId, s.day, s.period, req.branchId)
+        isFree(req.teacherId, s.day, s.period, req.branchId, req.classId)
       );
 
       if (freeSlots.length > 0) {
@@ -284,7 +309,7 @@ export class CSPSolver {
       // Ejection (Boshqa bloklanmagan darsni siljitish orqali joy ochish)
       const nonLocked = slots.filter((s) => !s.isLocked && s.teacherId !== null);
       const eligibleSlots = nonLocked.filter((s) =>
-        isFree(req.teacherId, s.day, s.period, req.branchId)
+        isFree(req.teacherId, s.day, s.period, req.branchId, req.classId)
       );
 
       for (const targetSlot of eligibleSlots) {
@@ -365,7 +390,7 @@ export class CSPSolver {
 
           for (const target of nonLocked) {
             if (target.teacherId === null) {
-              if (isFree(badT, target.day, target.period, badSlot.branchId)) {
+              if (isFree(badT, target.day, target.period, badSlot.branchId, badSlot.classId)) {
                 release(badT, badSlot.day, badSlot.period);
                 badSlot.teacherId = null;
                 badSlot.subjectId = null;
@@ -385,8 +410,8 @@ export class CSPSolver {
               release(badT, badSlot.day, badSlot.period);
               release(otherT, target.day, target.period);
 
-              const can1 = isFree(badT, target.day, target.period, target.branchId);
-              const can2 = isFree(otherT, badSlot.day, badSlot.period, badSlot.branchId);
+              const can1 = isFree(badT, target.day, target.period, target.branchId, target.classId);
+              const can2 = isFree(otherT, badSlot.day, badSlot.period, badSlot.branchId, badSlot.classId);
 
               if (can1 && can2) {
                 target.teacherId = badT;

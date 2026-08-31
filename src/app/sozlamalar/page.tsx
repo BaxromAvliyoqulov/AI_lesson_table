@@ -317,6 +317,7 @@ export default function SettingsPage() {
         currentSchoolId={store.currentSchoolId}
         subjects={schoolSubjects}
         branches={schoolBranches}
+        shifts={schoolShifts}
         onSave={(teacherData) => {
           if (editingTeacher) {
             store.updateTeacher(teacherData);

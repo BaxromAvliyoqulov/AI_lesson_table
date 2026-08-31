@@ -66,6 +66,9 @@ export interface Teacher {
   homeroomClassId?: string | null;
   subjectIds: string[];
   branchIds: string[];
+  shiftIds?: string[]; // Qaysi smenalarda dars beradi: ["s39_1", "s39_2"]
+  teachingStages?: "PRIMARY" | "HIGH" | "BOTH"; // Boshlang'ich (1-4), Katta (5-11) yoki Ikkalasi
+  travelPolicy?: "BY_SHIFT" | "BY_DAY" | "FLEXIBLE_BUFFER"; // Bino harakati qoidasi
   availabilities?: TeacherAvailability[];
 }
 
