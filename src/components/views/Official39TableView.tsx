@@ -281,53 +281,6 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
   const teacherMap = useMemo(() => new Map(teachers.map((t) => [t.id, t])), [teachers]);
   const roomMap = useMemo(() => new Map(rooms.map((r) => [r.id, r])), [rooms]);
 
-  // Har bir o'qituvchiga tartib raqami (1..N)
-  const teacherNumberMap = useMemo(() => {
-    const map = new Map<string, number>();
-    teachers.forEach((t, i) => map.set(t.id, i + 1));
-    return map;
-  }, [teachers]);
-
-  // Lessons map: `${classId}_${day}_${period}` -> Lesson
-  const lessonMap = useMemo(() => {
-    const map = new Map<string, Lesson>();
-    for (const l of lessons) {
-      map.set(`${l.classId}_${l.dayOfWeek}_${l.periodNumber}`, l);
-    }
-    return map;
-  }, [lessons]);
-
-  // Real-vaqt parallel dars ziddiyatlarini tekshirish (AI Patrul)
-  const teacherConflictsSet = useMemo(() => {
-    const map = new Map<string, number>();
-    const conflicts = new Set<string>();
-    for (const l of lessons) {
-      const key = `${l.teacherId}_${l.dayOfWeek}_${l.periodNumber}`;
-      map.set(key, (map.get(key) || 0) + 1);
-    }
-    for (const l of lessons) {
-      const key = `${l.teacherId}_${l.dayOfWeek}_${l.periodNumber}`;
-      if ((map.get(key) || 0) > 1) {
-        conflicts.add(l.id);
-      }
-    }
-    return conflicts;
-  }, [lessons]);
-
-  const handleAutoFixConflicts = () => {
-    if (!onLessonsChange) return;
-    const solver = new CSPSolver({
-      classes,
-      teachers,
-      subjects,
-      rooms,
-      branches,
-      shifts,
-    });
-    const result = solver.solve();
-    onLessonsChange(result.lessons);
-  };
-
   // Asosiy bino va Filial (D sinflar) bo'yicha aniq filtrlangan sinflar
   const displayClasses = useMemo(() => {
     switch (filterScope) {
@@ -376,7 +329,16 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
     return map;
   }, [displayClasses, lessons]);
 
-  // Joriy ko'rinishdagi o'qituvchilar ro'yxati (o'ng tarafdagi jadval uchun)
+  // Lessons map: `${classId}_${day}_${period}` -> Lesson
+  const lessonMap = useMemo(() => {
+    const map = new Map<string, Lesson>();
+    for (const l of lessons) {
+      map.set(`${l.classId}_${l.dayOfWeek}_${l.periodNumber}`, l);
+    }
+    return map;
+  }, [lessons]);
+
+  // Joriy ko'rinishdagi o'qituvchilar ro'yxati (o'ng tarafdagi jadval va dars jadvali uchun)
   const displayTeachers = useMemo(() => {
     if (filterScope === "ALL") return teachers;
     const activeTeacherIds = new Set<string>();
@@ -392,6 +354,45 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
     const filtered = teachers.filter((t) => activeTeacherIds.has(t.id));
     return filtered.length > 0 ? filtered : teachers;
   }, [teachers, displayClasses, lessons, filterScope]);
+
+  // QAT'IY KETMA-KET TARTIB RAQAMLASH (1..N):
+  // Dars jadvalida va O'ng tarafdagi Reestrda raqamlar 100% ketma-ket, uzilishsiz (1, 2, 3, 4 ... N) chiqadi!
+  const teacherNumberMap = useMemo(() => {
+    const map = new Map<string, number>();
+    displayTeachers.forEach((t, i) => map.set(t.id, i + 1));
+    return map;
+  }, [displayTeachers]);
+
+  // Real-vaqt parallel dars ziddiyatlarini tekshirish (AI Patrul)
+  const teacherConflictsSet = useMemo(() => {
+    const map = new Map<string, number>();
+    const conflicts = new Set<string>();
+    for (const l of lessons) {
+      const key = `${l.teacherId}_${l.dayOfWeek}_${l.periodNumber}`;
+      map.set(key, (map.get(key) || 0) + 1);
+    }
+    for (const l of lessons) {
+      const key = `${l.teacherId}_${l.dayOfWeek}_${l.periodNumber}`;
+      if ((map.get(key) || 0) > 1) {
+        conflicts.add(l.id);
+      }
+    }
+    return conflicts;
+  }, [lessons]);
+
+  const handleAutoFixConflicts = () => {
+    if (!onLessonsChange) return;
+    const solver = new CSPSolver({
+      classes,
+      teachers,
+      subjects,
+      rooms,
+      branches,
+      shifts,
+    });
+    const result = solver.solve();
+    onLessonsChange(result.lessons);
+  };
 
   // Har bir o'qituvchining o'tadigan fanlari ro'yxati (Fan nomi / qisqartmasi)
   const teacherSubjectsMap = useMemo(() => {
