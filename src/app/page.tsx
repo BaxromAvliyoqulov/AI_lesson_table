@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, useMemo, useCallback } from "react";
+import React, { useState, useMemo } from "react";
+import { useSchoolStore } from "@/lib/store/useSchoolStore";
 import { Navbar } from "@/components/layout/Navbar";
 import { MasterGrid } from "@/components/master-grid/MasterGrid";
 import { SingleClassView } from "@/components/views/SingleClassView";
@@ -10,26 +11,7 @@ import { ZamenaModal } from "@/components/zamena/ZamenaModal";
 import { ExcelImportModal } from "@/components/excel/ExcelImportModal";
 import { exportScheduleToExcel } from "@/lib/excel/excel-export";
 import { CSPSolver } from "@/lib/solver/csp-solver";
-import {
-  initialSchools,
-  initialBranches,
-  initialShifts,
-  initialRooms,
-  initialSubjects,
-  initialTeachers,
-  initialClasses,
-} from "@/lib/mock-data";
-import {
-  SchoolInfo,
-  Branch,
-  Shift,
-  Subject,
-  Teacher,
-  Room,
-  SchoolClass,
-  Lesson,
-  SolverResult,
-} from "@/types";
+import { Lesson, SolverResult } from "@/types";
 import {
   Sparkles,
   Layers,
@@ -41,107 +23,52 @@ import {
   LayoutGrid,
   GraduationCap,
   Users,
+  CheckCircle2,
+  AlertCircle,
 } from "lucide-react";
 
-type ViewMode = "CLASS" | "MASTER" | "TEACHER";
-
 export default function HomePage() {
-  const [schools, setSchools] = useState<SchoolInfo[]>(initialSchools);
-  const [currentSchoolId, setCurrentSchoolId] = useState<string>("school_39"); // 39-maktab
+  const store = useSchoolStore();
 
-  const [allBranches, setAllBranches] = useState<Branch[]>(initialBranches);
-  const [allShifts, setAllShifts] = useState<Shift[]>(initialShifts);
-  const [allSubjects, setAllSubjects] = useState<Subject[]>(initialSubjects);
-  const [allTeachers, setAllTeachers] = useState<Teacher[]>(initialTeachers);
-  const [allRooms, setAllRooms] = useState<Room[]>(initialRooms);
-  const [allClasses, setAllClasses] = useState<SchoolClass[]>(initialClasses);
-
-  const [allLessons, setAllLessons] = useState<Lesson[]>([]);
-  const [history, setHistory] = useState<Lesson[][]>([]);
-  const [zoomLevel, setZoomLevel] = useState<number>(100);
-  const [selectedBranch, setSelectedBranch] = useState<string>("ALL");
-  const [viewMode, setViewMode] = useState<ViewMode>("CLASS"); // Default: Sinf bo'yicha chiroyli ko'rish
-
-  const [isGenerating, setIsGenerating] = useState<boolean>(false);
+  // Local UI modal states
+  const [isWizardOpen, setIsWizardOpen] = useState(false);
+  const [isImportOpen, setIsImportOpen] = useState(false);
+  const [isAddSchoolOpen, setIsAddSchoolOpen] = useState(false);
+  const [newSchoolName, setNewSchoolName] = useState("");
+  const [selectedZamenaLesson, setSelectedZamenaLesson] = useState<Lesson | null>(null);
   const [generationResult, setGenerationResult] = useState<SolverResult | null>(null);
 
-  // Modals state
-  const [isWizardOpen, setIsWizardOpen] = useState<boolean>(false);
-  const [isImportOpen, setIsImportOpen] = useState<boolean>(false);
-  const [isAddSchoolOpen, setIsAddSchoolOpen] = useState<boolean>(false);
-  const [newSchoolName, setNewSchoolName] = useState<string>("");
-  const [selectedZamenaLesson, setSelectedZamenaLesson] = useState<Lesson | null>(null);
+  // Toast state
+  const [toastMessage, setToastMessage] = useState<{
+    text: string;
+    type: "success" | "error" | "info";
+  } | null>(null);
 
-  // Joriy maktab ma'lumotlari (Multi-tenant)
-  const currentSchool = useMemo(
-    () => schools.find((s) => s.id === currentSchoolId) || schools[0],
-    [schools, currentSchoolId]
-  );
+  const showToast = (text: string, type: "success" | "error" | "info" = "success") => {
+    setToastMessage({ text, type });
+    setTimeout(() => setToastMessage(null), 3500);
+  };
 
-  const schoolBranches = useMemo(
-    () => allBranches.filter((b) => b.schoolId === currentSchoolId),
-    [allBranches, currentSchoolId]
-  );
+  // Filtered entities for current school
+  const currentSchool =
+    store.schools.find((s) => s.id === store.currentSchoolId) || store.schools[0];
+  const schoolBranches = store.branches.filter((b) => b.schoolId === store.currentSchoolId);
+  const schoolShifts = store.shifts.filter((s) => s.schoolId === store.currentSchoolId);
+  const schoolSubjects = store.subjects.filter((s) => s.schoolId === store.currentSchoolId);
+  const schoolTeachers = store.teachers.filter((t) => t.schoolId === store.currentSchoolId);
+  const schoolRooms = store.rooms.filter((r) => r.schoolId === store.currentSchoolId);
+  const schoolClasses = store.classes.filter((c) => c.schoolId === store.currentSchoolId);
+  const schoolLessons = store.lessons.filter((l) => l.schoolId === store.currentSchoolId);
 
-  const schoolShifts = useMemo(
-    () => allShifts.filter((s) => s.schoolId === currentSchoolId),
-    [allShifts, currentSchoolId]
-  );
-
-  const schoolSubjects = useMemo(
-    () => allSubjects.filter((s) => s.schoolId === currentSchoolId),
-    [allSubjects, currentSchoolId]
-  );
-
-  const schoolTeachers = useMemo(
-    () => allTeachers.filter((t) => t.schoolId === currentSchoolId),
-    [allTeachers, currentSchoolId]
-  );
-
-  const schoolRooms = useMemo(
-    () => allRooms.filter((r) => r.schoolId === currentSchoolId),
-    [allRooms, currentSchoolId]
-  );
-
-  const schoolClasses = useMemo(
-    () => allClasses.filter((c) => c.schoolId === currentSchoolId),
-    [allClasses, currentSchoolId]
-  );
-
-  const schoolLessons = useMemo(
-    () => allLessons.filter((l) => l.schoolId === currentSchoolId),
-    [allLessons, currentSchoolId]
-  );
-
-  // Darslar o'zgarganda (Drag, Drop, Swap)
-  const handleSchoolLessonsChange = useCallback(
-    (newLessons: Lesson[]) => {
-      setHistory((prev) => [...prev.slice(-15), allLessons]);
-      setAllLessons((prev) => [
-        ...prev.filter((l) => l.schoolId !== currentSchoolId),
-        ...newLessons,
-      ]);
-    },
-    [allLessons, currentSchoolId]
-  );
-
-  // Undo (Ctrl+Z)
-  const handleUndo = useCallback(() => {
-    if (history.length === 0) return;
-    const previous = history[history.length - 1];
-    setHistory((prev) => prev.slice(0, -1));
-    setAllLessons(previous);
-  }, [history]);
-
-  // AI & CSP Dvigateli orqali generatsiya qilish
+  // AI & CSP Generator
   const handleGenerate = () => {
     if (schoolClasses.length === 0 || schoolTeachers.length === 0) {
-      alert("Avval maktab o'qituvchilari va sinflarini sozlang yoki Exceldan yuklang!");
+      showToast("Avval maktab o'qituvchilari va sinflarini sozlang!", "error");
       setIsWizardOpen(true);
       return;
     }
 
-    setIsGenerating(true);
+    store.setIsGenerating(true);
     setGenerationResult(null);
 
     setTimeout(() => {
@@ -155,72 +82,44 @@ export default function HomePage() {
       });
 
       const result = solver.solve();
-      handleSchoolLessonsChange(result.lessons);
+      store.setLessons(result.lessons);
       setGenerationResult(result);
-      setIsGenerating(false);
+      store.setIsGenerating(false);
+      showToast(`✅ Dars jadvali muvaffaqiyatli generatsiya qilindi! (${result.lessons.length} ta dars)`);
     }, 400);
   };
 
   // Excel Export
   const handleExport = () => {
     if (schoolLessons.length === 0) {
-      alert("Avval dars jadvalini generatsiya qiling!");
+      showToast("Avval dars jadvalini generatsiya qiling!", "error");
       return;
     }
     exportScheduleToExcel({
       classes:
-        selectedBranch === "ALL"
+        store.selectedBranch === "ALL"
           ? schoolClasses
-          : schoolClasses.filter((c) => c.branchId === selectedBranch),
+          : schoolClasses.filter((c) => c.branchId === store.selectedBranch),
       subjects: schoolSubjects,
       teachers: schoolTeachers,
       rooms: schoolRooms,
       lessons: schoolLessons,
       schoolName: currentSchool?.name || "Maktab",
     });
+    showToast("Excel fayl muvaffaqiyatli yuklab olindi!");
   };
 
-  // Yangi maktab qo'shish
+  // Create school
   const handleCreateSchool = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newSchoolName.trim()) return;
-
-    const newId = `school_${Date.now()}`;
-    const newSch: SchoolInfo = {
-      id: newId,
-      name: newSchoolName.trim(),
-      slug: newSchoolName.toLowerCase().replace(/\s+/g, "-"),
-      branchesCount: 1,
-      classesCount: 0,
-      teachersCount: 0,
-    };
-
-    setSchools([...schools, newSch]);
-    setCurrentSchoolId(newId);
-
-    const defaultBranch: Branch = {
-      id: `b_${Date.now()}`,
-      schoolId: newId,
-      name: `${newSchoolName} Asosiy Bino`,
-      isMain: true,
-    };
-    const defaultShift: Shift = {
-      id: `s_${Date.now()}`,
-      schoolId: newId,
-      name: "1-Smena",
-      startTime: "08:00",
-      endTime: "13:00",
-      periodsCount: 6,
-    };
-
-    setAllBranches([...allBranches, defaultBranch]);
-    setAllShifts([...allShifts, defaultShift]);
+    store.addSchool(newSchoolName.trim());
     setNewSchoolName("");
     setIsAddSchoolOpen(false);
     setIsWizardOpen(true);
   };
 
-  // Zamena tayinlash
+  // Zamena assignment
   const handleAssignReplacement = (
     lessonId: string,
     replacementTeacherId: string,
@@ -229,32 +128,48 @@ export default function HomePage() {
     const updated = schoolLessons.map((l) =>
       l.id === lessonId ? { ...l, teacherId: replacementTeacherId } : l
     );
-    handleSchoolLessonsChange(updated);
+    store.setLessons(updated);
+    store.addSubstitution({
+      id: `sub_${Date.now()}`,
+      schoolId: store.currentSchoolId,
+      scheduleId: "active-schedule",
+      date: new Date().toISOString(),
+      dayOfWeek: 1,
+      periodNumber: 1,
+      classId: "",
+      subjectId: "",
+      originalTeacherId: "",
+      substituteTeacherId: replacementTeacherId,
+      reason,
+      isApproved: true,
+      createdAt: new Date().toISOString(),
+    });
+    showToast("O'rinbosar o'qituvchi muvaffaqiyatli biriktirildi!");
   };
 
   return (
-    <div className="flex min-h-screen flex-col bg-background text-foreground">
+    <div className="flex min-h-screen flex-col bg-background text-foreground font-sans">
       {/* Top Navbar */}
       <Navbar
-        schools={schools}
-        currentSchoolId={currentSchoolId}
+        schools={store.schools}
+        currentSchoolId={store.currentSchoolId}
         onSelectSchool={(id) => {
-          setCurrentSchoolId(id);
-          setSelectedBranch("ALL");
+          store.setCurrentSchoolId(id);
+          store.setSelectedBranch("ALL");
           setGenerationResult(null);
         }}
         onAddSchool={() => setIsAddSchoolOpen(true)}
-        zoomLevel={zoomLevel}
-        onZoomChange={setZoomLevel}
+        zoomLevel={store.zoomLevel}
+        onZoomChange={store.setZoomLevel}
         onGenerate={handleGenerate}
         onExport={handleExport}
         onOpenWizard={() => setIsWizardOpen(true)}
         onOpenImport={() => setIsImportOpen(true)}
-        onUndo={handleUndo}
-        canUndo={history.length > 0}
-        isGenerating={isGenerating}
-        selectedBranch={selectedBranch}
-        onBranchChange={setSelectedBranch}
+        onUndo={store.undo}
+        canUndo={store.history.length > 0}
+        isGenerating={store.isGenerating}
+        selectedBranch={store.selectedBranch}
+        onBranchChange={store.setSelectedBranch}
         branches={schoolBranches}
       />
 
@@ -262,34 +177,34 @@ export default function HomePage() {
       <div className="border-b border-border/80 bg-card/60 px-4 md:px-6 py-2.5 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-1.5 bg-muted/40 p-1 rounded-xl border border-border/60">
           <button
-            onClick={() => setViewMode("CLASS")}
-            className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-bold transition-all ${
-              viewMode === "CLASS"
-                ? "bg-blue-600 text-white shadow-md shadow-blue-600/20"
+            onClick={() => store.setViewMode("CLASS")}
+            className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-bold transition-all cursor-pointer ${
+              store.viewMode === "CLASS"
+                ? "bg-primary text-primary-foreground shadow-md shadow-primary/20"
                 : "text-muted-foreground hover:text-foreground hover:bg-background/60"
             }`}
           >
             <GraduationCap className="h-4 w-4" />
-            <span>Sinf Bo&apos;yicha Jadval</span>
+            <span>Sinf Bo'yicha Jadval</span>
           </button>
 
           <button
-            onClick={() => setViewMode("TEACHER")}
-            className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-bold transition-all ${
-              viewMode === "TEACHER"
-                ? "bg-blue-600 text-white shadow-md shadow-blue-600/20"
+            onClick={() => store.setViewMode("TEACHER")}
+            className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-bold transition-all cursor-pointer ${
+              store.viewMode === "TEACHER"
+                ? "bg-primary text-primary-foreground shadow-md shadow-primary/20"
                 : "text-muted-foreground hover:text-foreground hover:bg-background/60"
             }`}
           >
             <Users className="h-4 w-4" />
-            <span>O&apos;qituvchi Jadvali</span>
+            <span>O'qituvchi Jadvali</span>
           </button>
 
           <button
-            onClick={() => setViewMode("MASTER")}
-            className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-bold transition-all ${
-              viewMode === "MASTER"
-                ? "bg-blue-600 text-white shadow-md shadow-blue-600/20"
+            onClick={() => store.setViewMode("MASTER")}
+            className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-bold transition-all cursor-pointer ${
+              store.viewMode === "MASTER"
+                ? "bg-primary text-primary-foreground shadow-md shadow-primary/20"
                 : "text-muted-foreground hover:text-foreground hover:bg-background/60"
             }`}
           >
@@ -302,7 +217,7 @@ export default function HomePage() {
           <span>
             {currentSchool?.name}:{" "}
             <strong className="text-foreground">{schoolClasses.length} ta sinf</strong>,{" "}
-            <strong className="text-foreground">{schoolTeachers.length} nafar o&apos;qituvchi</strong>
+            <strong className="text-foreground">{schoolTeachers.length} nafar o'qituvchi</strong>
           </span>
         </div>
       </div>
@@ -314,7 +229,7 @@ export default function HomePage() {
           <div className="border-b border-border bg-gradient-to-r from-blue-500/10 via-indigo-500/10 to-transparent p-4 animate-in fade-in">
             <div className="mx-auto flex max-w-7xl items-center justify-between gap-4">
               <div className="flex items-center gap-3">
-                <div className="p-2 rounded-xl bg-blue-600 text-white shadow-md">
+                <div className="p-2 rounded-xl bg-primary text-primary-foreground shadow-md">
                   <Sparkles className="h-5 w-5" />
                 </div>
                 <div>
@@ -325,14 +240,14 @@ export default function HomePage() {
                     </span>
                   </h4>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    ✅ {generationResult.stats.placedHours} ta dars to&apos;liq joylashtirildi &bull;{" "}
+                    ✅ {generationResult.stats.placedHours} ta dars to'liq joylashtirildi &bull;{" "}
                     {generationResult.stats.conflictsCount === 0 ? (
                       <span className="text-emerald-600 font-semibold">
-                        0 ta ziddiyat (Oyna va bo&apos;shliqlarsiz)
+                        0 ta ziddiyat (Oyna va bo'shliqlarsiz)
                       </span>
                     ) : (
                       <span className="text-amber-600 font-semibold">
-                        ⚠️ {generationResult.stats.conflictsCount} ta dars bo&apos;yicha ogohlantirish
+                        ⚠️ {generationResult.stats.conflictsCount} ta dars bo'yicha ogohlantirish
                       </span>
                     )}
                   </p>
@@ -342,7 +257,7 @@ export default function HomePage() {
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => setGenerationResult(null)}
-                  className="rounded-lg p-1 hover:bg-muted text-muted-foreground"
+                  className="rounded-lg p-1 hover:bg-muted text-muted-foreground cursor-pointer"
                 >
                   <X className="h-4 w-4" />
                 </button>
@@ -355,7 +270,7 @@ export default function HomePage() {
         <div className="flex-1">
           {schoolLessons.length === 0 ? (
             <div className="flex flex-col items-center justify-center min-h-[60vh] p-8 text-center">
-              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-100 dark:bg-blue-950/80 text-blue-600 mb-4 shadow-lg shadow-blue-500/10">
+              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 text-primary mb-4 shadow-lg">
                 <Building2 className="h-8 w-8" />
               </div>
               <h2 className="text-lg font-bold text-foreground">
@@ -363,12 +278,12 @@ export default function HomePage() {
               </h2>
               <p className="text-xs text-muted-foreground max-w-md mt-1 mb-6">
                 Maktab sinflari ({schoolClasses.map((c) => c.name).join(", ") || "Hali kiritilmagan"}) va
-                o&apos;qituvchilari bo&apos;yicha ziddiyatsiz tartibli jadvalni hisoblang.
+                o'qituvchilari bo'yicha ziddiyatsiz tartibli jadvalni hisoblang.
               </p>
               <div className="flex flex-wrap items-center justify-center gap-3">
                 <button
                   onClick={handleGenerate}
-                  className="flex items-center gap-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 text-xs font-semibold shadow-md shadow-blue-600/20 cursor-pointer transition-all"
+                  className="flex items-center gap-2 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground px-5 py-2.5 text-xs font-semibold shadow-md shadow-primary/20 cursor-pointer transition-all"
                 >
                   <Sparkles className="h-4 w-4 text-amber-300" />
                   <span>Avtomatik AI Generatsiya</span>
@@ -376,22 +291,22 @@ export default function HomePage() {
 
                 <button
                   onClick={() => setIsWizardOpen(true)}
-                  className="flex items-center gap-2 rounded-xl border border-border bg-card hover:bg-muted text-foreground px-4 py-2.5 text-xs font-semibold shadow-sm transition-all"
+                  className="flex items-center gap-2 rounded-xl border border-border bg-card hover:bg-muted text-foreground px-4 py-2.5 text-xs font-semibold shadow-sm transition-all cursor-pointer"
                 >
-                  <Settings2 className="h-4 w-4 text-blue-600" />
+                  <Settings2 className="h-4 w-4 text-primary" />
                   <span>Maktabni Sozlash (Wizard)</span>
                 </button>
 
                 <button
                   onClick={() => setIsImportOpen(true)}
-                  className="flex items-center gap-2 rounded-xl border border-border bg-card hover:bg-muted text-foreground px-4 py-2.5 text-xs font-semibold shadow-sm transition-all"
+                  className="flex items-center gap-2 rounded-xl border border-border bg-card hover:bg-muted text-foreground px-4 py-2.5 text-xs font-semibold shadow-sm transition-all cursor-pointer"
                 >
                   <FileSpreadsheet className="h-4 w-4 text-emerald-600" />
                   <span>1-Click Excel Import</span>
                 </button>
               </div>
             </div>
-          ) : viewMode === "CLASS" ? (
+          ) : store.viewMode === "CLASS" ? (
             <SingleClassView
               classes={schoolClasses}
               subjects={schoolSubjects}
@@ -400,7 +315,7 @@ export default function HomePage() {
               lessons={schoolLessons}
               onOpenZamena={(l) => setSelectedZamenaLesson(l)}
             />
-          ) : viewMode === "TEACHER" ? (
+          ) : store.viewMode === "TEACHER" ? (
             <TeacherScheduleView
               classes={schoolClasses}
               subjects={schoolSubjects}
@@ -415,27 +330,27 @@ export default function HomePage() {
               teachers={schoolTeachers}
               rooms={schoolRooms}
               lessons={schoolLessons}
-              onLessonsChange={handleSchoolLessonsChange}
+              onLessonsChange={store.setLessons}
               onOpenZamena={(l) => setSelectedZamenaLesson(l)}
-              zoomLevel={zoomLevel}
-              selectedBranch={selectedBranch}
+              zoomLevel={store.zoomLevel}
+              selectedBranch={store.selectedBranch}
             />
           )}
         </div>
       </main>
 
-      {/* Modallar */}
+      {/* Add School Modal */}
       {isAddSchoolOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in">
-          <div className="w-full max-w-md rounded-2xl border border-border bg-card p-6 shadow-2xl">
+          <div className="w-full max-w-md rounded-3xl border border-border bg-card p-6 shadow-2xl">
             <div className="flex items-center justify-between pb-4 border-b border-border mb-4">
               <div className="flex items-center gap-2">
-                <Building2 className="h-5 w-5 text-blue-600" />
-                <h3 className="font-bold text-sm text-foreground">Yangi Maktab Qo&apos;shish</h3>
+                <Building2 className="h-5 w-5 text-primary" />
+                <h3 className="font-bold text-sm text-foreground">Yangi Maktab Qo'shish</h3>
               </div>
               <button
                 onClick={() => setIsAddSchoolOpen(false)}
-                className="p-1 rounded-lg hover:bg-muted text-muted-foreground"
+                className="p-1 rounded-lg hover:bg-muted text-muted-foreground cursor-pointer"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -451,23 +366,23 @@ export default function HomePage() {
                   value={newSchoolName}
                   onChange={(e) => setNewSchoolName(e.target.value)}
                   placeholder="Masalan: 45-Umumiy o'rta ta'lim maktabi"
-                  className="w-full rounded-xl border border-border bg-background px-3 py-2 text-xs text-foreground focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  className="w-full rounded-xl border border-border bg-background px-3 py-2 text-xs text-foreground focus:ring-2 focus:ring-primary focus:outline-none"
                 />
               </div>
               <div className="flex items-center justify-end gap-2 pt-3 border-t border-border">
                 <button
                   type="button"
                   onClick={() => setIsAddSchoolOpen(false)}
-                  className="rounded-xl border border-border px-4 py-2 text-xs font-semibold hover:bg-muted"
+                  className="rounded-xl border border-border px-4 py-2 text-xs font-semibold hover:bg-muted cursor-pointer"
                 >
                   Bekor qilish
                 </button>
                 <button
                   type="submit"
-                  className="rounded-xl bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 text-xs font-semibold shadow-md flex items-center gap-1.5"
+                  className="rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground px-5 py-2 text-xs font-semibold shadow-md flex items-center gap-1.5 cursor-pointer"
                 >
                   <Plus className="h-3.5 w-3.5" />
-                  <span>Qo&apos;shish va Sozlash</span>
+                  <span>Qo'shish va Sozlash</span>
                 </button>
               </div>
             </form>
@@ -475,6 +390,7 @@ export default function HomePage() {
         </div>
       )}
 
+      {/* Setup Wizard */}
       <SetupWizard
         isOpen={isWizardOpen}
         onClose={() => setIsWizardOpen(false)}
@@ -485,52 +401,27 @@ export default function HomePage() {
         rooms={schoolRooms}
         classes={schoolClasses}
         onSave={(data) => {
-          setAllBranches((prev) => [
-            ...prev.filter((b) => b.schoolId !== currentSchoolId),
-            ...data.branches.map((b) => ({ ...b, schoolId: currentSchoolId })),
-          ]);
-          setAllShifts((prev) => [
-            ...prev.filter((s) => s.schoolId !== currentSchoolId),
-            ...data.shifts.map((s) => ({ ...s, schoolId: currentSchoolId })),
-          ]);
-          setAllSubjects((prev) => [
-            ...prev.filter((s) => s.schoolId !== currentSchoolId),
-            ...data.subjects.map((s) => ({ ...s, schoolId: currentSchoolId })),
-          ]);
-          setAllTeachers((prev) => [
-            ...prev.filter((t) => t.schoolId !== currentSchoolId),
-            ...data.teachers.map((t) => ({ ...t, schoolId: currentSchoolId })),
-          ]);
-          setAllRooms((prev) => [
-            ...prev.filter((r) => r.schoolId !== currentSchoolId),
-            ...data.rooms.map((r) => ({ ...r, schoolId: currentSchoolId })),
-          ]);
-          setAllClasses((prev) => [
-            ...prev.filter((c) => c.schoolId !== currentSchoolId),
-            ...data.classes.map((c) => ({ ...c, schoolId: currentSchoolId })),
-          ]);
+          data.classes.forEach((c) => store.addClass({ ...c, schoolId: store.currentSchoolId }));
+          data.teachers.forEach((t) => store.addTeacher({ ...t, schoolId: store.currentSchoolId }));
+          data.subjects.forEach((s) => store.addSubject({ ...s, schoolId: store.currentSchoolId }));
+          data.rooms.forEach((r) => store.addRoom({ ...r, schoolId: store.currentSchoolId }));
+          showToast("Maktab ma'lumotlari muvaffaqiyatli saqlandi!");
         }}
       />
 
+      {/* Excel Import Modal */}
       <ExcelImportModal
         isOpen={isImportOpen}
         onClose={() => setIsImportOpen(false)}
         onImportSuccess={(data) => {
-          setAllSubjects((prev) => [
-            ...prev.filter((s) => s.schoolId !== currentSchoolId),
-            ...data.subjects.map((s) => ({ ...s, schoolId: currentSchoolId })),
-          ]);
-          setAllTeachers((prev) => [
-            ...prev.filter((t) => t.schoolId !== currentSchoolId),
-            ...data.teachers.map((t) => ({ ...t, schoolId: currentSchoolId })),
-          ]);
-          setAllClasses((prev) => [
-            ...prev.filter((c) => c.schoolId !== currentSchoolId),
-            ...data.classes.map((c) => ({ ...c, schoolId: currentSchoolId })),
-          ]);
+          data.classes.forEach((c) => store.addClass({ ...c, schoolId: store.currentSchoolId }));
+          data.teachers.forEach((t) => store.addTeacher({ ...t, schoolId: store.currentSchoolId }));
+          data.subjects.forEach((s) => store.addSubject({ ...s, schoolId: store.currentSchoolId }));
+          showToast("Excel ma'lumotlari muvaffaqiyatli yuklandi!");
         }}
       />
 
+      {/* Zamena Modal */}
       <ZamenaModal
         isOpen={!!selectedZamenaLesson}
         onClose={() => setSelectedZamenaLesson(null)}
@@ -542,6 +433,24 @@ export default function HomePage() {
         allLessons={schoolLessons}
         onAssignReplacement={handleAssignReplacement}
       />
+
+      {/* Modern Toast Notification */}
+      {toastMessage && (
+        <div className="fixed bottom-16 right-6 z-50 flex items-center gap-3 rounded-2xl border border-border bg-card/95 text-foreground px-4 py-3 shadow-2xl backdrop-blur-xl animate-in fade-in slide-in-from-bottom-5 duration-200">
+          <div
+            className={`w-7 h-7 rounded-xl flex items-center justify-center font-bold text-xs ${
+              toastMessage.type === "error"
+                ? "bg-rose-500/15 text-rose-600"
+                : toastMessage.type === "info"
+                ? "bg-primary/15 text-primary"
+                : "bg-emerald-500/15 text-emerald-600"
+            }`}
+          >
+            {toastMessage.type === "error" ? "✕" : "✓"}
+          </div>
+          <p className="text-xs font-bold">{toastMessage.text}</p>
+        </div>
+      )}
     </div>
   );
 }

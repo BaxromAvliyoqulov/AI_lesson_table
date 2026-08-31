@@ -17,15 +17,36 @@ export const initialShifts: Shift[] = [
   { id: "s21_1", schoolId: "school_21", name: "1-Smena", startTime: "08:00", endTime: "13:00", periodsCount: 6 },
 ];
 
-export const initialBellSchedule = [
-  { periodNumber: 1, startTime: "08:00", endTime: "08:45", breakDurationMinutes: 5 },
-  { periodNumber: 2, startTime: "08:50", endTime: "09:35", breakDurationMinutes: 10 },
-  { periodNumber: 3, startTime: "09:45", endTime: "10:30", breakDurationMinutes: 20 }, // Katta tanaffus
-  { periodNumber: 4, startTime: "10:50", endTime: "11:35", breakDurationMinutes: 10 },
-  { periodNumber: 5, startTime: "11:45", endTime: "12:30", breakDurationMinutes: 5 },
-  { periodNumber: 6, startTime: "12:35", endTime: "13:20", breakDurationMinutes: 10 },
-  { periodNumber: 7, startTime: "13:30", endTime: "14:15", breakDurationMinutes: 0 },
+export const initialBellScheduleShift1 = [
+  { periodNumber: 1, startTime: "08:00", endTime: "08:45", breakDurationMinutes: 5, isBigBreak: false },
+  { periodNumber: 2, startTime: "08:50", endTime: "09:35", breakDurationMinutes: 10, isBigBreak: false },
+  { periodNumber: 3, startTime: "09:45", endTime: "10:30", breakDurationMinutes: 20, isBigBreak: true }, // Katta tanaffus
+  { periodNumber: 4, startTime: "10:50", endTime: "11:35", breakDurationMinutes: 10, isBigBreak: false },
+  { periodNumber: 5, startTime: "11:45", endTime: "12:30", breakDurationMinutes: 5, isBigBreak: false },
+  { periodNumber: 6, startTime: "12:35", endTime: "13:20", breakDurationMinutes: 5, isBigBreak: false },
+  { periodNumber: 7, startTime: "13:25", endTime: "14:10", breakDurationMinutes: 0, isBigBreak: false },
 ];
+
+export const initialBellScheduleShift2 = [
+  { periodNumber: 1, startTime: "13:30", endTime: "14:15", breakDurationMinutes: 5, isBigBreak: false },
+  { periodNumber: 2, startTime: "14:20", endTime: "15:05", breakDurationMinutes: 10, isBigBreak: false },
+  { periodNumber: 3, startTime: "15:15", endTime: "16:00", breakDurationMinutes: 20, isBigBreak: true }, // Katta tanaffus
+  { periodNumber: 4, startTime: "16:20", endTime: "17:05", breakDurationMinutes: 10, isBigBreak: false },
+  { periodNumber: 5, startTime: "17:15", endTime: "18:00", breakDurationMinutes: 5, isBigBreak: false },
+  { periodNumber: 6, startTime: "18:05", endTime: "18:50", breakDurationMinutes: 5, isBigBreak: false },
+  { periodNumber: 7, startTime: "18:55", endTime: "19:40", breakDurationMinutes: 0, isBigBreak: false },
+];
+
+export const initialBellSchedule = initialBellScheduleShift1;
+
+export function getLessonTimes(periodNumber: number, shiftNumber: number = 1): { start: string; end: string } {
+  const schedule = shiftNumber === 2 ? initialBellScheduleShift2 : initialBellScheduleShift1;
+  const item = schedule.find((b) => b.periodNumber === periodNumber);
+  if (item) {
+    return { start: item.startTime, end: item.endTime };
+  }
+  return { start: `0${7 + periodNumber}:00`, end: `0${7 + periodNumber}:45` };
+}
 
 export const initialRooms: Room[] = [
   { id: "r39_gym1", schoolId: "school_39", branchId: "b39_1", name: "Katta Sport Zali", roomType: "GYM", capacity: 45 },
@@ -36,24 +57,24 @@ export const initialRooms: Room[] = [
 ];
 
 export const initialSubjects: Subject[] = [
-  { id: "sub_mat", schoolId: "school_39", name: "Matematika / Algebra", shortName: "Mat", colorTag: "#3B82F6", difficultyScore: 11, allowDoubleLesson: true },
-  { id: "sub_geom", schoolId: "school_39", name: "Geometriya", shortName: "Geom", colorTag: "#2563EB", difficultyScore: 10, allowDoubleLesson: false },
-  { id: "sub_ona", schoolId: "school_39", name: "Ona tili va Adabiyot", shortName: "Ona tili", colorTag: "#EC4899", difficultyScore: 9, allowDoubleLesson: false },
-  { id: "sub_ing", schoolId: "school_39", name: "Ingliz tili (Chet tili)", shortName: "Ingliz", colorTag: "#8B5CF6", difficultyScore: 8, allowDoubleLesson: false },
-  { id: "sub_rus", schoolId: "school_39", name: "Rus tili", shortName: "Rus tili", colorTag: "#A855F7", difficultyScore: 8, allowDoubleLesson: false },
-  { id: "sub_fiz", schoolId: "school_39", name: "Fizika / Astronomiya", shortName: "Fizika", colorTag: "#06B6D4", difficultyScore: 10, allowDoubleLesson: true, requiresRoomType: "LAB" },
-  { id: "sub_kim", schoolId: "school_39", name: "Kimyo", shortName: "Kimyo", colorTag: "#10B981", difficultyScore: 10, allowDoubleLesson: true, requiresRoomType: "LAB" },
-  { id: "sub_bio", schoolId: "school_39", name: "Biologiya", shortName: "Bio", colorTag: "#84CC16", difficultyScore: 7, allowDoubleLesson: false },
-  { id: "sub_tar", schoolId: "school_39", name: "Tarix (O'zbekiston / Jahon)", shortName: "Tarix", colorTag: "#F59E0B", difficultyScore: 7, allowDoubleLesson: false },
-  { id: "sub_geo", schoolId: "school_39", name: "Geografiya", shortName: "Geo", colorTag: "#14B8A6", difficultyScore: 6, allowDoubleLesson: false },
-  { id: "sub_inf", schoolId: "school_39", name: "Informatika va AT", shortName: "Info", colorTag: "#6366F1", difficultyScore: 8, allowDoubleLesson: false, requiresRoomType: "COMP_LAB" },
-  { id: "sub_jism", schoolId: "school_39", name: "Jismoniy tarbiya", shortName: "Jismoniy", colorTag: "#EF4444", difficultyScore: 2, allowDoubleLesson: false, requiresRoomType: "GYM" },
-  { id: "sub_sanat", schoolId: "school_39", name: "Tasviriy san'at / Chizmachilik", shortName: "San'at", colorTag: "#D946EF", difficultyScore: 1, allowDoubleLesson: false },
-  { id: "sub_musiqa", schoolId: "school_39", name: "Musiqa madaniyati", shortName: "Musiqa", colorTag: "#F43F5E", difficultyScore: 1, allowDoubleLesson: false },
-  { id: "sub_texno", schoolId: "school_39", name: "Texnologiya (Mehnat)", shortName: "Texno", colorTag: "#EA580C", difficultyScore: 3, allowDoubleLesson: true },
-  { id: "sub_tarbiya", schoolId: "school_39", name: "Tarbiya", shortName: "Tarbiya", colorTag: "#F97316", difficultyScore: 3, allowDoubleLesson: false },
-  { id: "sub_oqish", schoolId: "school_39", name: "O'qish savodxonligi", shortName: "O'qish", colorTag: "#FB7185", difficultyScore: 7, allowDoubleLesson: false },
-  { id: "sub_kelajak", schoolId: "school_39", name: "Kelajak Soati (Sinf Rahbari)", shortName: "Kelajak Soati", colorTag: "#8B5CF6", difficultyScore: 1, allowDoubleLesson: false },
+  { id: "sub_mat", schoolId: "school_39", name: "Matematika / Algebra", shortName: "Mat", colorTag: "#3B82F6", difficultyScore: 11, allowDoubleLesson: true, methodDayOfWeek: 3 }, // Chorshanba
+  { id: "sub_geom", schoolId: "school_39", name: "Geometriya", shortName: "Geom", colorTag: "#2563EB", difficultyScore: 10, allowDoubleLesson: false, methodDayOfWeek: 3 },
+  { id: "sub_ona", schoolId: "school_39", name: "Ona tili va Adabiyot", shortName: "Ona tili", colorTag: "#EC4899", difficultyScore: 9, allowDoubleLesson: false, methodDayOfWeek: 2 }, // Seshanba
+  { id: "sub_ing", schoolId: "school_39", name: "Ingliz tili (Chet tili)", shortName: "Ingliz", colorTag: "#8B5CF6", difficultyScore: 8, allowDoubleLesson: false, methodDayOfWeek: 5 }, // Juma
+  { id: "sub_rus", schoolId: "school_39", name: "Rus tili", shortName: "Rus tili", colorTag: "#A855F7", difficultyScore: 8, allowDoubleLesson: false, methodDayOfWeek: 5 }, // Juma
+  { id: "sub_fiz", schoolId: "school_39", name: "Fizika / Astronomiya", shortName: "Fizika", colorTag: "#06B6D4", difficultyScore: 10, allowDoubleLesson: true, requiresRoomType: "LAB", methodDayOfWeek: 3 }, // Chorshanba
+  { id: "sub_kim", schoolId: "school_39", name: "Kimyo", shortName: "Kimyo", colorTag: "#10B981", difficultyScore: 10, allowDoubleLesson: true, requiresRoomType: "LAB", methodDayOfWeek: 4 }, // Payshanba
+  { id: "sub_bio", schoolId: "school_39", name: "Biologiya", shortName: "Bio", colorTag: "#84CC16", difficultyScore: 7, allowDoubleLesson: false, methodDayOfWeek: 4 }, // Payshanba
+  { id: "sub_tar", schoolId: "school_39", name: "Tarix (O'zbekiston / Jahon)", shortName: "Tarix", colorTag: "#F59E0B", difficultyScore: 7, allowDoubleLesson: false, methodDayOfWeek: 2 }, // Seshanba
+  { id: "sub_geo", schoolId: "school_39", name: "Geografiya", shortName: "Geo", colorTag: "#14B8A6", difficultyScore: 6, allowDoubleLesson: false, methodDayOfWeek: 4 }, // Payshanba
+  { id: "sub_inf", schoolId: "school_39", name: "Informatika va AT", shortName: "Info", colorTag: "#6366F1", difficultyScore: 8, allowDoubleLesson: false, requiresRoomType: "COMP_LAB", methodDayOfWeek: 3 }, // Chorshanba
+  { id: "sub_jism", schoolId: "school_39", name: "Jismoniy tarbiya", shortName: "Jismoniy", colorTag: "#EF4444", difficultyScore: 2, allowDoubleLesson: false, requiresRoomType: "GYM", methodDayOfWeek: 1 }, // Dushanba
+  { id: "sub_sanat", schoolId: "school_39", name: "Tasviriy san'at / Chizmachilik", shortName: "San'at", colorTag: "#D946EF", difficultyScore: 1, allowDoubleLesson: false, methodDayOfWeek: 1 },
+  { id: "sub_musiqa", schoolId: "school_39", name: "Musiqa madaniyati", shortName: "Musiqa", colorTag: "#F43F5E", difficultyScore: 1, allowDoubleLesson: false, methodDayOfWeek: 1 },
+  { id: "sub_texno", schoolId: "school_39", name: "Texnologiya (Mehnat)", shortName: "Texno", colorTag: "#EA580C", difficultyScore: 3, allowDoubleLesson: true, methodDayOfWeek: 1 },
+  { id: "sub_tarbiya", schoolId: "school_39", name: "Tarbiya", shortName: "Tarbiya", colorTag: "#F97316", difficultyScore: 3, allowDoubleLesson: false, methodDayOfWeek: 2 },
+  { id: "sub_oqish", schoolId: "school_39", name: "O'qish savodxonligi", shortName: "O'qish", colorTag: "#FB7185", difficultyScore: 7, allowDoubleLesson: false, methodDayOfWeek: 6 },
+  { id: "sub_kelajak", schoolId: "school_39", name: "Kelajak Soati (Sinf Rahbari)", shortName: "Kelajak Soati", colorTag: "#8B5CF6", difficultyScore: 1, allowDoubleLesson: false, methodDayOfWeek: null },
 ];
 
 export const initialTeachers: Teacher[] = [

@@ -51,6 +51,7 @@ const GridCell: React.FC<{
   classId: string;
   day: number;
   period: number;
+  isPrimaryWeekend?: boolean;
   lesson?: Lesson;
   subject?: Subject;
   teacher?: Teacher;
@@ -63,6 +64,7 @@ const GridCell: React.FC<{
   classId,
   day,
   period,
+  isPrimaryWeekend,
   lesson,
   subject,
   teacher,
@@ -76,11 +78,12 @@ const GridCell: React.FC<{
   const { setNodeRef, isOver: isCellOver } = useDroppable({
     id: droppableId,
     data: { classId, day, period, existingLesson: lesson },
+    disabled: isPrimaryWeekend,
   });
 
   // Cell status rangini aniqlash
-  let statusBg = "bg-card/60 hover:bg-muted/30";
-  let statusBorder = "border-border/60";
+  let statusBg = isPrimaryWeekend ? "bg-muted/15" : "bg-card/60 hover:bg-muted/30";
+  let statusBorder = isPrimaryWeekend ? "border-border/30" : "border-border/60";
 
   if (isOver || isCellOver) {
     if (activeValidation?.status === "safe") {
@@ -109,6 +112,11 @@ const GridCell: React.FC<{
           onToggleLock={onToggleLock}
           onOpenZamena={onOpenZamena}
         />
+      ) : isPrimaryWeekend ? (
+        <div className="h-full w-full flex flex-col items-center justify-center text-[10px] text-slate-400/50 font-semibold select-none bg-slate-900/10 rounded">
+          <span>Dam olish</span>
+          <span className="text-[8px] text-slate-500/60">(5 kunlik)</span>
+        </div>
       ) : (
         <div className="h-full w-full flex items-center justify-center text-[10px] text-muted-foreground/30 font-mono select-none">
           +
@@ -528,24 +536,24 @@ export const MasterGrid: React.FC<MasterGridProps> = ({
                     {/* Period Qatorlari (1-7) */}
                     {PERIODS.map((period) => (
                       <tr key={`${day.id}_${period}`} className="hover:bg-muted/10">
-                        {/* Sticky Chap Ustun: Period Raqami */}
+                        {/* Sticky Chap Ustun: Period Raqami va Kirish-Chiqish Vaqtlari */}
                         <td className="sticky left-0 z-20 border border-border bg-card/95 p-2 text-xs font-semibold tabular-nums text-muted-foreground backdrop-blur-md">
-                          <div className="flex items-center justify-between">
-                            <span className="font-bold text-foreground">{period}-dars</span>
-                            <span className="text-[10px] text-muted-foreground/70">
+                          <div className="flex flex-col">
+                            <span className="font-extrabold text-foreground text-xs">{period}-dars</span>
+                            <span className="text-[10px] font-mono text-blue-600 dark:text-blue-400 font-bold">
                               {period === 1
-                                ? "08:00"
+                                ? "08:00 - 08:45"
                                 : period === 2
-                                ? "08:50"
+                                ? "08:50 - 09:35"
                                 : period === 3
-                                ? "09:40"
+                                ? "09:45 - 10:30"
                                 : period === 4
-                                ? "10:35"
+                                ? "10:50 - 11:35"
                                 : period === 5
-                                ? "11:25"
+                                ? "11:45 - 12:30"
                                 : period === 6
-                                ? "12:15"
-                                : "13:05"}
+                                ? "12:35 - 13:20"
+                                : "13:25 - 14:10"}
                             </span>
                           </div>
                         </td>
@@ -572,6 +580,7 @@ export const MasterGrid: React.FC<MasterGridProps> = ({
                                 classId={cls.id}
                                 day={day.id}
                                 period={period}
+                                isPrimaryWeekend={day.id === 6 && (cls.isPrimary || cls.grade <= 4)}
                                 lesson={cellLesson}
                                 subject={subject}
                                 teacher={teacher}

@@ -110,26 +110,36 @@ export const LessonCard: React.FC<LessonCardProps> = ({
         </span>
       </div>
 
-      {/* Bottom row: Xona va Qulflanganlik belgisi */}
-      {(room || lesson.isLocked) && (
-        <div className="mt-1 flex items-center justify-between text-[9px] text-muted-foreground/80 border-t border-border/40 pt-0.5">
-          {room ? (
-            <span className="flex items-center gap-0.5 text-blue-600 dark:text-blue-400 font-medium truncate">
-              <MapPin className="h-2.5 w-2.5" />
-              {room.name}
-            </span>
-          ) : (
-            <span />
-          )}
+      {/* Bottom row: Vaqt, Xona va Qulflanganlik belgisi */}
+      <div className="mt-1 flex items-center justify-between text-[9px] text-muted-foreground/80 border-t border-border/40 pt-1">
+        <span className="font-mono font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.2 rounded text-[9px]">
+          {lesson.periodNumber === 1
+            ? "08:00-08:45"
+            : lesson.periodNumber === 2
+            ? "08:50-09:35"
+            : lesson.periodNumber === 3
+            ? "09:45-10:30"
+            : lesson.periodNumber === 4
+            ? "10:50-11:35"
+            : lesson.periodNumber === 5
+            ? "11:45-12:30"
+            : lesson.periodNumber === 6
+            ? "12:35-13:20"
+            : "13:25-14:10"}
+        </span>
 
-          {lesson.isLocked && (
-            <span className="flex items-center gap-0.5 text-indigo-600 dark:text-indigo-400 font-semibold">
-              <Lock className="h-2 w-2" />
-              Qulflangan
-            </span>
-          )}
-        </div>
-      )}
+        {room ? (
+          <span className="flex items-center gap-0.5 text-blue-600 dark:text-blue-400 font-medium truncate max-w-[70px]">
+            <MapPin className="h-2.5 w-2.5 shrink-0" />
+            <span className="truncate">{room.name}</span>
+          </span>
+        ) : lesson.isLocked ? (
+          <span className="flex items-center gap-0.5 text-indigo-600 dark:text-indigo-400 font-semibold">
+            <Lock className="h-2 w-2" />
+            Qulf
+          </span>
+        ) : null}
+      </div>
     </div>
   );
 };

@@ -36,6 +36,7 @@ export interface Subject {
   difficultyScore: number; // 1-13 SanPiN
   allowDoubleLesson: boolean;
   requiresRoomType?: RoomType | null;
+  methodDayOfWeek?: number | null; // Fan metod kuni (1=Dushanba, 2=Seshanba ... 6=Shanba)
 }
 
 export interface TeacherAvailability {
