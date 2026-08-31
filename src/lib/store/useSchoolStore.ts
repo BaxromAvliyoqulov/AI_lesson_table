@@ -302,6 +302,14 @@ export function useSchoolStore() {
     addAudit("Fanlar taqsimoti saqlandi", `Sinf ID: ${classId} bo'yicha ${subjects.length} ta fan yuklamasi yangilandi`);
   }, [addAudit]);
 
+  const updateClasses = useCallback((updatedClasses: SchoolClass[]) => {
+    updateStore((prev) => ({
+      ...prev,
+      classes: updatedClasses,
+    }));
+    addAudit("Tarifikatsiya yangilandi", "Barcha sinflar bo'yicha o'quv yuklamasi va o'qituvchilar taqsimoti saqlandi");
+  }, [addAudit]);
+
   // Teacher actions
   const addTeacher = useCallback((teacher: Teacher) => {
     updateStore((prev) => ({
@@ -476,6 +484,7 @@ export function useSchoolStore() {
     updateSchoolInfo,
     addClass,
     updateClass,
+    updateClasses,
     deleteClass,
     setHomeroomTeacher,
     saveCurriculum,

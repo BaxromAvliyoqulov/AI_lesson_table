@@ -9,6 +9,7 @@ import { TeacherScheduleView } from "@/components/views/TeacherScheduleView";
 import { SetupWizard } from "@/components/wizard/SetupWizard";
 import { ZamenaModal } from "@/components/zamena/ZamenaModal";
 import { ExcelImportModal } from "@/components/excel/ExcelImportModal";
+import { TarifficationMatrixModal } from "@/components/tariffication/TarifficationMatrixModal";
 import { exportScheduleToExcel } from "@/lib/excel/excel-export";
 import { CSPSolver } from "@/lib/solver/csp-solver";
 import { Official39TableView } from "@/components/views/Official39TableView";
@@ -34,6 +35,7 @@ export default function HomePage() {
   // Local UI modal states
   const [isWizardOpen, setIsWizardOpen] = useState(false);
   const [isImportOpen, setIsImportOpen] = useState(false);
+  const [isTarifficationOpen, setIsTarifficationOpen] = useState(false);
   const [isAddSchoolOpen, setIsAddSchoolOpen] = useState(false);
   const [newSchoolName, setNewSchoolName] = useState("");
   const [selectedZamenaLesson, setSelectedZamenaLesson] = useState<Lesson | null>(null);
@@ -174,6 +176,7 @@ export default function HomePage() {
         onExport={handleExport}
         onOpenWizard={() => setIsWizardOpen(true)}
         onOpenImport={() => setIsImportOpen(true)}
+        onOpenTariffication={() => setIsTarifficationOpen(true)}
         onUndo={store.undo}
         canUndo={store.history.length > 0}
         isGenerating={store.isGenerating}
@@ -231,6 +234,15 @@ export default function HomePage() {
           >
             <Users className="h-4 w-4" />
             <span>O'qituvchi Bo'yicha</span>
+          </button>
+
+          {/* Tarifikatsiya Matritsasi Tugmasi */}
+          <button
+            onClick={() => setIsTarifficationOpen(true)}
+            className="flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-bold transition-all bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 shadow-sm cursor-pointer ml-1"
+          >
+            <Building2 className="h-4 w-4 text-blue-600" />
+            <span>Tarifikatsiya &amp; Yuklama</span>
           </button>
         </div>
 
@@ -470,6 +482,22 @@ export default function HomePage() {
           data.subjects.forEach((s) => store.addSubject({ ...s, schoolId: store.currentSchoolId }));
           showToast("Excel ma'lumotlari muvaffaqiyatli yuklandi!");
         }}
+      />
+
+      {/* Tarifikatsiya Matritsasi Modali */}
+      <TarifficationMatrixModal
+        isOpen={isTarifficationOpen}
+        onClose={() => setIsTarifficationOpen(false)}
+        classes={schoolClasses}
+        subjects={schoolSubjects}
+        teachers={schoolTeachers}
+        branches={schoolBranches}
+        onSaveClassSubjects={(updated) => {
+          store.updateClasses(updated);
+          showToast("Tarifikatsiya o'zgarishlari muvaffaqiyatli saqlandi!");
+        }}
+        onGenerateAI={handleGenerate}
+        isGenerating={store.isGenerating}
       />
 
       {/* Zamena Modal */}

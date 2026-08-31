@@ -33,6 +33,7 @@ interface NavbarProps {
   onExport: () => void;
   onOpenWizard: () => void;
   onOpenImport: () => void;
+  onOpenTariffication?: () => void;
   onUndo: () => void;
   canUndo: boolean;
   isGenerating: boolean;
@@ -52,6 +53,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onExport,
   onOpenWizard,
   onOpenImport,
+  onOpenTariffication,
   onUndo,
   canUndo = false,
   isGenerating = false,
@@ -248,6 +250,18 @@ export const Navbar: React.FC<NavbarProps> = ({
             <Upload className="h-3.5 w-3.5 text-emerald-600" />
             <span>Excel Import</span>
           </button>
+
+          {/* Tarifikatsiya Matritsasi */}
+          {onOpenTariffication && (
+            <button
+              onClick={onOpenTariffication}
+              className="flex items-center gap-1.5 rounded-lg border border-border bg-card hover:bg-blue-50/70 dark:hover:bg-blue-950/30 px-3 py-1.5 text-xs font-bold transition-all shadow-sm text-blue-600 dark:text-blue-400 cursor-pointer"
+              title="O'quv yuklamasi va Tarifikatsiya matritsasi"
+            >
+              <Building2 className="h-3.5 w-3.5 text-blue-600" />
+              <span>Tarifikatsiya</span>
+            </button>
+          )}
 
           {/* Maktab Sozlamalari (Alohida Sahifa) */}
           <a

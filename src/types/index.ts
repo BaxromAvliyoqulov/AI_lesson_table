@@ -101,6 +101,18 @@ export interface Room {
   capacity: number;
 }
 
+export type BuildingTravelPolicy = "DAILY_LOCK" | "BUFFER_PERIOD" | "STRICT_MAIN";
+
+export interface TeacherLoad {
+  id: string;
+  classId: string;
+  subjectId: string;
+  teacherId: string;
+  weeklyHours: number;
+  groupType?: "WHOLE" | "GROUP_1" | "GROUP_2";
+  preferredDays?: number[];
+}
+
 export interface ClassSubject {
   id?: string;
   classId: string;
