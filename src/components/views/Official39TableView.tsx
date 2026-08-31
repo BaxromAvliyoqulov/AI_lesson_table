@@ -68,6 +68,7 @@ interface Official39TableViewProps {
   onExportExcel?: () => void;
   onOpenZamena?: (lesson: Lesson) => void;
   onUpdateSchoolInfo?: (updates: Partial<SchoolInfo>) => void;
+  onSetHomeroomTeacher?: (classId: string, teacherId: string) => void;
   zoomLevel?: number;
   onZoomChange?: (zoom: number) => void;
   schoolName?: string;
@@ -244,6 +245,7 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
   onExportExcel,
   onOpenZamena,
   onUpdateSchoolInfo,
+  onSetHomeroomTeacher,
   zoomLevel = 100,
   onZoomChange,
   schoolName = "39 - umumiy o'rta ta'lim maktabi",
@@ -270,6 +272,33 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
     academicYear: academicYear,
     approvalDate: approvalDate,
   });
+
+  // Sinf rahbarini almashtirish modali
+  const [homeroomModal, setHomeroomModal] = useState<{
+    isOpen: boolean;
+    cls: SchoolClass;
+    currentTeacherId?: string;
+  } | null>(null);
+  const [selectedHomeroomTeacherId, setSelectedHomeroomTeacherId] = useState<string>("");
+
+  const handleSaveHomeroomTeacher = () => {
+    if (!homeroomModal || !selectedHomeroomTeacherId) return;
+    if (onSetHomeroomTeacher) {
+      onSetHomeroomTeacher(homeroomModal.cls.id, selectedHomeroomTeacherId);
+    } else if (onLessonsChange) {
+      const updatedLessons = lessons.map((l) => {
+        if (
+          l.classId === homeroomModal.cls.id &&
+          (l.subjectId === "sub_sinf_soati" || (l.dayOfWeek === 5 && l.periodNumber === 1))
+        ) {
+          return { ...l, teacherId: selectedHomeroomTeacherId };
+        }
+        return l;
+      });
+      onLessonsChange(updatedLessons);
+    }
+    setHomeroomModal(null);
+  };
 
   // Cell Tahrirlash Modali
   const [cellModal, setCellModal] = useState<{
@@ -1033,7 +1062,9 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
                     Sinf rahbar
                   </td>
                   {displayClasses.map((cls) => {
-                    const homeroomTeacher = teachers.find((t) => t.homeroomClassId === cls.id);
+                    const homeroomTeacher =
+                      teachers.find((t) => t.id === cls.homeroomTeacherId) ||
+                      teachers.find((t) => t.homeroomClassId === cls.id);
                     const shortName = homeroomTeacher
                       ? homeroomTeacher.fullName.split(" ").slice(0, 2).join(" ")
                       : "—";
@@ -1042,8 +1073,16 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
                       <td
                         key={`homeroom_${cls.id}`}
                         colSpan={2}
-                        className="border border-black px-1 py-1 text-center truncate max-w-[85px] text-[9px]"
-                        title={homeroomTeacher?.fullName || "Sinf rahbari"}
+                        onClick={() => {
+                          setHomeroomModal({
+                            isOpen: true,
+                            cls,
+                            currentTeacherId: homeroomTeacher?.id,
+                          });
+                          setSelectedHomeroomTeacherId(homeroomTeacher?.id || "");
+                        }}
+                        className="border border-black px-1 py-1 text-center truncate max-w-[85px] text-[9px] cursor-pointer hover:bg-amber-100 hover:text-amber-950 font-medium transition-colors select-none"
+                        title={`${cls.name} sinf rahbari: ${homeroomTeacher?.fullName || "Tayinlanmagan"} (O'zgartirish uchun bosing)`}
                       >
                         {shortName}
                       </td>
@@ -1404,6 +1443,85 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        )}
+
+        {/* ── 6. SINF RAHBARINI ALMASHTIRISH MODALI ───────────────────────── */}
+        {homeroomModal && homeroomModal.isOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in no-print">
+            <div className="w-full max-w-md rounded-2xl border border-slate-800 bg-slate-900 text-white p-6 shadow-2xl space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+                <div className="flex items-center gap-2">
+                  <div className="p-2 rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                    <Users className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-sm text-white">
+                      {homeroomModal.cls.name} — Sinf Rahbarini Tayinlash
+                    </h3>
+                    <p className="text-[11px] text-slate-400">
+                      Sinf rahbari o'zgarganda Juma kungi Sinf soati va imzolar avtomatik yangilanadi
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setHomeroomModal(null)}
+                  className="p-1 rounded hover:bg-slate-800 text-slate-400 hover:text-white"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                    Sinf Rahbari (O'qituvchi):
+                  </label>
+                  <select
+                    value={selectedHomeroomTeacherId}
+                    onChange={(e) => setSelectedHomeroomTeacherId(e.target.value)}
+                    className="w-full px-3 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-white text-xs font-medium focus:ring-2 focus:ring-amber-500 outline-none"
+                  >
+                    <option value="">-- O'qituvchini tanlang --</option>
+                    {teachers.map((t) => {
+                      const subjectsStr = teacherSubjectsMap.get(t.id) || "";
+                      return (
+                        <option key={t.id} value={t.id}>
+                          {t.fullName} {subjectsStr ? `(${subjectsStr})` : ""}
+                        </option>
+                      );
+                    })}
+                  </select>
+                </div>
+
+                <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-200 text-[11px] leading-relaxed">
+                  <p className="font-bold mb-0.5">⚡ Avtomatik Zanjir (SaaS Reactive Sync):</p>
+                  <ul className="list-disc pl-4 space-y-0.5 text-[10px] text-amber-300/90">
+                    <li>Jadvalning eng pastki qatoridagi <strong>Sinf rahbar</strong> F.I.Sh yangilanadi.</li>
+                    <li>Juma kuni 1-dars <strong>Sinf soati</strong> darsiga ushbu ustoz va uning tartib raqami (№) biriktiriladi.</li>
+                    <li>O'qituvchilar va fanlar reestrida o'zgarishlar sinxron aks etadi.</li>
+                  </ul>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setHomeroomModal(null)}
+                  className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-400 hover:bg-slate-800"
+                >
+                  Bekor qilish
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveHomeroomTeacher}
+                  disabled={!selectedHomeroomTeacherId}
+                  className="px-5 py-2 rounded-xl text-xs font-bold bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-slate-950 shadow-lg shadow-amber-500/20 cursor-pointer transition-all"
+                >
+                  Saqlash va Sinxronlash
+                </button>
+              </div>
             </div>
           </div>
         )}

@@ -245,6 +245,55 @@ export function useSchoolStore() {
     }
   }, [addAudit]);
 
+  const setHomeroomTeacher = useCallback((classId: string, teacherId: string) => {
+    updateStore((prev) => {
+      // 1. Update class homeroomTeacherId and subjects array
+      const updatedClasses = prev.classes.map((c) => {
+        if (c.id === classId) {
+          const updatedSubjects = c.subjects.map((s) => {
+            if (s.subjectId === "sub_sinf_soati") {
+              return { ...s, teacherId };
+            }
+            return s;
+          });
+          return { ...c, homeroomTeacherId: teacherId, subjects: updatedSubjects };
+        }
+        return c;
+      });
+
+      // 2. Update teachers homeroomClassId
+      const updatedTeachers = prev.teachers.map((t) => {
+        if (t.id === teacherId) {
+          return { ...t, homeroomClassId: classId };
+        }
+        if (t.homeroomClassId === classId) {
+          return { ...t, homeroomClassId: undefined };
+        }
+        return t;
+      });
+
+      // 3. Update existing Friday 1st period lesson (sub_sinf_soati) if any
+      const updatedLessons = prev.lessons.map((l) => {
+        if (l.classId === classId && (l.subjectId === "sub_sinf_soati" || (l.dayOfWeek === 5 && l.periodNumber === 1))) {
+          return { ...l, teacherId };
+        }
+        return l;
+      });
+
+      return {
+        ...prev,
+        classes: updatedClasses,
+        teachers: updatedTeachers,
+        lessons: updatedLessons,
+      };
+    });
+
+    addAudit(
+      "Sinf rahbari o'zgartirildi",
+      `Sinfga yangi rahbar tayinlandi va Juma kungi Sinf soati sinxronlashtirildi`
+    );
+  }, [addAudit]);
+
   const saveCurriculum = useCallback((classId: string, subjects: ClassSubject[]) => {
     updateStore((prev) => ({
       ...prev,
@@ -428,6 +477,7 @@ export function useSchoolStore() {
     addClass,
     updateClass,
     deleteClass,
+    setHomeroomTeacher,
     saveCurriculum,
     addTeacher,
     updateTeacher,

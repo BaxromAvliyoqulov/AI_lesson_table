@@ -346,6 +346,7 @@ export default function HomePage() {
                   store.updateSchoolInfo(currentSchool.id, updates);
                 }
               }}
+              onSetHomeroomTeacher={store.setHomeroomTeacher}
               schoolName={currentSchool?.name || "39 - umumiy o'rta ta'lim maktabi"}
               region={currentSchool?.region || "Muzrabot tumani"}
               directorName={currentSchool?.directorName || "M. Ramazonov"}
