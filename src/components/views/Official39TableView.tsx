@@ -98,7 +98,51 @@ const PERIOD_TIMES = [
   { period: 6, time: "12.15-13.00" },
 ];
 
-// Draggable & Droppable Katakcha Komponenti (Variant 3: Gibrid Spotlight & O'ta Qulay Rasmiy Muvozanat)
+// Fanlar uchun zamonaviy rangli mavzular (Design 2 bo'yicha)
+function getSubjectTheme(subject?: Subject, subjectId?: string) {
+  if (!subject && !subjectId) return { border: "#CBD5E1", text: "text-slate-900" };
+
+  const id = (subject?.id || subjectId || "").toLowerCase();
+  const name = (subject?.name || "").toLowerCase();
+
+  if (id === "sub_sinf_soati" || name.includes("sinf soati")) {
+    return { border: "#06B6D4", text: "text-cyan-950" };
+  }
+  if (name.includes("matem") || name.includes("algebra") || name.includes("geom")) {
+    return { border: "#2563EB", text: "text-blue-950" };
+  }
+  if (name.includes("fizika") || name.includes("informat")) {
+    return { border: "#4F46E5", text: "text-indigo-950" };
+  }
+  if (name.includes("ona tili") || name.includes("adabiyot")) {
+    return { border: "#D97706", text: "text-amber-950" };
+  }
+  if (name.includes("ingliz") || name.includes("nemis") || name.includes("frans") || name.includes("xorijiy")) {
+    return { border: "#7C3AED", text: "text-purple-950" };
+  }
+  if (name.includes("rus tili")) {
+    return { border: "#DC2626", text: "text-rose-950" };
+  }
+  if (name.includes("kimyo") || name.includes("biolog") || name.includes("tabiiy")) {
+    return { border: "#059669", text: "text-emerald-950" };
+  }
+  if (name.includes("tarix") || name.includes("huquq") || name.includes("tarbiya")) {
+    return { border: "#EA580C", text: "text-orange-950" };
+  }
+  if (name.includes("jismoniy") || name.includes("chqbt") || name.includes("sport") || name.includes("astronom")) {
+    return { border: "#0284C7", text: "text-sky-950" };
+  }
+  if (name.includes("tasviriy") || name.includes("chizmachilik") || name.includes("musiqa") || name.includes("texnolog")) {
+    return { border: "#DB2777", text: "text-pink-950" };
+  }
+  if (name.includes("geograf") || name.includes("iqtisod") || name.includes("tadbirkor")) {
+    return { border: "#0D9488", text: "text-teal-950" };
+  }
+
+  return { border: "#64748B", text: "text-slate-900" };
+}
+
+// Draggable & Droppable Katakcha Komponenti (1-Dizayn Klassik Maktab + 2-Dizayn Rangli Fanlar)
 const OfficialTableCell: React.FC<{
   cls: SchoolClass;
   day: number;
@@ -107,7 +151,6 @@ const OfficialTableCell: React.FC<{
   subject?: Subject;
   teacher?: Teacher;
   teacherNumber?: number;
-  hoveredTeacherId: string | null;
   isHoveredTeacher: boolean;
   isPrimarySaturday: boolean;
   hasConflict: boolean;
@@ -122,7 +165,6 @@ const OfficialTableCell: React.FC<{
   subject,
   teacher,
   teacherNumber,
-  hoveredTeacherId,
   isHoveredTeacher,
   isPrimarySaturday,
   hasConflict,
@@ -153,12 +195,14 @@ const OfficialTableCell: React.FC<{
     ? "border-b-[3.5px] border-b-black"
     : "border-b border-black";
 
+  const isEven = period % 2 === 0;
+
   if (isPrimarySaturday) {
     return (
       <>
         <td
           colSpan={2}
-          className={`border border-black bg-slate-100 text-slate-400 text-[9px] font-bold text-center p-1 select-none ${bottomBorderClass}`}
+          className={`border border-black bg-slate-100/70 text-slate-400 text-[9px] font-bold text-center p-1 select-none ${bottomBorderClass}`}
         >
           {period === 1 ? "Dam" : "—"}
         </td>
@@ -166,26 +210,24 @@ const OfficialTableCell: React.FC<{
     );
   }
 
-  // Spotlight hisoblash
-  const isTargetTeacher = !!(hoveredTeacherId && lesson && lesson.teacherId === hoveredTeacherId);
-  const isDimmed = !!(hoveredTeacherId && lesson && lesson.teacherId !== hoveredTeacherId);
+  const theme = lesson ? getSubjectTheme(subject, lesson.subjectId) : null;
 
-  let bgClass = "bg-white hover:bg-slate-50";
-  let opacityClass = isDimmed ? "opacity-35 transition-opacity duration-150" : "transition-all duration-150";
+  // Zebra & Hover & Ziddiyat (Conflict)
+  let bgClass = isEven ? "bg-slate-50/70" : "bg-white";
 
   if (hasConflict) {
     bgClass = "bg-rose-100 ring-2 ring-rose-500 text-rose-950 font-black z-20";
-  } else if (isTargetTeacher || isHoveredTeacher) {
-    bgClass = "bg-amber-200/90 ring-2 ring-amber-500 text-amber-950 font-black scale-[1.02] shadow-md z-20";
+  } else if (isHoveredTeacher) {
+    bgClass = "bg-amber-200 ring-2 ring-amber-500 text-amber-950 font-black z-10";
   } else if (isOver) {
     bgClass = "bg-emerald-100 ring-2 ring-emerald-500 z-10";
   } else if (lesson?.isLocked) {
-    bgClass = "bg-slate-100";
+    bgClass = "bg-slate-100/90";
   }
 
   return (
     <>
-      {/* Fan Nomi Ustuni (Sof Toza Oq & O'qishli Shrift) */}
+      {/* Fan Nomi Ustuni (2-Dizayndagi aniq rangli chap hoshiya bilan) */}
       <td
         ref={(el) => {
           setDropRef(el);
@@ -196,9 +238,12 @@ const OfficialTableCell: React.FC<{
         onClick={() => onCellClick(cls, day, period, lesson)}
         onMouseEnter={() => lesson && onHoverTeacher(lesson.teacherId)}
         onMouseLeave={() => onHoverTeacher(null)}
-        className={`border border-black px-1.5 py-1 text-left font-bold text-[10.5px] truncate max-w-[76px] cursor-pointer relative select-none ${bottomBorderClass} ${bgClass} ${opacityClass} ${
+        className={`border border-black px-1.5 py-1 text-left font-bold text-[10.5px] truncate max-w-[76px] cursor-pointer transition-colors relative select-none ${bottomBorderClass} ${bgClass} ${
           isDragging ? "opacity-30" : ""
         }`}
+        style={{
+          borderLeft: lesson ? `3.5px solid ${theme?.border || "#3B82F6"}` : undefined,
+        }}
         title={
           hasConflict
             ? `⚠️ ZIDDIYAT: ${teacher?.fullName || "O'qituvchi"} ayni shu paytda boshqa sinfda ham darsga qo'yilgan!`
@@ -208,7 +253,7 @@ const OfficialTableCell: React.FC<{
         }
       >
         <div className="flex items-center justify-between gap-0.5">
-          <span className={`truncate ${lesson ? "text-slate-900 font-bold" : "text-slate-300"}`}>
+          <span className={`truncate ${lesson ? "text-slate-950 font-bold" : "text-slate-300"}`}>
             {subject?.shortName || subject?.name || (lesson ? "Fan" : "—")}
           </span>
           {hasConflict && (
@@ -225,11 +270,15 @@ const OfficialTableCell: React.FC<{
         onClick={() => onCellClick(cls, day, period, lesson)}
         onMouseEnter={() => lesson && onHoverTeacher(lesson.teacherId)}
         onMouseLeave={() => onHoverTeacher(null)}
-        className={`border border-black px-0.5 py-1 text-center font-mono font-bold text-[10px] w-6 cursor-pointer select-none ${bottomBorderClass} ${bgClass} ${opacityClass} ${
-          isTargetTeacher || isHoveredTeacher
-            ? "bg-amber-300 text-amber-950 font-black"
+        className={`border border-black px-0.5 py-1 text-center font-mono font-black text-[10px] w-6 cursor-pointer transition-colors select-none ${bottomBorderClass} ${
+          hasConflict
+            ? "bg-rose-200 text-rose-950 font-extrabold"
+            : isHoveredTeacher
+            ? "bg-amber-300 text-amber-950 font-extrabold"
             : teacherNumber
-            ? "text-slate-800 bg-slate-50/60"
+            ? isEven
+              ? "bg-slate-100 text-slate-950"
+              : "bg-slate-50 text-slate-950"
             : "text-slate-300"
         } ${isDragging ? "opacity-30" : ""}`}
         title={
@@ -1042,7 +1091,6 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
                                 subject={subject}
                                 teacher={teacher}
                                 teacherNumber={teacherNum}
-                                hoveredTeacherId={hoveredTeacherId}
                                 isHoveredTeacher={isHoveredTeacher}
                                 isPrimarySaturday={isPrimarySaturday}
                                 isLastPeriodOfDay={isLastPeriod}
