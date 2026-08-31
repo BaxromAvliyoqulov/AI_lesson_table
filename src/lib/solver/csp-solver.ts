@@ -116,11 +116,41 @@ export class CSPSolver {
       reason?: string;
     }[] = [];
 
-    // ── 1-BOSQICH: QAT'IY KELAJAK SOATI (Dushanba 1-dars) ──────────────────────
-    // Barcha sinflarda faqat Dushanba kuni 1-darsga sinf rahbari tomonidan qo'yiladi
+    // ── 1-BOSQICH: QAT'IY SINF SOATI VA KELAJAK SOATI (1-darslar) ─────────────
+    // Sinf soati: Juma 1-dars; Kelajak soati: Dushanba 1-dars
     for (const cls of this.input.classes) {
       if (cls.isClosed) continue;
 
+      // 1. Sinf soati (Juma 1-dars)
+      const sinfSoatiCs = cls.subjects.find(
+        (cs) =>
+          cs.subjectId === "sub_sinf_soati" ||
+          this.subjectMap.get(cs.subjectId)?.name.toLowerCase().includes("sinf soati")
+      );
+
+      if (sinfSoatiCs) {
+        totalRequired += sinfSoatiCs.weeklyHours;
+        const homeroomTeacherId = cls.homeroomTeacherId || sinfSoatiCs.teacherId;
+
+        // Juma (5-kun) 1-soat band qilinadi
+        occupyTeacher(homeroomTeacherId, 5, 1);
+
+        lessons.push({
+          id: `l_${cls.id}_sinfsoati_5_1_${Date.now()}_${Math.random()}`,
+          scheduleId: "draft-schedule",
+          schoolId: cls.schoolId,
+          classId: cls.id,
+          subjectId: sinfSoatiCs.subjectId,
+          teacherId: homeroomTeacherId,
+          roomId: null,
+          branchId: cls.branchId,
+          dayOfWeek: 5,
+          periodNumber: 1,
+          isLocked: true,
+        });
+      }
+
+      // 2. Kelajak soati (Dushanba 1-dars)
       const kelajakCs = cls.subjects.find(
         (cs) =>
           cs.subjectId === "sub_kelajak" ||
@@ -131,7 +161,7 @@ export class CSPSolver {
         totalRequired += kelajakCs.weeklyHours;
         const homeroomTeacherId = cls.homeroomTeacherId || kelajakCs.teacherId;
 
-        // Dushanba 1-soat band qilinadi
+        // Dushanba (1-kun) 1-soat band qilinadi
         occupyTeacher(homeroomTeacherId, 1, 1);
 
         lessons.push({
@@ -166,7 +196,7 @@ export class CSPSolver {
       const isPrimary = cls.isPrimary || cls.grade <= 4;
       const classDaysCount = isPrimary ? 5 : this.daysCount; // 1-4 sinf: 5 kun, 5-11: 6 kun
 
-      // Darslar ro'yxatini to'plash (Kelajak soatidan tashqari)
+      // Darslar ro'yxatini to'plash (Sinf soati va Kelajak soatidan tashqari)
       const subjectPool: SubjectNeed[] = [];
 
       for (const cs of cls.subjects) {
@@ -174,10 +204,12 @@ export class CSPSolver {
         const teacher = this.teacherMap.get(cs.teacherId);
         if (!subject || !teacher || cs.weeklyHours <= 0) continue;
 
-        // Kelajak soati 1-bosqichda qo'yilgan
+        // Sinf soati va Kelajak soati 1-bosqichda qo'yilgan
         if (
           cs.subjectId === "sub_kelajak" ||
-          subject.name.toLowerCase().includes("kelajak")
+          cs.subjectId === "sub_sinf_soati" ||
+          subject.name.toLowerCase().includes("kelajak") ||
+          subject.name.toLowerCase().includes("sinf soati")
         ) {
           continue;
         }
