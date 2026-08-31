@@ -338,6 +338,7 @@ export default function HomePage() {
               shifts={schoolShifts}
               onLessonsChange={store.setLessons}
               onExportExcel={handleExport}
+              onOpenZamena={(l) => setSelectedZamenaLesson(l)}
               schoolName={currentSchool?.name || "39 - umumiy o'rta ta'lim maktabi"}
               region="Muzrabot tumani"
               directorName="M. Ramazonov"
