@@ -78,22 +78,38 @@
 
 /* Master Grid Custom Scrollbar */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 10px;
+  height: 12px;
 }
 
 ::-webkit-scrollbar-track {
-  background: hsl(var(--muted) / 0.5);
-  border-radius: 4px;
+  background: hsl(var(--muted) / 0.6);
+  border-radius: 6px;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: hsl(var(--muted-foreground) / 0.3);
-  border-radius: 4px;
+  background: hsl(var(--primary) / 0.4);
+  border-radius: 6px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: hsl(var(--muted-foreground) / 0.5);
+  background: hsl(var(--primary) / 0.7);
+}
+
+.custom-scrollbar-x::-webkit-scrollbar {
+  height: 12px;
+  width: 10px;
+}
+.custom-scrollbar-x::-webkit-scrollbar-track {
+  background: hsl(var(--muted) / 0.7);
+  border-radius: 6px;
+}
+.custom-scrollbar-x::-webkit-scrollbar-thumb {
+  background: hsl(var(--primary) / 0.5);
+  border-radius: 6px;
+}
+.custom-scrollbar-x::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--primary) / 0.8);
 }
 
 /* Tabular figures for time & period numbers */

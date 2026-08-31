@@ -37,6 +37,10 @@ import {
   SlidersHorizontal,
   GraduationCap,
   Layers,
+  ChevronLeft,
+  ChevronRight,
+  ArrowLeft,
+  ArrowRight,
 } from "lucide-react";
 
 interface MasterGridProps {
@@ -188,7 +192,14 @@ export const MasterGrid: React.FC<MasterGridProps> = ({
   const [shiftFilter, setShiftFilter] = useState<string>("ALL");
   const [searchQuery, setSearchQuery] = useState("");
   const [density, setDensity] = useState<GridDensity>("STANDARD");
-  const [zoom, setZoom] = useState(propZoomLevel || 100);
+
+  const scrollContainerRef = React.useRef<HTMLDivElement>(null);
+
+  const scrollHorizontally = (amount: number) => {
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollBy({ left: amount, behavior: "smooth" });
+    }
+  };
 
   const subjectMap = useMemo(() => new Map(subjects.map((s) => [s.id, s])), [subjects]);
   const teacherMap = useMemo(() => new Map(teachers.map((t) => [t.id, t])), [teachers]);
@@ -584,31 +595,23 @@ export const MasterGrid: React.FC<MasterGridProps> = ({
               </button>
             </div>
 
-            {/* Zoom Controls */}
+            {/* Horizontal Scroll Helpers */}
             <div className="flex items-center gap-1 bg-background rounded-lg border border-border p-0.5">
               <button
-                onClick={() => setZoom(Math.max(50, zoom - 10))}
-                className="p-1 hover:bg-muted rounded text-muted-foreground hover:text-foreground"
-                title="Kichraytirish"
+                onClick={() => scrollHorizontally(-360)}
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-muted/60 hover:bg-primary hover:text-primary-foreground text-xs font-semibold transition-all cursor-pointer"
+                title="Chapdagi sinflarga scroll qilish"
               >
-                <ZoomOut className="w-3.5 h-3.5" />
-              </button>
-              <span className="font-mono text-[11px] font-bold px-1 min-w-[36px] text-center">
-                {zoom}%
-              </span>
-              <button
-                onClick={() => setZoom(Math.min(150, zoom + 10))}
-                className="p-1 hover:bg-muted rounded text-muted-foreground hover:text-foreground"
-                title="Kattalashtirish"
-              >
-                <ZoomIn className="w-3.5 h-3.5" />
+                <ChevronLeft className="w-4 h-4" />
+                <span className="hidden sm:inline">Chapga</span>
               </button>
               <button
-                onClick={() => setZoom(zoom === 100 ? 70 : 100)}
-                className="p-1 hover:bg-muted rounded text-muted-foreground hover:text-foreground ml-0.5"
-                title={zoom === 100 ? "Ekranga sig'dirish (Fit)" : "100% tiklash"}
+                onClick={() => scrollHorizontally(360)}
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-muted/60 hover:bg-primary hover:text-primary-foreground text-xs font-semibold transition-all cursor-pointer"
+                title="O'ngdagi sinflarga scroll qilish"
               >
-                <Maximize2 className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">O'ngga</span>
+                <ChevronRight className="w-4 h-4" />
               </button>
             </div>
           </div>
@@ -666,10 +669,10 @@ export const MasterGrid: React.FC<MasterGridProps> = ({
           </div>
         )}
 
-        {/* ── MASTER GRID SCROLL CONTAINER ─────────────────────────────────── */}
+        {/* ── MASTER GRID SCROLL CONTAINER (GORIZONTAL VA VERTIKAL SCROLL) ─── */}
         <div
-          className="w-full overflow-auto max-h-[calc(100vh-8rem)] p-3 transition-transform origin-top-left"
-          style={{ transform: `scale(${zoom / 100})`, transformOrigin: "top left" }}
+          ref={scrollContainerRef}
+          className="w-full overflow-x-auto overflow-y-auto max-h-[calc(100vh-8.5rem)] p-3 custom-scrollbar-x select-none"
         >
           <div className="inline-block min-w-full align-middle">
             <table className="min-w-full border-collapse border border-border text-left">
