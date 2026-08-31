@@ -102,7 +102,7 @@ function createInitialState(): SchoolStoreState {
     auditLogs: [
       {
         id: "log_1",
-        timestamp: new Date().toLocaleTimeString("uz-UZ", { hour: "2-digit", minute: "2-digit" }),
+        timestamp: "08:00",
         action: "Tizim ishga tushirildi",
         details: "Boshlang'ich dars jadvali va maktab konfiguratsiyasi yuklandi",
       },
@@ -116,8 +116,10 @@ function createInitialState(): SchoolStoreState {
   };
 }
 
-let storeState: SchoolStoreState = createInitialState();
+const serverInitialState: SchoolStoreState = createInitialState();
+let storeState: SchoolStoreState = { ...serverInitialState };
 const listeners = new Set<() => void>();
+let hasHydrated = false;
 
 function getLocalStorageState(): SchoolStoreState | null {
   if (typeof window === "undefined") return null;
@@ -139,14 +141,6 @@ function saveLocalStorageState(state: SchoolStoreState) {
   }
 }
 
-// Client-side initialization from localStorage
-if (typeof window !== "undefined") {
-  const saved = getLocalStorageState();
-  if (saved) {
-    storeState = { ...storeState, ...saved, isGenerating: false };
-  }
-}
-
 function updateStore(updater: (prev: SchoolStoreState) => SchoolStoreState) {
   storeState = updater(storeState);
   saveLocalStorageState(storeState);
@@ -154,13 +148,23 @@ function updateStore(updater: (prev: SchoolStoreState) => SchoolStoreState) {
 }
 
 export function useSchoolStore() {
+  useEffect(() => {
+    if (!hasHydrated) {
+      hasHydrated = true;
+      const saved = getLocalStorageState();
+      if (saved) {
+        updateStore((prev) => ({ ...prev, ...saved, isGenerating: false }));
+      }
+    }
+  }, []);
+
   const state = useSyncExternalStore(
     (callback) => {
       listeners.add(callback);
       return () => listeners.delete(callback);
     },
     () => storeState,
-    () => storeState
+    () => serverInitialState
   );
 
   const addAudit = useCallback((action: string, details: string) => {

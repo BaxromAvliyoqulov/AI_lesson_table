@@ -764,22 +764,24 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
           {/* O'ng: AI Nazorat, Zoom, Rekvizitlar, Excel va Chop etish tugmalari */}
           <div className="flex items-center gap-2 flex-wrap self-end md:self-auto">
             {/* AI Patrul & Ziddiyatlarni tuzatish tugmasi */}
-            {teacherConflictsSet.size > 0 ? (
-              <button
-                type="button"
-                onClick={handleAutoFixConflicts}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gradient-to-r from-rose-600 to-amber-600 hover:from-rose-500 hover:to-amber-500 text-white text-xs font-bold shadow-md shadow-rose-600/20 cursor-pointer animate-pulse transition-all"
-                title="Parallel darslarni AI algoritmi orqali 0 ziddiyatgacha avtomatik qayta taqsimlash"
-              >
-                <Sparkles className="w-4 h-4" />
-                <span>⚡ AI Bilan To'g'rilash ({Math.round(teacherConflictsSet.size / 2)} ta ziddiyat)</span>
-              </button>
-            ) : (
-              <div className="hidden sm:inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-bold shadow-sm">
-                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                <span>0 Ziddiyat &bull; AI Nazoratida</span>
-              </div>
-            )}
+            <div suppressHydrationWarning className="inline-flex items-center">
+              {teacherConflictsSet.size > 0 ? (
+                <button
+                  type="button"
+                  onClick={handleAutoFixConflicts}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gradient-to-r from-rose-600 to-amber-600 hover:from-rose-500 hover:to-amber-500 text-white text-xs font-bold shadow-md shadow-rose-600/20 cursor-pointer animate-pulse transition-all"
+                  title="Parallel darslarni AI algoritmi orqali 0 ziddiyatgacha avtomatik qayta taqsimlash"
+                >
+                  <Sparkles className="w-4 h-4" />
+                  <span>⚡ AI Bilan To'g'rilash ({Math.round(teacherConflictsSet.size / 2)} ta ziddiyat)</span>
+                </button>
+              ) : (
+                <div className="hidden sm:inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-bold shadow-sm">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                  <span>0 Ziddiyat &bull; AI Nazoratida</span>
+                </div>
+              )}
+            </div>
 
             {/* Zoom Boshqaruvi */}
             <div className="flex items-center gap-1 rounded-xl bg-white border border-slate-200 p-1 shadow-sm" suppressHydrationWarning>
