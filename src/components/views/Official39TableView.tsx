@@ -44,6 +44,7 @@ import {
   AlertTriangle,
   Sparkles,
   CheckCircle2,
+  Loader2,
 } from "lucide-react";
 import { CSPSolver } from "@/lib/solver/csp-solver";
 import { validateDropSlot, DropSlotValidation } from "@/lib/solver/drag-validator";
@@ -329,6 +330,16 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
   const [filterScope, setFilterScope] = useState<FilterScope>("MAIN_HIGH");
   const [hoveredTeacherId, setHoveredTeacherId] = useState<string | null>(null);
   const [activeDragLesson, setActiveDragLesson] = useState<Lesson | null>(null);
+  const [isFixingConflicts, setIsFixingConflicts] = useState<boolean>(false);
+  const [toastMessage, setToastMessage] = useState<{
+    text: string;
+    type: "success" | "error" | "info";
+  } | null>(null);
+
+  const showToast = (text: string, type: "success" | "error" | "info" = "success") => {
+    setToastMessage({ text, type });
+    setTimeout(() => setToastMessage(null), 4000);
+  };
 
   // Rekvizitlarni tahrirlash modali
   const [isRequisitesModalOpen, setIsRequisitesModalOpen] = useState<boolean>(false);
@@ -486,16 +497,31 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
 
   const handleAutoFixConflicts = () => {
     if (!onLessonsChange) return;
-    const solver = new CSPSolver({
-      classes,
-      teachers,
-      subjects,
-      rooms,
-      branches,
-      shifts,
-    });
-    const result = solver.solve();
-    onLessonsChange(result.lessons);
+    setIsFixingConflicts(true);
+    showToast("⚡ AI algoritm dars jadvalidagi barcha ziddiyatlarni tahlil qilmoqda...", "info");
+
+    setTimeout(() => {
+      try {
+        const solver = new CSPSolver({
+          classes,
+          teachers,
+          subjects,
+          rooms,
+          branches,
+          shifts,
+        });
+        const result = solver.solve();
+        onLessonsChange(result.lessons);
+        setIsFixingConflicts(false);
+        showToast(
+          `✅ AI barcha ziddiyatlarni muvaffaqiyatli bartaraf qildi! (${result.lessons.length} ta dars qayta tartiblandi)`,
+          "success"
+        );
+      } catch (err) {
+        setIsFixingConflicts(false);
+        showToast("Ziddiyatlarni to'g'rilashda xatolik yuz berdi", "error");
+      }
+    }, 500);
   };
 
   // Har bir o'qituvchining o'tadigan fanlari ro'yxati (Fan nomi / qisqartmasi)
@@ -864,11 +890,20 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
                 <button
                   type="button"
                   onClick={handleAutoFixConflicts}
-                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gradient-to-r from-rose-600 to-amber-600 hover:from-rose-500 hover:to-amber-500 text-white text-xs font-bold shadow-md shadow-rose-600/20 cursor-pointer animate-pulse transition-all"
+                  disabled={isFixingConflicts}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gradient-to-r from-rose-600 to-amber-600 hover:from-rose-500 hover:to-amber-500 disabled:opacity-60 text-white text-xs font-bold shadow-md shadow-rose-600/20 cursor-pointer transition-all"
                   title="Parallel darslarni AI algoritmi orqali 0 ziddiyatgacha avtomatik qayta taqsimlash"
                 >
-                  <Sparkles className="w-4 h-4" />
-                  <span>⚡ AI Bilan To'g'rilash ({Math.round(teacherConflictsSet.size / 2)} ta ziddiyat)</span>
+                  {isFixingConflicts ? (
+                    <Loader2 className="w-4 h-4 animate-spin text-white" />
+                  ) : (
+                    <Sparkles className="w-4 h-4 text-amber-200 animate-pulse" />
+                  )}
+                  <span>
+                    {isFixingConflicts
+                      ? "AI To'g'rilamoqda..."
+                      : `⚡ AI Bilan To'g'rilash (${Math.round(teacherConflictsSet.size / 2)} ta ziddiyat)`}
+                  </span>
                 </button>
               ) : (
                 <div className="hidden sm:inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-bold shadow-sm">
@@ -1658,6 +1693,28 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
             </div>
           ) : null}
         </DragOverlay>
+
+        {/* ── JONLI TOAST NOTIFICATION ────────────────────────────────────── */}
+        {toastMessage && (
+          <div
+            className={`fixed bottom-6 right-6 z-50 px-4 py-3 rounded-2xl text-xs font-bold shadow-2xl flex items-center gap-2.5 border animate-in slide-in-from-bottom-3 duration-200 backdrop-blur-xl ${
+              toastMessage.type === "success"
+                ? "bg-slate-900/95 text-emerald-300 border-emerald-500/40 shadow-emerald-950/40"
+                : toastMessage.type === "error"
+                ? "bg-slate-900/95 text-rose-300 border-rose-500/40 shadow-rose-950/40"
+                : "bg-slate-900/95 text-blue-300 border-blue-500/40 shadow-blue-950/40"
+            }`}
+          >
+            {toastMessage.type === "success" ? (
+              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+            ) : toastMessage.type === "error" ? (
+              <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
+            ) : (
+              <Sparkles className="w-4 h-4 text-blue-400 shrink-0 animate-pulse" />
+            )}
+            <span>{toastMessage.text}</span>
+          </div>
+        )}
       </div>
     </DndContext>
   );
