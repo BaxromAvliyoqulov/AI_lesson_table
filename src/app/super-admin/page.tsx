@@ -84,6 +84,12 @@ export default function SuperAdminPage() {
   }, []);
 
   useEffect(() => {
+    if (session?.user && session.user.role !== "SUPER_ADMIN") {
+      router.push("/super-admin/login");
+    }
+  }, [session, router]);
+
+  useEffect(() => {
     loadData();
   }, [loadData]);
 
