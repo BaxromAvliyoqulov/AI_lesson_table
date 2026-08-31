@@ -5,7 +5,7 @@ export interface ExcelExportOptions {
   classes: SchoolClass[];
   subjects: Subject[];
   teachers: Teacher[];
-  rooms: Room[];
+  rooms?: Room[];
   lessons: Lesson[];
   branches?: Branch[];
   shifts?: Shift[];
@@ -16,6 +16,7 @@ export interface ExcelExportOptions {
   psychologistName?: string;
   academicYear?: string;
   termName?: string;
+  approvalDate?: string;
 }
 
 const DAYS = [
@@ -34,8 +35,12 @@ const PERIOD_TIMES: Record<number, string> = {
   4: "10:35-11:20",
   5: "11:25-12:10",
   6: "12:15-13:00",
+  7: "13:05-13:50",
 };
 
+/**
+ * 39-maktab va O'zbekiston xalq ta'limi standarti bo'yicha Rasmiy A3 Excel faylini generatsiya qilish
+ */
 export async function exportScheduleToExcel(options: ExcelExportOptions) {
   const {
     classes,
@@ -49,11 +54,11 @@ export async function exportScheduleToExcel(options: ExcelExportOptions) {
     academicVicePrincipalName = "N. Narziqulov",
     psychologistName = "F.I.Sh",
     academicYear = "2025 - 2026",
-    termName = "1-yarim yillik",
+    approvalDate = "2026-yil 28-mart",
   } = options;
 
   const workbook = new ExcelJS.Workbook();
-  workbook.creator = "JadvalAI SaaS";
+  workbook.creator = "JadvalAI Enterprise SaaS";
   workbook.created = new Date();
 
   const subjectMap = new Map(subjects.map((s) => [s.id, s]));
@@ -122,20 +127,22 @@ export async function exportScheduleToExcel(options: ExcelExportOptions) {
     });
 
     const sheetTitle = branch.isMain ? "Asosiy maktab" : branch.name.slice(0, 25);
+    
+    // 📄 A3 ALBOM (LANDSCAPE) SAHIFA SOZLAMALARI
     const ws = workbook.addWorksheet(sheetTitle, {
       pageSetup: {
-        paperSize: 9, // A4
+        paperSize: 8 as any, // A3 Formati (Excel Paper Size 8)
         orientation: "landscape",
         fitToPage: true,
-        fitToWidth: 1,
-        fitToHeight: 0,
+        fitToWidth: 1, // Kengligi 1 varaqqa sig'dirish
+        fitToHeight: 0, // Balandligi avtomatik
         margins: {
-          left: 0.3,
-          right: 0.3,
-          top: 0.4,
-          bottom: 0.4,
-          header: 0.2,
-          footer: 0.2,
+          left: 0.25,
+          right: 0.25,
+          top: 0.35,
+          bottom: 0.35,
+          header: 0.15,
+          footer: 0.15,
         },
       },
     });
@@ -145,44 +152,42 @@ export async function exportScheduleToExcel(options: ExcelExportOptions) {
     const reestrStartCol = lastClassColNum + 2; // 1 ta bo'sh oraliq ustun
 
     // ── 1. SARLAVHALAR VA TASDIQLASH SHTAMPI ──────────────────────────────────
-    // TASDIQLAYMAN (O'ng tomonda)
-    const approveCol = Math.max(lastClassColNum - 3, 5);
-    ws.mergeCells(1, approveCol, 1, lastClassColNum);
-    const cellApprove = ws.getCell(1, approveCol);
+    // TASDIQLAYMAN (Chap tomonda)
+    ws.mergeCells(1, 1, 1, Math.min(6, lastClassColNum));
+    const cellApprove = ws.getCell(1, 1);
     cellApprove.value = "TASDIQLAYMAN";
-    cellApprove.font = { bold: true, size: 10, name: "Times New Roman" };
+    cellApprove.font = { bold: true, size: 11, name: "Times New Roman" };
     cellApprove.alignment = { horizontal: "left" };
 
-    ws.mergeCells(2, approveCol, 2, lastClassColNum);
-    const cellDir = ws.getCell(2, approveCol);
+    ws.mergeCells(2, 1, 2, Math.min(6, lastClassColNum));
+    const cellDir = ws.getCell(2, 1);
     cellDir.value = `Maktab direktori: __________ ${directorFullName}`;
-    cellDir.font = { size: 9, name: "Times New Roman" };
+    cellDir.font = { size: 10, name: "Times New Roman" };
     cellDir.alignment = { horizontal: "left" };
 
-    ws.mergeCells(3, approveCol, 3, lastClassColNum);
-    const cellDate = ws.getCell(3, approveCol);
-    cellDate.value = `2026-yil 28-mart`;
-    cellDate.font = { size: 9, name: "Times New Roman" };
+    ws.mergeCells(3, 1, 3, Math.min(6, lastClassColNum));
+    const cellDate = ws.getCell(3, 1);
+    cellDate.value = approvalDate;
+    cellDate.font = { size: 9.5, name: "Times New Roman" };
     cellDate.alignment = { horizontal: "left" };
 
     // Sarlavha (Markazda)
     ws.mergeCells(4, 1, 4, lastClassColNum);
     const subTitle = ws.getCell(4, 1);
     subTitle.value = `${region} ${schoolName}${branch.isMain ? "" : ` (${branch.name})`} ning ${academicYear} o'quv yili uchun tuzilgan`;
-    subTitle.font = { bold: true, size: 10, name: "Times New Roman" };
+    subTitle.font = { bold: true, size: 11, name: "Times New Roman" };
     subTitle.alignment = { horizontal: "center", vertical: "middle" };
 
     ws.mergeCells(5, 1, 5, lastClassColNum);
     const mainTitle = ws.getCell(5, 1);
     mainTitle.value = `D A R S   J A D V A L I`;
-    mainTitle.font = { bold: true, size: 14, name: "Times New Roman" };
+    mainTitle.font = { bold: true, size: 16, name: "Times New Roman" };
     mainTitle.alignment = { horizontal: "center", vertical: "middle" };
 
     ws.addRow([]); // Qator 6 — bo'sh oraliq
     ws.getRow(6).height = 8;
 
     // ── 2. JADVAL SARLAVHALARI (Qator 7 & 8) ──────────────────────────────────
-    // Qator 7: Sarlavhalar va Sinf nomlari
     const row7Values: (string | number)[] = ["Kun", "Dars", "Vaqti"];
     branchClasses.forEach((cls) => {
       row7Values.push(cls.name, "");
@@ -191,7 +196,7 @@ export async function exportScheduleToExcel(options: ExcelExportOptions) {
     row7Values.push("", "O'QITUVCHILAR VA FANLAR REESTRI", "", "");
 
     const row7 = ws.addRow(row7Values);
-    row7.height = 25;
+    row7.height = 26;
 
     // Sinf nomlarini merge qilish
     let colIdx = 4;
@@ -205,10 +210,10 @@ export async function exportScheduleToExcel(options: ExcelExportOptions) {
 
     // Qator 7 dizayni
     row7.eachCell((cell, colNumber) => {
-      cell.font = { bold: true, size: 10, name: "Times New Roman", color: { argb: "FF000000" } };
+      cell.font = { bold: true, size: 10.5, name: "Times New Roman", color: { argb: "FF000000" } };
       cell.alignment = { horizontal: "center", vertical: "middle" };
       if (colNumber <= lastClassColNum) {
-        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF3F4F6" } };
+        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFE2E8F0" } };
         cell.border = {
           top: { style: "medium", color: { argb: "FF000000" } },
           bottom: { style: "thin", color: { argb: "FF000000" } },
@@ -216,7 +221,7 @@ export async function exportScheduleToExcel(options: ExcelExportOptions) {
           right: { style: "thin", color: { argb: "FF000000" } },
         };
       } else if (colNumber >= reestrStartCol) {
-        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFE5E7EB" } };
+        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFCBD5E1" } };
         cell.border = {
           top: { style: "medium", color: { argb: "FF000000" } },
           bottom: { style: "thin", color: { argb: "FF000000" } },
@@ -242,10 +247,10 @@ export async function exportScheduleToExcel(options: ExcelExportOptions) {
     ws.mergeCells(7, 3, 8, 3);
 
     row8.eachCell((cell, colNumber) => {
-      cell.font = { bold: true, size: 9, name: "Times New Roman", color: { argb: "FF374151" } };
+      cell.font = { bold: true, size: 9.5, name: "Times New Roman", color: { argb: "FF1E293B" } };
       cell.alignment = { horizontal: "center", vertical: "middle" };
       if (colNumber <= lastClassColNum) {
-        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFE5E7EB" } };
+        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF1F5F9" } };
         cell.border = {
           top: { style: "thin", color: { argb: "FF000000" } },
           bottom: { style: "medium", color: { argb: "FF000000" } },
@@ -253,7 +258,7 @@ export async function exportScheduleToExcel(options: ExcelExportOptions) {
           right: { style: "thin", color: { argb: "FF000000" } },
         };
       } else if (colNumber >= reestrStartCol) {
-        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF3F4F6" } };
+        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFE2E8F0" } };
         cell.border = {
           top: { style: "thin", color: { argb: "FF000000" } },
           bottom: { style: "medium", color: { argb: "FF000000" } },
@@ -281,7 +286,6 @@ export async function exportScheduleToExcel(options: ExcelExportOptions) {
 
         branchClasses.forEach((cls) => {
           const isPrimary = cls.isPrimary || cls.grade <= 4;
-          // Shanba kuni boshlang'ich sinflar dam
           if (day.id === 6 && isPrimary) {
             rowData.push("—", "—");
             return;
@@ -314,13 +318,12 @@ export async function exportScheduleToExcel(options: ExcelExportOptions) {
         }
 
         const dataRow = ws.addRow(rowData);
-        dataRow.height = 22; // Ideal balandlik
+        dataRow.height = 22;
 
-        // Chiziqlar va stillar
         const bottomStyle = isLastPeriodOfDay ? "medium" : "thin";
 
         dataRow.eachCell((cell, colNumber) => {
-          cell.font = { size: 9, name: "Times New Roman" };
+          cell.font = { size: 9.5, name: "Times New Roman" };
           cell.alignment = { horizontal: "center", vertical: "middle", wrapText: true };
 
           if (colNumber <= lastClassColNum) {
@@ -343,7 +346,6 @@ export async function exportScheduleToExcel(options: ExcelExportOptions) {
               right: { style: "thin", color: { argb: "FF000000" } },
             };
 
-            // O'qituvchi F.I.Sh va Fanlari chapdan tekislansin
             if (colNumber === reestrStartCol + 1 || colNumber === reestrStartCol + 2) {
               cell.alignment = { horizontal: "left", vertical: "middle", wrapText: true };
             }
@@ -361,7 +363,7 @@ export async function exportScheduleToExcel(options: ExcelExportOptions) {
         vertical: "middle",
         textRotation: 90,
       };
-      dayCell.font = { bold: true, size: 9.5, name: "Times New Roman" };
+      dayCell.font = { bold: true, size: 10, name: "Times New Roman" };
       dayCell.fill = {
         type: "pattern",
         pattern: "solid",
@@ -396,7 +398,7 @@ export async function exportScheduleToExcel(options: ExcelExportOptions) {
 
     totalRow.eachCell((cell, colNumber) => {
       if (colNumber <= lastClassColNum) {
-        cell.font = { bold: true, size: 9.5, name: "Times New Roman" };
+        cell.font = { bold: true, size: 10, name: "Times New Roman" };
         cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFE2E8F0" } };
         cell.alignment = { horizontal: "center", vertical: "middle" };
         cell.border = {
@@ -434,7 +436,7 @@ export async function exportScheduleToExcel(options: ExcelExportOptions) {
 
     homeroomRow.eachCell((cell, colNumber) => {
       if (colNumber <= lastClassColNum) {
-        cell.font = { bold: true, size: 8.5, name: "Times New Roman" };
+        cell.font = { bold: true, size: 9, name: "Times New Roman" };
         cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFFFFFF" } };
         cell.alignment = { horizontal: "center", vertical: "middle", wrapText: true };
         cell.border = {
@@ -448,7 +450,7 @@ export async function exportScheduleToExcel(options: ExcelExportOptions) {
     currentExcelRow++;
 
     // ── 6. RASMIY IMZOLAR (FOOTER SIGNATURES) ─────────────────────────────────
-    ws.addRow([]); // Bo'sh
+    ws.addRow([]);
     ws.getRow(currentExcelRow).height = 14;
     currentExcelRow++;
 
@@ -457,13 +459,13 @@ export async function exportScheduleToExcel(options: ExcelExportOptions) {
       `O'quv ishlar bo'yicha direktor o'rinbosari: ____________________ ${academicVicePrincipalName}`,
     ]);
     signRow.height = 24;
-    signRow.font = { bold: true, size: 10, name: "Times New Roman" };
+    signRow.font = { bold: true, size: 10.5, name: "Times New Roman" };
 
     // Ruhshunos imzosi (Reestr tagiga)
     ws.getCell(currentExcelRow, reestrStartCol).value = `Ruhshunos: ____________________ ${psychologistName}`;
     ws.getCell(currentExcelRow, reestrStartCol).font = {
       bold: true,
-      size: 10,
+      size: 10.5,
       name: "Times New Roman",
     };
 
@@ -499,7 +501,7 @@ export async function exportScheduleToExcel(options: ExcelExportOptions) {
   const a = document.createElement("a");
   a.href = url;
   const sanitizedName = (schoolName || "Maktab").replace(/[\s/\\?%*:|"<>]+/g, "_");
-  a.download = `${sanitizedName}_Rasmiy_Dars_Jadvali_${new Date().toISOString().slice(0, 10)}.xlsx`;
+  a.download = `${sanitizedName}_Rasmiy_A3_Dars_Jadvali_${new Date().toISOString().slice(0, 10)}.xlsx`;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);

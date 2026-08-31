@@ -128,9 +128,24 @@ export default function SettingsPage() {
             </div>
 
             <div className="flex items-center gap-2">
-              <span className="text-xs px-3 py-1 rounded-full font-bold bg-primary/10 text-primary border border-primary/20">
-                Auto-Sync Faol
-              </span>
+              {store.syncStatus === "syncing" && (
+                <span className="text-xs px-3 py-1 rounded-full font-bold bg-amber-50 text-amber-700 border border-amber-200 animate-pulse flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping"></span>
+                  Neon DB Saqlanmoqda...
+                </span>
+              )}
+              {store.syncStatus === "synced" && (
+                <span className="text-xs px-3 py-1 rounded-full font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                  Neon Cloud Sync: Faol
+                </span>
+              )}
+              {store.syncStatus === "offline" && (
+                <span className="text-xs px-3 py-1 rounded-full font-bold bg-zinc-100 text-zinc-700 border border-zinc-200 flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-zinc-400"></span>
+                  Lokal Keshda
+                </span>
+              )}
             </div>
           </div>
 

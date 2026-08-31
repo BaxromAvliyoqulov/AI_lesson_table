@@ -25,6 +25,23 @@ import {
   initialClasses,
 } from "@/lib/mock-data";
 import { CSPSolver } from "@/lib/solver/csp-solver";
+import {
+  getSchoolFullData,
+  saveTimetableLessons,
+  updateLessonPositionAction,
+  swapLessonsAction,
+  upsertTeacherAction,
+  deleteTeacherAction,
+  upsertClassAction,
+  deleteClassAction,
+  upsertSubjectAction,
+  deleteSubjectAction,
+  saveClassTarifficationAction,
+  setHomeroomTeacherAction,
+  updateSchoolDetailsAction,
+} from "@/lib/actions/school.actions";
+
+export type SyncStatus = "synced" | "syncing" | "error" | "offline";
 
 export interface AuditEntry {
   id: string;
@@ -52,6 +69,7 @@ interface SchoolStoreState {
   viewMode: "OFFICIAL_39" | "MASTER" | "CLASS" | "TEACHER";
   selectedClassId: string;
   isGenerating: boolean;
+  syncStatus: SyncStatus;
 }
 
 const STORAGE_KEY = "dars_jadval_ai_store_v8";
@@ -113,6 +131,7 @@ function createInitialState(): SchoolStoreState {
     viewMode: "OFFICIAL_39",
     selectedClassId: "c_school_39_1a",
     isGenerating: false,
+    syncStatus: "synced",
   };
 }
 
@@ -148,6 +167,47 @@ function updateStore(updater: (prev: SchoolStoreState) => SchoolStoreState) {
 }
 
 export function useSchoolStore() {
+  const fetchServerData = useCallback(async (schoolIdToFetch?: string) => {
+    const targetId = schoolIdToFetch || storeState.currentSchoolId;
+    updateStore((prev) => ({ ...prev, syncStatus: "syncing" }));
+    try {
+      const res = await getSchoolFullData(targetId);
+      if (res.success && res.data) {
+        const {
+          schoolInfo,
+          branches,
+          shifts,
+          subjects,
+          rooms,
+          teachers,
+          classes,
+          lessons,
+          bellPeriods,
+        } = res.data;
+        updateStore((prev) => ({
+          ...prev,
+          schools: prev.schools.some((s) => s.id === schoolInfo.id)
+            ? prev.schools.map((s) => (s.id === schoolInfo.id ? schoolInfo : s))
+            : [schoolInfo, ...prev.schools],
+          branches: branches.length > 0 ? branches : prev.branches,
+          shifts: shifts.length > 0 ? shifts : prev.shifts,
+          subjects: subjects.length > 0 ? subjects : prev.subjects,
+          rooms: rooms.length > 0 ? rooms : prev.rooms,
+          teachers: teachers.length > 0 ? teachers : prev.teachers,
+          classes: classes.length > 0 ? classes : prev.classes,
+          lessons: lessons.length > 0 ? lessons : prev.lessons,
+          bellPeriods: bellPeriods.length > 0 ? bellPeriods : prev.bellPeriods,
+          syncStatus: "synced",
+        }));
+      } else {
+        updateStore((prev) => ({ ...prev, syncStatus: "synced" }));
+      }
+    } catch (err) {
+      console.error("fetchServerData xatosi:", err);
+      updateStore((prev) => ({ ...prev, syncStatus: "offline" }));
+    }
+  }, []);
+
   useEffect(() => {
     if (!hasHydrated) {
       hasHydrated = true;
@@ -155,8 +215,9 @@ export function useSchoolStore() {
       if (saved) {
         updateStore((prev) => ({ ...prev, ...saved, isGenerating: false }));
       }
+      fetchServerData();
     }
-  }, []);
+  }, [fetchServerData]);
 
   const state = useSyncExternalStore(
     (callback) => {
@@ -185,7 +246,8 @@ export function useSchoolStore() {
   // School actions
   const setCurrentSchoolId = useCallback((id: string) => {
     updateStore((prev) => ({ ...prev, currentSchoolId: id }));
-  }, []);
+    fetchServerData(id);
+  }, [fetchServerData]);
 
   const addSchool = useCallback((name: string) => {
     const newId = `school_${Date.now()}`;
@@ -216,8 +278,13 @@ export function useSchoolStore() {
     updateStore((prev) => ({
       ...prev,
       schools: prev.schools.map((s) => (s.id === schoolId ? { ...s, ...updates } : s)),
+      syncStatus: "syncing",
     }));
     addAudit("Maktab rekvizitlari yangilandi", `${updates.name || "Maktab"} ma'lumotlari yangilandi`);
+
+    updateSchoolDetailsAction(schoolId, updates).then((res) => {
+      updateStore((prev) => ({ ...prev, syncStatus: res.success ? "synced" : "error" }));
+    });
   }, [addAudit]);
 
   // Class actions
@@ -225,16 +292,26 @@ export function useSchoolStore() {
     updateStore((prev) => ({
       ...prev,
       classes: [...prev.classes, cls],
+      syncStatus: "syncing",
     }));
     addAudit("Sinf qo'shildi", `${cls.name} sinfi yaratildi`);
+
+    upsertClassAction(cls.schoolId || storeState.currentSchoolId, cls).then((res) => {
+      updateStore((prev) => ({ ...prev, syncStatus: res.success ? "synced" : "error" }));
+    });
   }, [addAudit]);
 
   const updateClass = useCallback((cls: SchoolClass) => {
     updateStore((prev) => ({
       ...prev,
       classes: prev.classes.map((c) => (c.id === cls.id ? cls : c)),
+      syncStatus: "syncing",
     }));
     addAudit("Sinf tahrirlandi", `${cls.name} ma'lumotlari yangilandi`);
+
+    upsertClassAction(cls.schoolId || storeState.currentSchoolId, cls).then((res) => {
+      updateStore((prev) => ({ ...prev, syncStatus: res.success ? "synced" : "error" }));
+    });
   }, [addAudit]);
 
   const deleteClass = useCallback((classId: string) => {
@@ -243,15 +320,19 @@ export function useSchoolStore() {
       ...prev,
       classes: prev.classes.filter((c) => c.id !== classId),
       lessons: prev.lessons.filter((l) => l.classId !== classId),
+      syncStatus: "syncing",
     }));
     if (target) {
       addAudit("Sinf o'chirildi", `${target.name} sinfi o'chirildi`);
     }
+
+    deleteClassAction(storeState.currentSchoolId, classId).then((res) => {
+      updateStore((prev) => ({ ...prev, syncStatus: res.success ? "synced" : "error" }));
+    });
   }, [addAudit]);
 
   const setHomeroomTeacher = useCallback((classId: string, teacherId: string) => {
     updateStore((prev) => {
-      // 1. Update class homeroomTeacherId and subjects array
       const updatedClasses = prev.classes.map((c) => {
         if (c.id === classId) {
           const updatedSubjects = c.subjects.map((s) => {
@@ -265,7 +346,6 @@ export function useSchoolStore() {
         return c;
       });
 
-      // 2. Update teachers homeroomClassId
       const updatedTeachers = prev.teachers.map((t) => {
         if (t.id === teacherId) {
           return { ...t, homeroomClassId: classId };
@@ -276,7 +356,6 @@ export function useSchoolStore() {
         return t;
       });
 
-      // 3. Update existing Friday 1st period lesson (sub_sinf_soati) if any
       const updatedLessons = prev.lessons.map((l) => {
         if (l.classId === classId && (l.subjectId === "sub_sinf_soati" || (l.dayOfWeek === 5 && l.periodNumber === 1))) {
           return { ...l, teacherId };
@@ -289,6 +368,7 @@ export function useSchoolStore() {
         classes: updatedClasses,
         teachers: updatedTeachers,
         lessons: updatedLessons,
+        syncStatus: "syncing",
       };
     });
 
@@ -296,14 +376,27 @@ export function useSchoolStore() {
       "Sinf rahbari o'zgartirildi",
       `Sinfga yangi rahbar tayinlandi va Juma kungi Sinf soati sinxronlashtirildi`
     );
+
+    setHomeroomTeacherAction(storeState.currentSchoolId, classId, teacherId).then((res) => {
+      updateStore((prev) => ({ ...prev, syncStatus: res.success ? "synced" : "error" }));
+    });
   }, [addAudit]);
 
   const saveCurriculum = useCallback((classId: string, subjects: ClassSubject[]) => {
     updateStore((prev) => ({
       ...prev,
       classes: prev.classes.map((c) => (c.id === classId ? { ...c, subjects } : c)),
+      syncStatus: "syncing",
     }));
     addAudit("Fanlar taqsimoti saqlandi", `Sinf ID: ${classId} bo'yicha ${subjects.length} ta fan yuklamasi yangilandi`);
+
+    saveClassTarifficationAction(
+      storeState.currentSchoolId,
+      classId,
+      subjects.map((s) => ({ subjectId: s.subjectId, teacherId: s.teacherId, weeklyHours: s.weeklyHours }))
+    ).then((res) => {
+      updateStore((prev) => ({ ...prev, syncStatus: res.success ? "synced" : "error" }));
+    });
   }, [addAudit]);
 
   const updateClasses = useCallback((updatedClasses: SchoolClass[]) => {
@@ -319,16 +412,26 @@ export function useSchoolStore() {
     updateStore((prev) => ({
       ...prev,
       teachers: [...prev.teachers, teacher],
+      syncStatus: "syncing",
     }));
     addAudit("O'qituvchi qo'shildi", `${teacher.fullName} ro'yxatga kiritildi`);
+
+    upsertTeacherAction(teacher.schoolId || storeState.currentSchoolId, teacher).then((res) => {
+      updateStore((prev) => ({ ...prev, syncStatus: res.success ? "synced" : "error" }));
+    });
   }, [addAudit]);
 
   const updateTeacher = useCallback((teacher: Teacher) => {
     updateStore((prev) => ({
       ...prev,
       teachers: prev.teachers.map((t) => (t.id === teacher.id ? teacher : t)),
+      syncStatus: "syncing",
     }));
     addAudit("O'qituvchi yangilandi", `${teacher.fullName} ma'lumotlari tahrirlandi`);
+
+    upsertTeacherAction(teacher.schoolId || storeState.currentSchoolId, teacher).then((res) => {
+      updateStore((prev) => ({ ...prev, syncStatus: res.success ? "synced" : "error" }));
+    });
   }, [addAudit]);
 
   const deleteTeacher = useCallback((teacherId: string) => {
@@ -337,10 +440,15 @@ export function useSchoolStore() {
       ...prev,
       teachers: prev.teachers.filter((t) => t.id !== teacherId),
       lessons: prev.lessons.filter((l) => l.teacherId !== teacherId),
+      syncStatus: "syncing",
     }));
     if (target) {
       addAudit("O'qituvchi o'chirildi", `${target.fullName} tizimdan o'chirildi`);
     }
+
+    deleteTeacherAction(storeState.currentSchoolId, teacherId).then((res) => {
+      updateStore((prev) => ({ ...prev, syncStatus: res.success ? "synced" : "error" }));
+    });
   }, [addAudit]);
 
   const updateTeacherAvailability = useCallback((teacherId: string, availabilities: TeacherAvailability[]) => {
@@ -356,16 +464,26 @@ export function useSchoolStore() {
     updateStore((prev) => ({
       ...prev,
       subjects: [...prev.subjects, subject],
+      syncStatus: "syncing",
     }));
     addAudit("Fan qo'shildi", `${subject.name} fani qo'shildi`);
+
+    upsertSubjectAction(subject.schoolId || storeState.currentSchoolId, subject).then((res) => {
+      updateStore((prev) => ({ ...prev, syncStatus: res.success ? "synced" : "error" }));
+    });
   }, [addAudit]);
 
   const updateSubject = useCallback((subject: Subject) => {
     updateStore((prev) => ({
       ...prev,
       subjects: prev.subjects.map((s) => (s.id === subject.id ? subject : s)),
+      syncStatus: "syncing",
     }));
     addAudit("Fan tahrirlandi", `${subject.name} fani yangilandi`);
+
+    upsertSubjectAction(subject.schoolId || storeState.currentSchoolId, subject).then((res) => {
+      updateStore((prev) => ({ ...prev, syncStatus: res.success ? "synced" : "error" }));
+    });
   }, [addAudit]);
 
   const deleteSubject = useCallback((subjectId: string) => {
@@ -374,10 +492,15 @@ export function useSchoolStore() {
       ...prev,
       subjects: prev.subjects.filter((s) => s.id !== subjectId),
       lessons: prev.lessons.filter((l) => l.subjectId !== subjectId),
+      syncStatus: "syncing",
     }));
     if (target) {
       addAudit("Fan o'chirildi", `${target.name} fani o'chirildi`);
     }
+
+    deleteSubjectAction(storeState.currentSchoolId, subjectId).then((res) => {
+      updateStore((prev) => ({ ...prev, syncStatus: res.success ? "synced" : "error" }));
+    });
   }, [addAudit]);
 
   // Room actions
@@ -425,9 +548,76 @@ export function useSchoolStore() {
           ...prev.lessons.filter((l) => l.schoolId !== prev.currentSchoolId),
           ...newLessons,
         ],
+        syncStatus: "syncing",
       };
     });
+
+    saveTimetableLessons(storeState.currentSchoolId, "active_schedule", newLessons).then((res) => {
+      updateStore((prev) => ({ ...prev, syncStatus: res.success ? "synced" : "error" }));
+    });
   }, []);
+
+  const moveLesson = useCallback(
+    (
+      lessonId: string,
+      dayOfWeek: number,
+      periodNumber: number,
+      teacherId?: string,
+      roomId?: string
+    ) => {
+      updateStore((prev) => {
+        const updated = prev.lessons.map((l) =>
+          l.id === lessonId
+            ? {
+                ...l,
+                dayOfWeek,
+                periodNumber,
+                ...(teacherId ? { teacherId } : {}),
+                ...(roomId !== undefined ? { roomId } : {}),
+              }
+            : l
+        );
+        return { ...prev, lessons: updated, syncStatus: "syncing" };
+      });
+
+      updateLessonPositionAction(
+        storeState.currentSchoolId,
+        lessonId,
+        dayOfWeek,
+        periodNumber,
+        teacherId,
+        roomId
+      ).then((res) => {
+        updateStore((prev) => ({ ...prev, syncStatus: res.success ? "synced" : "error" }));
+      });
+    },
+    []
+  );
+
+  const swapLessons = useCallback(
+    (
+      lessonA: { id: string; dayOfWeek: number; periodNumber: number },
+      lessonB: { id: string; dayOfWeek: number; periodNumber: number }
+    ) => {
+      updateStore((prev) => {
+        const updated = prev.lessons.map((l) => {
+          if (l.id === lessonA.id) {
+            return { ...l, dayOfWeek: lessonA.dayOfWeek, periodNumber: lessonA.periodNumber };
+          }
+          if (l.id === lessonB.id) {
+            return { ...l, dayOfWeek: lessonB.dayOfWeek, periodNumber: lessonB.periodNumber };
+          }
+          return l;
+        });
+        return { ...prev, lessons: updated, syncStatus: "syncing" };
+      });
+
+      swapLessonsAction(storeState.currentSchoolId, lessonA, lessonB).then((res) => {
+        updateStore((prev) => ({ ...prev, syncStatus: res.success ? "synced" : "error" }));
+      });
+    },
+    []
+  );
 
   const toggleLessonLock = useCallback((lessonId: string) => {
     updateStore((prev) => ({
@@ -483,6 +673,7 @@ export function useSchoolStore() {
 
   return {
     ...state,
+    fetchServerData,
     setCurrentSchoolId,
     addSchool,
     updateSchoolInfo,
@@ -504,6 +695,8 @@ export function useSchoolStore() {
     deleteRoom,
     updateBellPeriods,
     setLessons,
+    moveLesson,
+    swapLessons,
     toggleLessonLock,
     undo,
     setZoomLevel,

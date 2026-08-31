@@ -21,6 +21,7 @@ import {
   User,
 } from "lucide-react";
 import { SchoolInfo } from "@/types";
+import { Logo } from "@/components/brand/Logo";
 
 interface NavbarProps {
   schools: SchoolInfo[];
@@ -40,6 +41,7 @@ interface NavbarProps {
   selectedBranch: string;
   onBranchChange: (branchId: string) => void;
   branches: { id: string; name: string }[];
+  syncStatus?: "synced" | "syncing" | "error" | "offline";
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -60,6 +62,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   selectedBranch = "ALL",
   onBranchChange,
   branches = [],
+  syncStatus = "synced",
 }) => {
   const [isSchoolMenuOpen, setIsSchoolMenuOpen] = useState(false);
 
@@ -106,9 +109,7 @@ export const Navbar: React.FC<NavbarProps> = ({
       <div className="flex h-16 items-center justify-between px-4 md:px-6">
         {/* Logo & Maktab Tanlash (Multi-tenant) */}
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-500 shadow-md shadow-blue-500/20 text-white">
-            <Calendar className="h-5 w-5" />
-          </div>
+          <Logo size="md" showText={false} />
 
           <div className="relative">
             <button
@@ -121,8 +122,31 @@ export const Navbar: React.FC<NavbarProps> = ({
                     Jadval.AI
                   </span>
                   <span className="rounded-full bg-blue-100 dark:bg-blue-950/80 px-2 py-0.5 text-[9px] font-bold text-blue-700 dark:text-blue-300">
-                    v2.0
+                    SaaS v2.0
                   </span>
+
+                  {/* Cloud Status Badge */}
+                  {syncStatus === "syncing" && (
+                    <span className="hidden sm:inline-flex items-center gap-1 text-[9px] font-bold text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded-full animate-pulse">
+                      <RefreshCw className="w-2.5 h-2.5 animate-spin" />
+                      <span>Neon DB Saqlanmoqda...</span>
+                    </span>
+                  )}
+                  {syncStatus === "synced" && (
+                    <span
+                      className="hidden sm:inline-flex items-center gap-1 text-[9px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded-full"
+                      title="Neon PostgreSQL bulutiga to'liq sinxronlangan"
+                    >
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                      <span>Neon DB: Faol</span>
+                    </span>
+                  )}
+                  {syncStatus === "offline" && (
+                    <span className="hidden sm:inline-flex items-center gap-1 text-[9px] font-bold text-zinc-600 bg-zinc-100 border border-zinc-200 px-1.5 py-0.5 rounded-full">
+                      <span className="w-1.5 h-1.5 rounded-full bg-zinc-400"></span>
+                      <span>Lokal Kesh</span>
+                    </span>
+                  )}
                 </div>
                 <div className="flex items-center gap-1 text-xs font-semibold text-foreground">
                   <Building2 className="h-3 w-3 text-blue-600" />

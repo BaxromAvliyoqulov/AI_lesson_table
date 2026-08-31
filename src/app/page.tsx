@@ -183,6 +183,7 @@ export default function HomePage() {
         selectedBranch={store.selectedBranch}
         onBranchChange={store.setSelectedBranch}
         branches={schoolBranches}
+        syncStatus={store.syncStatus}
       />
 
       {/* View Mode Switcher Sub-Header */}

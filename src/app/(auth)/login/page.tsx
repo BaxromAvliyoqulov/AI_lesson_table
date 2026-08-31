@@ -3,7 +3,8 @@
 import React, { useState, useTransition } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Eye, EyeOff, Loader2, AlertCircle, Calendar, Sparkles, KeyRound, Shield, School } from "lucide-react";
+import { Eye, EyeOff, Loader2, AlertCircle, KeyRound, Shield, School } from "lucide-react";
+import { Logo } from "@/components/brand/Logo";
 
 const ERROR_MESSAGES: Record<string, string> = {
   CredentialsSignin: "Email yoki parol noto'g'ri",
@@ -82,19 +83,10 @@ export default function LoginPage() {
       <div className="relative w-full max-w-md">
         {/* Logo & Header */}
         <div className="text-center mb-6">
-          <div className="inline-flex items-center gap-3 mb-3">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-amber-400 flex items-center justify-center shadow-lg shadow-indigo-500/30">
-              <Calendar className="w-6 h-6 text-white" />
-            </div>
-            <div className="text-left">
-              <div className="flex items-center gap-1">
-                <span className="text-2xl font-bold text-white tracking-tight">JadvalAI</span>
-                <Sparkles className="w-4 h-4 text-amber-400" />
-              </div>
-              <span className="text-xs text-indigo-300">Maktab Dars Jadvali Tizimi</span>
-            </div>
+          <div className="flex justify-center mb-3">
+            <Logo size="lg" variant="white" />
           </div>
-          <h1 className="text-2xl font-semibold text-white">Xush kelibsiz!</h1>
+          <h1 className="text-2xl font-bold text-white">Xush kelibsiz!</h1>
           <p className="text-indigo-300 text-sm mt-1">Maktab boshqaruv paneliga kirish</p>
         </div>
 

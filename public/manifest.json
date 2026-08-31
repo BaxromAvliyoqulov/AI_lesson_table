@@ -1,0 +1,17 @@
+{
+  "name": "Jadval.AI — Maktab Dars Jadvali Platformasi",
+  "short_name": "JadvalAI",
+  "description": "AI va CSP orqali ziddiyatsiz maktab dars jadvalini tuzish va Master Grid doskasida boshqarish — ko'p filialli maktablar uchun SaaS platforma.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#4f46e5",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

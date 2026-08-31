@@ -46,6 +46,7 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import { CSPSolver } from "@/lib/solver/csp-solver";
+import { validateDropSlot, DropSlotValidation } from "@/lib/solver/drag-validator";
 
 export type FilterScope =
   | "MAIN_HIGH"
@@ -98,7 +99,7 @@ const PERIOD_TIMES = [
   { period: 6, time: "12.15-13.00" },
 ];
 
-// Draggable & Droppable Katakcha Komponenti (1-Variant: Klassik Rasmiy Excel Premium)
+// Draggable & Droppable Katakcha Komponenti (1-Variant: Klassik Rasmiy Excel Premium + Live Drag Conflict Radar)
 const OfficialTableCell: React.FC<{
   cls: SchoolClass;
   day: number;
@@ -111,6 +112,11 @@ const OfficialTableCell: React.FC<{
   isPrimarySaturday: boolean;
   hasConflict: boolean;
   isLastPeriodOfDay?: boolean;
+  activeDragLesson?: Lesson | null;
+  allLessons: Lesson[];
+  teachers: Teacher[];
+  subjects: Subject[];
+  rooms: Room[];
   onHoverTeacher: (teacherId: string | null) => void;
   onCellClick: (cls: SchoolClass, day: number, period: number, lesson?: Lesson) => void;
 }> = ({
@@ -125,6 +131,11 @@ const OfficialTableCell: React.FC<{
   isPrimarySaturday,
   hasConflict,
   isLastPeriodOfDay,
+  activeDragLesson,
+  allLessons,
+  teachers,
+  subjects,
+  rooms,
   onHoverTeacher,
   onCellClick,
 }) => {
@@ -147,6 +158,34 @@ const OfficialTableCell: React.FC<{
     disabled: !lesson || lesson.isLocked || isPrimarySaturday,
   });
 
+  // Real-time Drag & Drop ziddiyat va yuklama tahlili (Yashil/Sariq/Qizil)
+  const validation: DropSlotValidation | null = useMemo(() => {
+    if (!activeDragLesson || isPrimarySaturday || activeDragLesson.id === lesson?.id) {
+      return null;
+    }
+    return validateDropSlot({
+      draggedLesson: activeDragLesson,
+      targetClass: cls,
+      targetDay: day,
+      targetPeriod: period,
+      allLessons,
+      teachers,
+      subjects,
+      rooms,
+    });
+  }, [
+    activeDragLesson,
+    isPrimarySaturday,
+    lesson?.id,
+    cls,
+    day,
+    period,
+    allLessons,
+    teachers,
+    subjects,
+    rooms,
+  ]);
+
   const bottomBorderClass = isLastPeriodOfDay
     ? "border-b-[3.5px] border-b-black"
     : "border-b border-black";
@@ -168,14 +207,27 @@ const OfficialTableCell: React.FC<{
 
   // Droppable, Hover va Ziddiyat (Conflict) vizual ko'rsatkichlari
   let bgClass = isEven ? "bg-slate-50/70" : "bg-white";
-  if (hasConflict) {
-    bgClass = "bg-rose-100 ring-2 ring-rose-500 text-rose-950 font-bold z-20";
-  } else if (isHoveredTeacher) {
-    bgClass = "bg-amber-200/90 ring-2 ring-amber-500 text-amber-950 z-10";
-  } else if (isOver) {
-    bgClass = "bg-emerald-100 ring-2 ring-emerald-500 z-10";
-  } else if (lesson?.isLocked) {
-    bgClass = "bg-slate-100/90";
+
+  if (activeDragLesson) {
+    if (isOver && validation) {
+      bgClass = `${validation.colorClass} font-bold z-30 scale-[1.03] shadow-lg animate-pulse`;
+    } else if (validation?.status === "conflict") {
+      bgClass = "bg-rose-50 text-rose-950 border-rose-300 ring-1 ring-rose-300/40 opacity-70";
+    } else if (validation?.status === "warning") {
+      bgClass = "bg-amber-50/90 text-amber-950 border-amber-300 ring-1 ring-amber-300/40";
+    } else if (validation?.status === "safe") {
+      bgClass = "bg-emerald-50/90 text-emerald-950 border-emerald-300 ring-1 ring-emerald-300/40";
+    }
+  } else {
+    if (hasConflict) {
+      bgClass = "bg-rose-100 ring-2 ring-rose-500 text-rose-950 font-bold z-20";
+    } else if (isHoveredTeacher) {
+      bgClass = "bg-amber-200/90 ring-2 ring-amber-500 text-amber-950 z-10";
+    } else if (isOver) {
+      bgClass = "bg-emerald-100 ring-2 ring-emerald-500 z-10";
+    } else if (lesson?.isLocked) {
+      bgClass = "bg-slate-100/90";
+    }
   }
 
   return (
@@ -191,11 +243,13 @@ const OfficialTableCell: React.FC<{
         onClick={() => onCellClick(cls, day, period, lesson)}
         onMouseEnter={() => lesson && onHoverTeacher(lesson.teacherId)}
         onMouseLeave={() => onHoverTeacher(null)}
-        className={`border border-black px-1.5 py-1 text-left font-semibold text-[10px] truncate max-w-[76px] cursor-pointer transition-colors relative select-none ${bottomBorderClass} ${bgClass} ${
+        className={`border border-black px-1.5 py-1 text-left font-semibold text-[10px] truncate max-w-[76px] cursor-pointer transition-all relative select-none ${bottomBorderClass} ${bgClass} ${
           isDragging ? "opacity-30" : ""
         }`}
         title={
-          hasConflict
+          validation?.reason
+            ? `[${validation.badge}] ${validation.reason}`
+            : hasConflict
             ? `⚠️ ZIDDIYAT: ${teacher?.fullName || "O'qituvchi"} ayni shu paytda boshqa sinfda ham darsga qo'yilgan!`
             : lesson
             ? `${subject?.name || "Fan"} — ${teacher?.fullName || "O'qituvchi"}`
@@ -206,7 +260,10 @@ const OfficialTableCell: React.FC<{
           <span className={`truncate ${lesson ? "text-slate-900 font-semibold" : "text-slate-300"}`}>
             {subject?.shortName || subject?.name || (lesson ? "Fan" : "—")}
           </span>
-          {hasConflict && (
+          {validation?.status === "conflict" && isOver && (
+            <AlertTriangle className="w-2.5 h-2.5 text-rose-600 shrink-0 inline no-print animate-bounce" />
+          )}
+          {hasConflict && !activeDragLesson && (
             <AlertTriangle className="w-2.5 h-2.5 text-rose-600 shrink-0 inline no-print animate-bounce" />
           )}
           {lesson?.isLocked && (
@@ -673,6 +730,44 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
       onDragEnd={handleDragEnd}
     >
       <div className="w-full flex flex-col bg-white text-black p-4 sm:p-6 print:p-0 select-text">
+        {/* ── DRAG & DROP JONLI ZIDDIYAT RADAR BANNERI (Live Status Indicator) ────── */}
+        {activeDragLesson && (
+          <div className="no-print mb-4 p-3.5 rounded-2xl bg-slate-900 text-white shadow-xl border border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 animate-in fade-in slide-in-from-top-2">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-xl bg-amber-400 text-slate-950 flex items-center justify-center font-black text-sm">
+                🎯
+              </div>
+              <div>
+                <p className="text-xs font-bold">
+                  Ko'chirilmoqda:{" "}
+                  <span className="text-amber-300">
+                    {subjectMap.get(activeDragLesson.subjectId)?.name || "Fan"}
+                  </span>{" "}
+                  —{" "}
+                  <span className="text-white">
+                    {teacherMap.get(activeDragLesson.teacherId)?.fullName || "O'qituvchi"}
+                  </span>
+                </p>
+                <p className="text-[11px] text-slate-400">
+                  Katakcha ustiga suring: Yashil — xavfsiz joy, Sariq — ogohlantirish, Qizil — ziddiyat (kolliziya)
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 text-[11px] font-bold">
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                🟢 Bo'sh / Xavfsiz
+              </span>
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                🟡 Yuklama
+              </span>
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-rose-500/20 text-rose-300 border border-rose-500/30">
+                🔴 Ziddiyat
+              </span>
+            </div>
+          </div>
+        )}
+
         {/* ── TOP ACTION & TAB CONTROLS (Toza Oq / Light Mode) ───────────────────────────────────────── */}
         <div className="no-print mb-6 p-3.5 rounded-2xl bg-slate-50 border border-slate-200 text-slate-900 shadow-sm flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3.5">
           {/* Chap: Asosiy Maktab va Filial Aniq Filtrlari */}
@@ -839,9 +934,10 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
               <button
                 onClick={onExportExcel}
                 className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-sm cursor-pointer transition-all"
+                title="39-maktab rasmiy A3 albom andozasidagi Excel faylini yuklab olish"
               >
-                <Download className="w-4 h-4" />
-                <span>Excel yuklab olish</span>
+                <FileSpreadsheet className="w-4 h-4" />
+                <span>Eksport (A3 Excel)</span>
               </button>
             )}
 
@@ -1046,6 +1142,11 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
                                 isHoveredTeacher={isHoveredTeacher}
                                 isPrimarySaturday={isPrimarySaturday}
                                 isLastPeriodOfDay={isLastPeriod}
+                                activeDragLesson={activeDragLesson}
+                                allLessons={lessons}
+                                teachers={teachers}
+                                subjects={subjects}
+                                rooms={rooms}
                                 onHoverTeacher={setHoveredTeacherId}
                                 hasConflict={lesson ? teacherConflictsSet.has(lesson.id) : false}
                                 onCellClick={handleCellClick}

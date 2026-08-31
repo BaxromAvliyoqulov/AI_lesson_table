@@ -57,6 +57,7 @@ export interface TeacherAvailability {
 export interface Teacher {
   id: string;
   schoolId: string;
+  displayNumber?: number;
   fullName: string;
   phone?: string | null;
   weeklyHourCapacity: number;

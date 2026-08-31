@@ -45,10 +45,10 @@ Ko'p filialli va ko'p smenali maktablar uchun deterministik CSP algoritm va AI i
 - [x] **11-Faza:** Production build verifikatsiyasi (100% Green / Zero-Error).
 - [x] **12-Faza:** Auth + NextAuth v5 Beta — Login sahifalari (Maktab Admin + Super Admin), middleware route guard, session JWT, TypeScript type extensions, AUTH_SECRET env.
 - [x] **13-Faza:** Setup Wizard (6 bosqich) — SchoolProfile, Subjects (28 fan katalogi), Teachers, Shifts+Bells, Branches, Classes+Duplicate. `completeSetup()` Prisma transaction Server Action.
-- [ ] **14-Faza:** Server Actions — localStorage → PostgreSQL (Oltin Qoida 2 bajarish)
-- [ ] **15-Faza:** Super Admin Panel (maktablar, obuna, impersonation)
-- [ ] **16-Faza:** Drag & Drop to'liq (qizil/sariq/yashil rang tizimi)
-- [ ] **17-Faza:** Excel Export (real hujjat andozasi — A3, sarlavha, 39-maktab formati)
-- [ ] **18-Faza:** Branding (JadvalAI logo, favicon)
+- [x] **14-Faza:** Server Actions — localStorage → Neon PostgreSQL to'liq sinxronizatsiya qilindi (Oltin Qoida 2 bajarildi, 55 o'qituvchi, 29 sinf, 734 dars Neon bulutida, live cloud sync badge).
+- [x] **15-Faza:** Super Admin Paneli (`/super-admin`) — Neon PostgreSQL ga ulandi: CRUD maktablar, obuna holatini boshqarish, yangi maktab + admin yaratish, Impersonation (maktabga kirish).
+- [x] **16-Faza:** Drag & Drop Jonli Ziddiyat Tizimi — `drag-validator.ts` SanPiN yuklama, o'qituvchi kolliziyasi, metod kuni, xona bandligi bo'yicha 🟢 Yashil / 🟡 Sariq / 🔴 Qizil real-time radar tizimi ishga tushirildi.
+- [x] **17-Faza:** Excel Export — 39-maktab andozasidagi rasmiy A3 albom formati (`paperSize: 8`, Times New Roman, direktor "TASDIQLAYMAN" muhri, Zauch va Ruhshunos rasmiy imzolari, o'qituvchilar reestri bilan 1-click eksport dvigateli).
+- [x] **18-Faza:** Branding & Identika — JadvalAI zamonaviy vektor SVG logotipi (`Logo.tsx`), `favicon.svg`, PWA `manifest.json`, OpenGraph SEO teglari va yagona brend interfeysi.
 - [ ] **19-Faza:** Socket.io real-time sinxronizatsiya
 - [ ] **20-Faza:** CI/CD + E2E Tests (Playwright)
