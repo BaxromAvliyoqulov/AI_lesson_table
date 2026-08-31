@@ -109,6 +109,7 @@ const OfficialTableCell: React.FC<{
   isHoveredTeacher: boolean;
   isPrimarySaturday: boolean;
   hasConflict: boolean;
+  isLastPeriodOfDay?: boolean;
   onCellClick: (cls: SchoolClass, day: number, period: number, lesson?: Lesson) => void;
 }> = ({
   cls,
@@ -121,6 +122,7 @@ const OfficialTableCell: React.FC<{
   isHoveredTeacher,
   isPrimarySaturday,
   hasConflict,
+  isLastPeriodOfDay,
   onCellClick,
 }) => {
   const cellId = `${cls.id}_${day}_${period}`;
@@ -142,12 +144,16 @@ const OfficialTableCell: React.FC<{
     disabled: !lesson || lesson.isLocked || isPrimarySaturday,
   });
 
+  const bottomBorderClass = isLastPeriodOfDay
+    ? "border-b-[3.5px] border-b-black"
+    : "border-b border-black";
+
   if (isPrimarySaturday) {
     return (
       <>
         <td
           colSpan={2}
-          className="border border-black bg-gray-100 text-gray-400 text-[8px] font-semibold text-center p-0.5 select-none"
+          className={`border-r border-l border-t border-black bg-gray-100 text-gray-400 text-[8px] font-semibold text-center p-0.5 select-none ${bottomBorderClass}`}
         >
           {period === 1 ? "Dam" : ""}
         </td>
@@ -178,7 +184,7 @@ const OfficialTableCell: React.FC<{
         {...(lesson ? listeners : {})}
         {...(lesson ? attributes : {})}
         onClick={() => onCellClick(cls, day, period, lesson)}
-        className={`border border-black px-1 py-0.5 text-left font-medium text-[10px] truncate max-w-[70px] cursor-pointer transition-colors relative select-none ${bgClass} ${
+        className={`border-r border-l border-t border-black px-1 py-0.5 text-left font-medium text-[10px] truncate max-w-[70px] cursor-pointer transition-colors relative select-none ${bottomBorderClass} ${bgClass} ${
           isDragging ? "opacity-30" : ""
         }`}
         title={
@@ -203,7 +209,7 @@ const OfficialTableCell: React.FC<{
       {/* O'qituvchi Tartib Raqami Ustuni */}
       <td
         onClick={() => onCellClick(cls, day, period, lesson)}
-        className={`border border-black px-0.5 py-0.5 text-center font-bold text-[10px] w-6 cursor-pointer transition-colors select-none ${
+        className={`border-r border-l border-t border-black px-0.5 py-0.5 text-center font-bold text-[10px] w-6 cursor-pointer transition-colors select-none ${bottomBorderClass} ${
           hasConflict
             ? "bg-rose-200 text-rose-950 font-extrabold"
             : isHoveredTeacher
@@ -928,65 +934,79 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
               <tbody>
                 {displayDays.map((day) => (
                   <React.Fragment key={day.id}>
-                    {displayPeriods.map((periodInfo, pIndex) => (
-                      <tr
-                        key={`${day.id}_${periodInfo.period}`}
-                        className={`hover:bg-blue-50/30 transition-colors ${
-                          pIndex === displayPeriods.length - 1 ? "border-b-2 border-black" : "border-b border-gray-300"
-                        }`}
-                      >
-                        {/* Vertikal Kun ustuni */}
-                        {pIndex === 0 && (
+                    {displayPeriods.map((periodInfo, pIndex) => {
+                      const isLastPeriod = pIndex === displayPeriods.length - 1;
+                      return (
+                        <tr
+                          key={`${day.id}_${periodInfo.period}`}
+                          className={`hover:bg-blue-50/30 transition-colors ${
+                            isLastPeriod
+                              ? "border-b-[3.5px] border-black"
+                              : "border-b border-gray-300"
+                          }`}
+                        >
+                          {/* Vertikal Kun ustuni (Har bir kun alohida qalin hoshiya bilan ajratilgan) */}
+                          {pIndex === 0 && (
+                            <td
+                              rowSpan={displayPeriods.length}
+                              className="border-r-2 border-l border-t border-b-[3.5px] border-black bg-slate-100 font-extrabold text-[10.5px] tracking-widest text-center align-middle select-none w-7 p-1 shadow-sm text-slate-900"
+                              style={{
+                                writingMode: "vertical-lr",
+                                transform: "rotate(180deg)",
+                              }}
+                            >
+                              {day.name}
+                            </td>
+                          )}
+
+                          {/* Dars raqami (1..6) */}
                           <td
-                            rowSpan={displayPeriods.length}
-                            className="border border-black bg-gray-100 font-bold text-[10px] tracking-wider text-center align-middle select-none w-6 p-1"
-                            style={{
-                              writingMode: "vertical-lr",
-                              transform: "rotate(180deg)",
-                            }}
+                            className={`border-r border-black font-bold text-center px-1 py-1 w-5 bg-gray-50 ${
+                              isLastPeriod ? "border-b-[3.5px] border-b-black" : "border-b border-gray-300"
+                            }`}
                           >
-                            {day.name}
+                            {periodInfo.period}
                           </td>
-                        )}
 
-                        {/* Dars raqami (1..6) */}
-                        <td className="border border-black font-bold text-center px-1 py-1 w-5 bg-gray-50">
-                          {periodInfo.period}
-                        </td>
+                          {/* Dars vaqti (8.00-8.45...) */}
+                          <td
+                            className={`border-r border-black font-mono text-[9px] text-gray-700 px-1 py-1 w-16 text-center whitespace-nowrap bg-gray-50 ${
+                              isLastPeriod ? "border-b-[3.5px] border-b-black" : "border-b border-gray-300"
+                            }`}
+                          >
+                            {periodInfo.time}
+                          </td>
 
-                        {/* Dars vaqti (8.00-8.45...) */}
-                        <td className="border border-black font-mono text-[9px] text-gray-700 px-1 py-1 w-16 text-center whitespace-nowrap bg-gray-50">
-                          {periodInfo.time}
-                        </td>
+                          {/* Sinf Katakchalari: Fan (chap) + O'qituvchi raqami (o'ng) */}
+                          {displayClasses.map((cls) => {
+                            const lesson = lessonMap.get(`${cls.id}_${day.id}_${periodInfo.period}`);
+                            const subject = lesson ? subjectMap.get(lesson.subjectId) : undefined;
+                            const teacher = lesson ? teacherMap.get(lesson.teacherId) : undefined;
+                            const teacherNum = lesson ? teacherNumberMap.get(lesson.teacherId) : undefined;
+                            const isPrimarySaturday = day.id === 6 && (cls.isPrimary || cls.grade <= 4);
+                            const isHoveredTeacher = !!(lesson && hoveredTeacherId === lesson.teacherId);
 
-                        {/* Sinf Katakchalari: Fan (chap) + O'qituvchi raqami (o'ng) */}
-                        {displayClasses.map((cls) => {
-                          const lesson = lessonMap.get(`${cls.id}_${day.id}_${periodInfo.period}`);
-                          const subject = lesson ? subjectMap.get(lesson.subjectId) : undefined;
-                          const teacher = lesson ? teacherMap.get(lesson.teacherId) : undefined;
-                          const teacherNum = lesson ? teacherNumberMap.get(lesson.teacherId) : undefined;
-                          const isPrimarySaturday = day.id === 6 && (cls.isPrimary || cls.grade <= 4);
-                          const isHoveredTeacher = !!(lesson && hoveredTeacherId === lesson.teacherId);
-
-                          return (
-                            <OfficialTableCell
-                              key={`cell_${cls.id}_${day.id}_${periodInfo.period}`}
-                              cls={cls}
-                              day={day.id}
-                              period={periodInfo.period}
-                              lesson={lesson}
-                              subject={subject}
-                              teacher={teacher}
-                              teacherNumber={teacherNum}
-                              isHoveredTeacher={isHoveredTeacher}
-                              isPrimarySaturday={isPrimarySaturday}
-                              hasConflict={lesson ? teacherConflictsSet.has(lesson.id) : false}
-                              onCellClick={handleCellClick}
-                            />
-                          );
-                        })}
-                      </tr>
-                    ))}
+                            return (
+                              <OfficialTableCell
+                                key={`cell_${cls.id}_${day.id}_${periodInfo.period}`}
+                                cls={cls}
+                                day={day.id}
+                                period={periodInfo.period}
+                                lesson={lesson}
+                                subject={subject}
+                                teacher={teacher}
+                                teacherNumber={teacherNum}
+                                isHoveredTeacher={isHoveredTeacher}
+                                isPrimarySaturday={isPrimarySaturday}
+                                isLastPeriodOfDay={isLastPeriod}
+                                hasConflict={lesson ? teacherConflictsSet.has(lesson.id) : false}
+                                onCellClick={handleCellClick}
+                              />
+                            );
+                          })}
+                        </tr>
+                      );
+                    })}
                   </React.Fragment>
                 ))}
 
