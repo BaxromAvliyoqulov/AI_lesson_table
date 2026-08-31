@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useSession, signOut } from "next-auth/react";
 import {
   Calendar,
@@ -8,8 +8,6 @@ import {
   Download,
   Upload,
   Settings2,
-  Moon,
-  Sun,
   School as SchoolIcon,
   RefreshCw,
   Undo2,
@@ -61,7 +59,6 @@ export const Navbar: React.FC<NavbarProps> = ({
   onBranchChange,
   branches = [],
 }) => {
-  const [isDark, setIsDark] = useState(false);
   const [isSchoolMenuOpen, setIsSchoolMenuOpen] = useState(false);
 
   const safeSchools = schools || [];
@@ -75,14 +72,16 @@ export const Navbar: React.FC<NavbarProps> = ({
 
   const { data: session } = useSession();
 
-  const toggleTheme = () => {
-    setIsDark(!isDark);
-    if (!isDark) {
-      document.documentElement.classList.add("dark");
-    } else {
+  // Butun platformani qat'iy oq (Light Mode) rejimga qulflash
+  useEffect(() => {
+    if (typeof document !== "undefined") {
       document.documentElement.classList.remove("dark");
+      document.documentElement.classList.add("light");
+      try {
+        localStorage.removeItem("theme");
+      } catch (e) {}
     }
-  };
+  }, []);
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/80 bg-background/95 backdrop-blur-md transition-colors">
@@ -280,15 +279,6 @@ export const Navbar: React.FC<NavbarProps> = ({
               <Sparkles className="h-3.5 w-3.5 text-amber-300 animate-pulse" />
             )}
             <span>{isGenerating ? "Tuzilmoqda..." : "AI Generatsiya"}</span>
-          </button>
-
-          {/* Dark / Light */}
-          <button
-            onClick={toggleTheme}
-            className="p-2 rounded-lg border border-border bg-card hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
-            title="Mavzuni almashtirish"
-          >
-            {isDark ? <Sun className="h-4 w-4 text-amber-500" /> : <Moon className="h-4 w-4" />}
           </button>
 
           {/* Chiqish (Logout) */}
