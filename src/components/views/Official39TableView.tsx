@@ -39,7 +39,17 @@ import {
   Settings,
   Award,
   Save,
+  ChevronDown,
 } from "lucide-react";
+
+export type FilterScope =
+  | "MAIN_HIGH"
+  | "MAIN_PRIMARY"
+  | "MAIN_ALL"
+  | "BRANCH_HIGH"
+  | "BRANCH_PRIMARY"
+  | "BRANCH_ALL"
+  | "ALL";
 
 interface Official39TableViewProps {
   classes: SchoolClass[];
@@ -208,9 +218,8 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
   academicYear = "2025 - 2026",
   approvalDate = "2026-yil 28-mart",
 }) => {
-  // Bosqich filtri: "HIGH" (5-11), "PRIMARY" (1-4), "ALL" (1-11)
-  const [stageFilter, setStageFilter] = useState<"HIGH" | "PRIMARY" | "ALL">("HIGH");
-  const [selectedBranch, setSelectedBranch] = useState<string>("ALL");
+  // Foydalanuvchi tanlagan aniq bino va bosqich filtri
+  const [filterScope, setFilterScope] = useState<FilterScope>("MAIN_HIGH");
   const [hoveredTeacherId, setHoveredTeacherId] = useState<string | null>(null);
   const [activeDragLesson, setActiveDragLesson] = useState<Lesson | null>(null);
 
@@ -258,35 +267,43 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
     return map;
   }, [lessons]);
 
-  // Bosqich va Filial bo'yicha filtrlangan sinflar
+  // Asosiy bino va Filial (D sinflar) bo'yicha aniq filtrlangan sinflar
   const displayClasses = useMemo(() => {
-    let list = classes;
-    if (selectedBranch !== "ALL") {
-      list = list.filter((c) => c.branchId === selectedBranch);
+    switch (filterScope) {
+      case "MAIN_ALL":
+        return classes.filter((c) => c.branchId === "b39_1");
+      case "MAIN_HIGH":
+        return classes.filter((c) => c.branchId === "b39_1" && !c.isPrimary && c.grade >= 5);
+      case "MAIN_PRIMARY":
+        return classes.filter((c) => c.branchId === "b39_1" && (c.isPrimary || c.grade <= 4));
+      case "BRANCH_ALL":
+        return classes.filter((c) => c.branchId === "b39_2");
+      case "BRANCH_HIGH":
+        return classes.filter((c) => c.branchId === "b39_2" && !c.isPrimary && c.grade >= 5);
+      case "BRANCH_PRIMARY":
+        return classes.filter((c) => c.branchId === "b39_2" && (c.isPrimary || c.grade <= 4));
+      case "ALL":
+      default:
+        return classes;
     }
-    if (stageFilter === "PRIMARY") {
-      list = list.filter((c) => c.isPrimary || c.grade <= 4);
-    } else if (stageFilter === "HIGH") {
-      list = list.filter((c) => !c.isPrimary && c.grade >= 5);
-    }
-    return list;
-  }, [classes, selectedBranch, stageFilter]);
+  }, [classes, filterScope]);
 
   // Boshlang'ich sinflar uchun 5 kunlik hafta (Dushanba-Juma)
+  const isPrimaryOnly = filterScope === "MAIN_PRIMARY" || filterScope === "BRANCH_PRIMARY";
   const displayDays = useMemo(() => {
-    if (stageFilter === "PRIMARY") {
+    if (isPrimaryOnly) {
       return DAYS.slice(0, 5); // Faqat Dushanba-Juma
     }
     return DAYS; // Dushanba-Shanba
-  }, [stageFilter]);
+  }, [isPrimaryOnly]);
 
   // Boshlang'ich sinflar uchun odatda 5 dars, yuqori sinflar uchun 6 dars
   const displayPeriods = useMemo(() => {
-    if (stageFilter === "PRIMARY") {
+    if (isPrimaryOnly) {
       return PERIOD_TIMES.slice(0, 5);
     }
     return PERIOD_TIMES;
-  }, [stageFilter]);
+  }, [isPrimaryOnly]);
 
   // Har bir sinf uchun jami dars soatlari
   const classTotalHours = useMemo(() => {
@@ -300,7 +317,7 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
 
   // Joriy ko'rinishdagi o'qituvchilar ro'yxati (o'ng tarafdagi jadval uchun)
   const displayTeachers = useMemo(() => {
-    if (stageFilter === "ALL") return teachers;
+    if (filterScope === "ALL") return teachers;
     const activeTeacherIds = new Set<string>();
     for (const cls of displayClasses) {
       if (cls.homeroomTeacherId) activeTeacherIds.add(cls.homeroomTeacherId);
@@ -313,7 +330,7 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
     }
     const filtered = teachers.filter((t) => activeTeacherIds.has(t.id));
     return filtered.length > 0 ? filtered : teachers;
-  }, [teachers, displayClasses, lessons, stageFilter]);
+  }, [teachers, displayClasses, lessons, filterScope]);
 
   // Har bir o'qituvchining o'tadigan fanlari ro'yxati (Fan nomi / qisqartmasi)
   const teacherSubjectsMap = useMemo(() => {
@@ -519,12 +536,26 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
     window.print();
   };
 
-  const stageTitle =
-    stageFilter === "PRIMARY"
-      ? "BOSHLANG'ICH SINFLAR (1-4)"
-      : stageFilter === "HIGH"
-      ? "YUQORI VA O'RTA SINFLAR (5-11)"
-      : "UMUMIY MAKTAB (1-11 SINFLAR)";
+  // Dinamik Sarlavha
+  const stageTitle = useMemo(() => {
+    switch (filterScope) {
+      case "MAIN_ALL":
+        return "ASOSIY MAKTAB (1-11 SINFLAR)";
+      case "MAIN_HIGH":
+        return "ASOSIY MAKTAB KATTA VA O'RTA SINFLAR (5-11)";
+      case "MAIN_PRIMARY":
+        return "ASOSIY MAKTAB BOSHLANG'ICH SINFLAR (1-4)";
+      case "BRANCH_ALL":
+        return "FILIAL BINOSI (1-D .. 7-D SINFLAR)";
+      case "BRANCH_HIGH":
+        return "FILIAL KATTA SINFLAR (5-D, 6-D, 7-D)";
+      case "BRANCH_PRIMARY":
+        return "FILIAL BOSHLANG'ICH SINFLAR (1-D .. 4-D)";
+      case "ALL":
+      default:
+        return "UMUMIY MAKTAB (BARCHA FILIALLAR)";
+    }
+  }, [filterScope]);
 
   return (
     <DndContext
@@ -535,76 +566,94 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
       <div className="w-full flex flex-col bg-white text-black p-4 sm:p-6 print:p-0 select-text">
         {/* ── TOP ACTION & TAB CONTROLS ───────────────────────────────────────── */}
         <div className="no-print mb-6 p-4 rounded-2xl bg-slate-900 text-white shadow-xl flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 border border-slate-800">
-          {/* Chap: Bosqich Tablari (Boshlang'ich / Katta sinflar / Barchasi) */}
-          <div className="flex items-center gap-1.5 p-1 rounded-xl bg-slate-950/80 border border-slate-800 self-start">
-            <button
-              onClick={() => setStageFilter("HIGH")}
-              className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                stageFilter === "HIGH"
-                  ? "bg-blue-600 text-white shadow-md shadow-blue-600/30"
-                  : "text-slate-400 hover:text-white hover:bg-slate-800/60"
-              }`}
-            >
-              <GraduationCap className="w-4 h-4" />
-              <span>🧑 Katta sinflar (5-11)</span>
-              <span className="ml-1 px-1.5 py-0.2 rounded-full text-[10px] bg-blue-950 text-blue-300 font-mono">
-                {classes.filter((c) => !c.isPrimary && c.grade >= 5).length}
-              </span>
-            </button>
+          {/* Chap: Asosiy Maktab va Filial Aniq Filtrlari */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex items-center gap-1.5 p-1 rounded-xl bg-slate-950/90 border border-slate-800">
+              <Building2 className="w-4 h-4 text-amber-400 ml-2" />
+              <select
+                value={filterScope}
+                onChange={(e) => setFilterScope(e.target.value as FilterScope)}
+                className="bg-transparent text-white text-xs font-bold py-1.5 pr-3 outline-none cursor-pointer"
+              >
+                <optgroup label="🏢 Asosiy Maktab" className="bg-slate-900 text-white font-bold">
+                  <option value="MAIN_HIGH" className="bg-slate-900 text-white">
+                    🧑 Asosiy maktab — Katta sinf (5-11)
+                  </option>
+                  <option value="MAIN_PRIMARY" className="bg-slate-900 text-white">
+                    👦 Asosiy maktab — Boshlang'ich (1-4)
+                  </option>
+                  <option value="MAIN_ALL" className="bg-slate-900 text-white">
+                    🏢 Asosiy maktab — Hammasi (1-11)
+                  </option>
+                </optgroup>
 
-            <button
-              onClick={() => setStageFilter("PRIMARY")}
-              className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                stageFilter === "PRIMARY"
-                  ? "bg-emerald-600 text-white shadow-md shadow-emerald-600/30"
-                  : "text-slate-400 hover:text-white hover:bg-slate-800/60"
-              }`}
-            >
-              <Users className="w-4 h-4" />
-              <span>👦 Boshlang'ich (1-4)</span>
-              <span className="ml-1 px-1.5 py-0.2 rounded-full text-[10px] bg-emerald-950 text-emerald-300 font-mono">
-                {classes.filter((c) => c.isPrimary || c.grade <= 4).length}
-              </span>
-            </button>
+                <optgroup label="🏠 Filial Binosi (D-sinflar)" className="bg-slate-900 text-amber-300 font-bold">
+                  <option value="BRANCH_HIGH" className="bg-slate-900 text-white">
+                    🧑 Filial — Katta sinf (5-D, 6-D, 7-D)
+                  </option>
+                  <option value="BRANCH_PRIMARY" className="bg-slate-900 text-white">
+                    👦 Filial — Boshlang'ich (1-D .. 4-D)
+                  </option>
+                  <option value="BRANCH_ALL" className="bg-slate-900 text-white">
+                    🏠 Filial — Hammasi (1-D .. 7-D)
+                  </option>
+                </optgroup>
 
-            <button
-              onClick={() => setStageFilter("ALL")}
-              className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                stageFilter === "ALL"
-                  ? "bg-purple-600 text-white shadow-md shadow-purple-600/30"
-                  : "text-slate-400 hover:text-white hover:bg-slate-800/60"
-              }`}
-            >
-              <Layers className="w-4 h-4" />
-              <span>🏫 Barchasi (1-11)</span>
-              <span className="ml-1 px-1.5 py-0.2 rounded-full text-[10px] bg-purple-950 text-purple-300 font-mono">
-                {classes.length}
-              </span>
-            </button>
+                <optgroup label="🏛️ Umumiy Maktab" className="bg-slate-900 text-purple-300 font-bold">
+                  <option value="ALL" className="bg-slate-900 text-white">
+                    🏛️ Barcha filiallar (Umumiy maktab)
+                  </option>
+                </optgroup>
+              </select>
+            </div>
+
+            {/* Tezkor Tab Tugmalari */}
+            <div className="hidden lg:flex items-center gap-1">
+              <button
+                onClick={() => setFilterScope("MAIN_HIGH")}
+                className={`px-2.5 py-1.5 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
+                  filterScope === "MAIN_HIGH"
+                    ? "bg-blue-600 text-white shadow"
+                    : "text-slate-400 hover:text-white hover:bg-slate-800"
+                }`}
+              >
+                Asosiy Katta
+              </button>
+              <button
+                onClick={() => setFilterScope("MAIN_PRIMARY")}
+                className={`px-2.5 py-1.5 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
+                  filterScope === "MAIN_PRIMARY"
+                    ? "bg-emerald-600 text-white shadow"
+                    : "text-slate-400 hover:text-white hover:bg-slate-800"
+                }`}
+              >
+                Asosiy Boshlang'ich
+              </button>
+              <button
+                onClick={() => setFilterScope("BRANCH_HIGH")}
+                className={`px-2.5 py-1.5 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
+                  filterScope === "BRANCH_HIGH"
+                    ? "bg-amber-600 text-white shadow"
+                    : "text-slate-400 hover:text-white hover:bg-slate-800"
+                }`}
+              >
+                Filial Katta (5-7D)
+              </button>
+              <button
+                onClick={() => setFilterScope("BRANCH_PRIMARY")}
+                className={`px-2.5 py-1.5 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
+                  filterScope === "BRANCH_PRIMARY"
+                    ? "bg-teal-600 text-white shadow"
+                    : "text-slate-400 hover:text-white hover:bg-slate-800"
+                }`}
+              >
+                Filial Boshlang'ich (1-4D)
+              </button>
+            </div>
           </div>
 
-          {/* O'ng: Filial filtri, Rekvizitlar, Excel va Chop etish tugmalari */}
+          {/* O'ng: Rekvizitlar, Excel va Chop etish tugmalari */}
           <div className="flex items-center gap-2.5 flex-wrap self-end md:self-auto">
-            {branches.length > 0 && (
-              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 border border-slate-700">
-                <Building2 className="w-3.5 h-3.5 text-blue-400" />
-                <select
-                  value={selectedBranch}
-                  onChange={(e) => setSelectedBranch(e.target.value)}
-                  className="bg-transparent text-white text-xs font-semibold outline-none cursor-pointer"
-                >
-                  <option value="ALL" className="bg-slate-900 text-white">
-                    🏛️ Barcha binolar
-                  </option>
-                  {branches.map((b) => (
-                    <option key={b.id} value={b.id} className="bg-slate-900 text-white">
-                      {b.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
-
             {/* Maktab Rekvizitlarini tezkor tahrirlash tugmasi */}
             <button
               onClick={() => {
@@ -732,9 +781,16 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
                     <th
                       key={cls.id}
                       colSpan={2}
-                      className="border border-black px-2 py-1 text-center font-bold text-xs bg-gray-50 min-w-[90px]"
+                      className={`border border-black px-2 py-1 text-center font-bold text-xs min-w-[90px] ${
+                        cls.branchId === "b39_2" ? "bg-amber-100/70" : "bg-gray-50"
+                      }`}
                     >
-                      {cls.name}
+                      <div className="flex flex-col items-center">
+                        <span>{cls.name}</span>
+                        {cls.branchId === "b39_2" && (
+                          <span className="text-[8px] font-normal text-amber-900">(Filial)</span>
+                        )}
+                      </div>
                     </th>
                   ))}
                 </tr>

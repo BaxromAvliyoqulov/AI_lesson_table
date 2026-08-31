@@ -136,11 +136,11 @@ export const initialTeachers: Teacher[] = [
 
 // 39-maktabning barcha sinflari (1-A dan 11-B gacha — Boshlang'ich + Yuqori)
 export const initialClasses: SchoolClass[] = [
-  // ── 1-4 BOSHLANG'ICH SINFLAR (1-Filial binosi) ───────────────────────────
+  // ── 1-4 BOSHLANG'ICH SINFLAR (Asosiy Bino — A va B sinflar) ───────────────
   {
     id: "c_39_1a",
     schoolId: "school_39",
-    branchId: "b39_2",
+    branchId: "b39_1",
     shiftId: "s39_1",
     name: "1-A",
     grade: 1,
@@ -160,7 +160,7 @@ export const initialClasses: SchoolClass[] = [
   {
     id: "c_39_1b",
     schoolId: "school_39",
-    branchId: "b39_2",
+    branchId: "b39_1",
     shiftId: "s39_1",
     name: "1-B",
     grade: 1,
@@ -180,7 +180,7 @@ export const initialClasses: SchoolClass[] = [
   {
     id: "c_39_2a",
     schoolId: "school_39",
-    branchId: "b39_2",
+    branchId: "b39_1",
     shiftId: "s39_1",
     name: "2-A",
     grade: 2,
@@ -200,7 +200,7 @@ export const initialClasses: SchoolClass[] = [
   {
     id: "c_39_2b",
     schoolId: "school_39",
-    branchId: "b39_2",
+    branchId: "b39_1",
     shiftId: "s39_1",
     name: "2-B",
     grade: 2,
@@ -220,7 +220,7 @@ export const initialClasses: SchoolClass[] = [
   {
     id: "c_39_3a",
     schoolId: "school_39",
-    branchId: "b39_2",
+    branchId: "b39_1",
     shiftId: "s39_1",
     name: "3-A",
     grade: 3,
@@ -241,7 +241,7 @@ export const initialClasses: SchoolClass[] = [
   {
     id: "c_39_3b",
     schoolId: "school_39",
-    branchId: "b39_2",
+    branchId: "b39_1",
     shiftId: "s39_1",
     name: "3-B",
     grade: 3,
@@ -262,7 +262,7 @@ export const initialClasses: SchoolClass[] = [
   {
     id: "c_39_4a",
     schoolId: "school_39",
-    branchId: "b39_2",
+    branchId: "b39_1",
     shiftId: "s39_1",
     name: "4-A",
     grade: 4,
@@ -283,7 +283,7 @@ export const initialClasses: SchoolClass[] = [
   {
     id: "c_39_4b",
     schoolId: "school_39",
-    branchId: "b39_2",
+    branchId: "b39_1",
     shiftId: "s39_1",
     name: "4-B",
     grade: 4,
@@ -302,7 +302,91 @@ export const initialClasses: SchoolClass[] = [
     ],
   },
 
-  // ── 5-11 YUQORI VA O'RTA SINFLAR (Asosiy bino) ───────────────────────────
+  // ── 1-4 BOSHLANG'ICH SINFLAR (Filial Binosi — D sinflar) ───────────────────
+  {
+    id: "c_39_1d",
+    schoolId: "school_39",
+    branchId: "b39_2",
+    shiftId: "s39_1",
+    name: "1-D",
+    grade: 1,
+    isPrimary: true,
+    isClosed: false,
+    homeroomTeacherId: "t_41",
+    subjects: [
+      { classId: "c_39_1d", subjectId: "sub_sinf_soati", teacherId: "t_41", weeklyHours: 1 },
+      { classId: "c_39_1d", subjectId: "sub_mat", teacherId: "t_41", weeklyHours: 4 },
+      { classId: "c_39_1d", subjectId: "sub_ona", teacherId: "t_41", weeklyHours: 4 },
+      { classId: "c_39_1d", subjectId: "sub_adab", teacherId: "t_41", weeklyHours: 3 },
+      { classId: "c_39_1d", subjectId: "sub_ing", teacherId: "t_38", weeklyHours: 2 },
+      { classId: "c_39_1d", subjectId: "sub_jism", teacherId: "t_39", weeklyHours: 2 },
+      { classId: "c_39_1d", subjectId: "sub_tarbiya", teacherId: "t_41", weeklyHours: 1 },
+    ],
+  },
+  {
+    id: "c_39_2d",
+    schoolId: "school_39",
+    branchId: "b39_2",
+    shiftId: "s39_1",
+    name: "2-D",
+    grade: 2,
+    isPrimary: true,
+    isClosed: false,
+    homeroomTeacherId: "t_43",
+    subjects: [
+      { classId: "c_39_2d", subjectId: "sub_sinf_soati", teacherId: "t_43", weeklyHours: 1 },
+      { classId: "c_39_2d", subjectId: "sub_mat", teacherId: "t_43", weeklyHours: 4 },
+      { classId: "c_39_2d", subjectId: "sub_ona", teacherId: "t_43", weeklyHours: 4 },
+      { classId: "c_39_2d", subjectId: "sub_adab", teacherId: "t_43", weeklyHours: 3 },
+      { classId: "c_39_2d", subjectId: "sub_ing", teacherId: "t_38", weeklyHours: 2 },
+      { classId: "c_39_2d", subjectId: "sub_jism", teacherId: "t_39", weeklyHours: 2 },
+      { classId: "c_39_2d", subjectId: "sub_tarbiya", teacherId: "t_43", weeklyHours: 1 },
+    ],
+  },
+  {
+    id: "c_39_3d",
+    schoolId: "school_39",
+    branchId: "b39_2",
+    shiftId: "s39_1",
+    name: "3-D",
+    grade: 3,
+    isPrimary: true,
+    isClosed: false,
+    homeroomTeacherId: "t_45",
+    subjects: [
+      { classId: "c_39_3d", subjectId: "sub_sinf_soati", teacherId: "t_45", weeklyHours: 1 },
+      { classId: "c_39_3d", subjectId: "sub_mat", teacherId: "t_45", weeklyHours: 5 },
+      { classId: "c_39_3d", subjectId: "sub_ona", teacherId: "t_45", weeklyHours: 4 },
+      { classId: "c_39_3d", subjectId: "sub_adab", teacherId: "t_45", weeklyHours: 3 },
+      { classId: "c_39_3d", subjectId: "sub_ing", teacherId: "t_38", weeklyHours: 2 },
+      { classId: "c_39_3d", subjectId: "sub_jism", teacherId: "t_39", weeklyHours: 2 },
+      { classId: "c_39_3d", subjectId: "sub_musiqa", teacherId: "t_27", weeklyHours: 1 },
+      { classId: "c_39_3d", subjectId: "sub_tarbiya", teacherId: "t_45", weeklyHours: 1 },
+    ],
+  },
+  {
+    id: "c_39_4d",
+    schoolId: "school_39",
+    branchId: "b39_2",
+    shiftId: "s39_1",
+    name: "4-D",
+    grade: 4,
+    isPrimary: true,
+    isClosed: false,
+    homeroomTeacherId: "t_47",
+    subjects: [
+      { classId: "c_39_4d", subjectId: "sub_sinf_soati", teacherId: "t_47", weeklyHours: 1 },
+      { classId: "c_39_4d", subjectId: "sub_mat", teacherId: "t_47", weeklyHours: 5 },
+      { classId: "c_39_4d", subjectId: "sub_ona", teacherId: "t_47", weeklyHours: 4 },
+      { classId: "c_39_4d", subjectId: "sub_adab", teacherId: "t_47", weeklyHours: 3 },
+      { classId: "c_39_4d", subjectId: "sub_ing", teacherId: "t_38", weeklyHours: 2 },
+      { classId: "c_39_4d", subjectId: "sub_inf", teacherId: "t_19", weeklyHours: 1 },
+      { classId: "c_39_4d", subjectId: "sub_jism", teacherId: "t_39", weeklyHours: 2 },
+      { classId: "c_39_4d", subjectId: "sub_tarbiya", teacherId: "t_47", weeklyHours: 1 },
+    ],
+  },
+
+  // ── 5-11 YUQORI VA O'RTA SINFLAR (Asosiy Bino & Filial) ───────────────────
   {
     id: "c_39_5a",
     schoolId: "school_39",
@@ -358,7 +442,7 @@ export const initialClasses: SchoolClass[] = [
   {
     id: "c_39_5d",
     schoolId: "school_39",
-    branchId: "b39_1",
+    branchId: "b39_2", // Filial
     shiftId: "s39_1",
     name: "5D",
     grade: 5,
@@ -436,7 +520,7 @@ export const initialClasses: SchoolClass[] = [
   {
     id: "c_39_6d",
     schoolId: "school_39",
-    branchId: "b39_1",
+    branchId: "b39_2", // Filial
     shiftId: "s39_1",
     name: "6D",
     grade: 6,
@@ -518,7 +602,7 @@ export const initialClasses: SchoolClass[] = [
   {
     id: "c_39_7d",
     schoolId: "school_39",
-    branchId: "b39_1",
+    branchId: "b39_2", // Filial (7D eng katta sinf)
     shiftId: "s39_1",
     name: "7D",
     grade: 7,
