@@ -200,6 +200,7 @@ export default function SettingsPage() {
             teachers={schoolTeachers}
             subjects={schoolSubjects}
             classes={schoolClasses}
+            schoolName={store.schools.find((s) => s.id === store.currentSchoolId)?.name}
             onAddTeacher={() => {
               setEditingTeacher(null);
               setIsTeacherModalOpen(true);

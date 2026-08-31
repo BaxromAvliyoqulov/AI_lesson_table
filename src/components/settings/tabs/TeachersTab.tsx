@@ -9,16 +9,18 @@ import {
   Phone,
   Calendar,
   Clock,
-  BookOpen,
   Edit2,
   Trash2,
   GraduationCap,
+  FileSpreadsheet,
+  Loader2,
 } from "lucide-react";
 
 interface TeachersTabProps {
   teachers: Teacher[];
   subjects: Subject[];
   classes: SchoolClass[];
+  schoolName?: string;
   onAddTeacher: () => void;
   onEditTeacher: (teacher: Teacher) => void;
   onDeleteTeacher: (teacherId: string) => void;
@@ -30,12 +32,39 @@ export const TeachersTab: React.FC<TeachersTabProps> = ({
   teachers,
   subjects,
   classes,
+  schoolName,
   onAddTeacher,
   onEditTeacher,
   onDeleteTeacher,
 }) => {
   const [search, setSearch] = useState("");
   const [subjectFilter, setSubjectFilter] = useState<string>("ALL");
+  const [isExporting, setIsExporting] = useState(false);
+
+  const handleExportExcel = async () => {
+    setIsExporting(true);
+    try {
+      const res = await fetch("/api/export/teachers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ teachers, subjects, classes, schoolName }),
+      });
+      if (!res.ok) throw new Error("Export xatosi");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = res.headers.get("Content-Disposition")?.match(/filename\*=UTF-8''(.+)/)?.[1]
+        ? decodeURIComponent(res.headers.get("Content-Disposition")!.match(/filename\*=UTF-8''(.+)/)![1])
+        : `oquvchilar_${new Date().toISOString().slice(0, 10)}.xlsx`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      alert("Excel yuklashda xato yuz berdi");
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   const subjectMap = useMemo(() => new Map(subjects.map((s) => [s.id, s])), [subjects]);
   const classMap = useMemo(() => new Map(classes.map((c) => [c.id, c])), [classes]);
@@ -86,13 +115,28 @@ export const TeachersTab: React.FC<TeachersTabProps> = ({
           </select>
         </div>
 
-        <button
-          onClick={onAddTeacher}
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold bg-primary text-primary-foreground hover:bg-primary/90 shadow-md shadow-primary/20 transition-all cursor-pointer shrink-0"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Yangi o'qituvchi qo'shish</span>
-        </button>
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            id="teachers-export-excel"
+            onClick={handleExportExcel}
+            disabled={isExporting || teachers.length === 0}
+            title="O'qituvchilar ro'yxatini Excel formatida yuklab olish"
+            className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold border border-green-500/30 bg-green-500/10 text-green-600 hover:bg-green-500/20 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            {isExporting ? (
+              <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Yuklanmoqda...</>
+            ) : (
+              <><FileSpreadsheet className="w-3.5 h-3.5" /> Excel ({teachers.length})</>  
+            )}
+          </button>
+          <button
+            onClick={onAddTeacher}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold bg-primary text-primary-foreground hover:bg-primary/90 shadow-md shadow-primary/20 transition-all cursor-pointer"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Yangi o'qituvchi</span>
+          </button>
+        </div>
       </div>
 
       {/* Teachers Grid */}
