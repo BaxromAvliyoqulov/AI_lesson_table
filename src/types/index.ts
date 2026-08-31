@@ -5,6 +5,12 @@ export interface SchoolInfo {
   id: string;
   name: string;
   slug: string;
+  region?: string;
+  directorName?: string;
+  vicePrincipalName?: string;
+  psychologistName?: string;
+  academicYear?: string;
+  approvalDate?: string;
   branchesCount?: number;
   classesCount?: number;
   teachersCount?: number;

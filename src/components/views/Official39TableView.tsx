@@ -20,6 +20,7 @@ import {
   Lesson,
   Branch,
   Shift,
+  SchoolInfo,
 } from "@/types";
 import {
   Printer,
@@ -35,6 +36,9 @@ import {
   Users,
   Layers,
   X,
+  Settings,
+  Award,
+  Save,
 } from "lucide-react";
 
 interface Official39TableViewProps {
@@ -48,12 +52,14 @@ interface Official39TableViewProps {
   onLessonsChange?: (lessons: Lesson[]) => void;
   onExportExcel?: () => void;
   onOpenZamena?: (lesson: Lesson) => void;
+  onUpdateSchoolInfo?: (updates: Partial<SchoolInfo>) => void;
   schoolName?: string;
   region?: string;
   directorName?: string;
   vicePrincipalName?: string;
   psychologistName?: string;
   academicYear?: string;
+  approvalDate?: string;
 }
 
 const DAYS = [
@@ -193,18 +199,32 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
   onLessonsChange,
   onExportExcel,
   onOpenZamena,
+  onUpdateSchoolInfo,
   schoolName = "39 - umumiy o'rta ta'lim maktabi",
   region = "Muzrabot tumani",
   directorName = "M. Ramazonov",
   vicePrincipalName = "N. Narziqulov",
   psychologistName = "F.I.Sh",
   academicYear = "2025 - 2026",
+  approvalDate = "2026-yil 28-mart",
 }) => {
   // Bosqich filtri: "HIGH" (5-11), "PRIMARY" (1-4), "ALL" (1-11)
   const [stageFilter, setStageFilter] = useState<"HIGH" | "PRIMARY" | "ALL">("HIGH");
   const [selectedBranch, setSelectedBranch] = useState<string>("ALL");
   const [hoveredTeacherId, setHoveredTeacherId] = useState<string | null>(null);
   const [activeDragLesson, setActiveDragLesson] = useState<Lesson | null>(null);
+
+  // Rekvizitlarni tahrirlash modali
+  const [isRequisitesModalOpen, setIsRequisitesModalOpen] = useState<boolean>(false);
+  const [requisitesForm, setRequisitesForm] = useState({
+    name: schoolName,
+    region: region,
+    directorName: directorName,
+    vicePrincipalName: vicePrincipalName,
+    psychologistName: psychologistName,
+    academicYear: academicYear,
+    approvalDate: approvalDate,
+  });
 
   // Cell Tahrirlash Modali
   const [cellModal, setCellModal] = useState<{
@@ -281,13 +301,11 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
   // Joriy ko'rinishdagi o'qituvchilar ro'yxati (o'ng tarafdagi jadval uchun)
   const displayTeachers = useMemo(() => {
     if (stageFilter === "ALL") return teachers;
-    // Shu bosqichdagi sinflarga dars beradigan yoki sinf rahbari bo'lgan o'qituvchilar
     const activeTeacherIds = new Set<string>();
     for (const cls of displayClasses) {
       if (cls.homeroomTeacherId) activeTeacherIds.add(cls.homeroomTeacherId);
       cls.subjects.forEach((s) => activeTeacherIds.add(s.teacherId));
     }
-    // Agar dars jadvali tuzilgan bo'lsa, mavjud darslardagi o'qituvchilarni ham qo'shamiz
     for (const l of lessons) {
       if (displayClasses.some((c) => c.id === l.classId)) {
         activeTeacherIds.add(l.teacherId);
@@ -399,7 +417,6 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
     let updated = [...lessons];
 
     if (lesson) {
-      // Mavjud darsni yangilash
       updated = updated.map((l) =>
         l.id === lesson.id
           ? {
@@ -410,7 +427,6 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
           : l
       );
     } else {
-      // Yangi dars qo'shish
       const newLesson: Lesson = {
         id: `l_${cls.id}_${day}_${period}_${Date.now()}`,
         scheduleId: "draft-schedule",
@@ -429,6 +445,14 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
 
     onLessonsChange(updated);
     setCellModal(null);
+  };
+
+  const handleSaveRequisites = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (onUpdateSchoolInfo) {
+      onUpdateSchoolInfo(requisitesForm);
+    }
+    setIsRequisitesModalOpen(false);
   };
 
   const handleToggleLock = (lessonId: string) => {
@@ -519,7 +543,7 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
             </button>
           </div>
 
-          {/* O'ng: Filial filtri, Excel va Chop etish tugmalari */}
+          {/* O'ng: Filial filtri, Rekvizitlar, Excel va Chop etish tugmalari */}
           <div className="flex items-center gap-2.5 flex-wrap self-end md:self-auto">
             {branches.length > 0 && (
               <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 border border-slate-700">
@@ -540,6 +564,27 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
                 </select>
               </div>
             )}
+
+            {/* Maktab Rekvizitlarini tezkor tahrirlash tugmasi */}
+            <button
+              onClick={() => {
+                setRequisitesForm({
+                  name: schoolName,
+                  region: region,
+                  directorName: directorName,
+                  vicePrincipalName: vicePrincipalName,
+                  psychologistName: psychologistName,
+                  academicYear: academicYear,
+                  approvalDate: approvalDate,
+                });
+                setIsRequisitesModalOpen(true);
+              }}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700 shadow-sm cursor-pointer transition-all"
+              title="Maktab nomi, direktor va zauch rekvizitlarini o'zgartirish"
+            >
+              <Settings className="w-4 h-4 text-amber-400" />
+              <span>Rekvizitlar</span>
+            </button>
 
             {onExportExcel && (
               <button
@@ -565,16 +610,50 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
         <div className="w-full mb-4 font-serif">
           <div className="flex justify-between items-start text-xs sm:text-sm leading-relaxed mb-3">
             {/* Chap: TASDIQLAYMAN */}
-            <div className="max-w-xs">
-              <p className="font-bold tracking-widest text-sm sm:text-base uppercase">TASDIQLAYMAN</p>
-              <p className="mt-1">
-                Maktab direktori: <span className="inline-block border-b border-black w-24"></span> {directorName}
+            <div
+              className="max-w-xs cursor-pointer group"
+              onClick={() => {
+                setRequisitesForm({
+                  name: schoolName,
+                  region: region,
+                  directorName: directorName,
+                  vicePrincipalName: vicePrincipalName,
+                  psychologistName: psychologistName,
+                  academicYear: academicYear,
+                  approvalDate: approvalDate,
+                });
+                setIsRequisitesModalOpen(true);
+              }}
+              title="Direktor rekvizitini tahrirlash uchun bosing"
+            >
+              <p className="font-bold tracking-widest text-sm sm:text-base uppercase flex items-center gap-1">
+                TASDIQLAYMAN
+                <Edit2 className="w-3 h-3 opacity-0 group-hover:opacity-100 text-blue-600 no-print transition-opacity" />
               </p>
-              <p className="text-[11px] text-gray-700 mt-0.5">2026-yil 28-mart</p>
+              <p className="mt-1">
+                Maktab direktori: <span className="inline-block border-b border-black w-24"></span>{" "}
+                <span className="font-semibold underline decoration-dotted decoration-blue-500/50">{directorName}</span>
+              </p>
+              <p className="text-[11px] text-gray-700 mt-0.5">{approvalDate}</p>
             </div>
 
             {/* O'rta: Maktab nomi va Bosqich */}
-            <div className="text-center flex-1 px-4">
+            <div
+              className="text-center flex-1 px-4 cursor-pointer group"
+              onClick={() => {
+                setRequisitesForm({
+                  name: schoolName,
+                  region: region,
+                  directorName: directorName,
+                  vicePrincipalName: vicePrincipalName,
+                  psychologistName: psychologistName,
+                  academicYear: academicYear,
+                  approvalDate: approvalDate,
+                });
+                setIsRequisitesModalOpen(true);
+              }}
+              title="Maktab nomini tahrirlash uchun bosing"
+            >
               <p className="text-xs sm:text-sm font-semibold tracking-wide">
                 {region} <span className="font-bold text-base">{schoolName}</span>ning
               </p>
@@ -786,23 +865,180 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
         </div>
 
         {/* ── 4. RASMIY IMZO QATORLARI ───────────────────────────────────────── */}
-        <div className="w-full mt-6 flex justify-between items-center text-xs sm:text-sm font-serif pt-4">
+        <div
+          className="w-full mt-6 flex justify-between items-center text-xs sm:text-sm font-serif pt-4 cursor-pointer group"
+          onClick={() => {
+            setRequisitesForm({
+              name: schoolName,
+              region: region,
+              directorName: directorName,
+              vicePrincipalName: vicePrincipalName,
+              psychologistName: psychologistName,
+              academicYear: academicYear,
+              approvalDate: approvalDate,
+            });
+            setIsRequisitesModalOpen(true);
+          }}
+          title="Zauch va Ruhshunos rekvizitlarini tahrirlash uchun bosing"
+        >
           <div>
             <p>
               <span className="font-bold">O'quv ishlar bo'yicha direktor o'rinbosari:</span>{" "}
-              <span className="inline-block border-b border-black w-36"></span> {vicePrincipalName}
+              <span className="inline-block border-b border-black w-36"></span>{" "}
+              <span className="font-semibold underline decoration-dotted decoration-blue-500/50">{vicePrincipalName}</span>
             </p>
           </div>
 
           <div>
             <p>
               <span className="font-bold">Ruhshunos:</span>{" "}
-              <span className="inline-block border-b border-black w-36"></span> {psychologistName}
+              <span className="inline-block border-b border-black w-36"></span>{" "}
+              <span className="font-semibold underline decoration-dotted decoration-blue-500/50">{psychologistName}</span>
             </p>
           </div>
         </div>
 
-        {/* ── 5. INTERAKTIV CELL TAHRIRLASH MODALI ──────────────────────────── */}
+        {/* ── 5. INTERAKTIV REKVIZITLARNI TAHRIRLASH MODALI ─────────────────── */}
+        {isRequisitesModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in no-print">
+            <div className="w-full max-w-lg rounded-2xl border border-slate-800 bg-slate-900 text-white p-6 shadow-2xl space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+                <div className="flex items-center gap-2">
+                  <Award className="w-5 h-5 text-amber-400" />
+                  <div>
+                    <h3 className="font-bold text-sm text-white">Maktab Rasmiy Rekvizitlari</h3>
+                    <p className="text-[11px] text-slate-400">
+                      Hujjat sarlavhasi va imzolarida aks etuvchi rasmiy ma'lumotlar
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setIsRequisitesModalOpen(false)}
+                  className="p-1 rounded hover:bg-slate-800 text-slate-400 hover:text-white"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <form onSubmit={handleSaveRequisites} className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-300 mb-1">
+                      Maktab nomi:
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={requisitesForm.name}
+                      onChange={(e) => setRequisitesForm({ ...requisitesForm, name: e.target.value })}
+                      className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white text-xs outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-300 mb-1">
+                      Tuman / Hudud:
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={requisitesForm.region}
+                      onChange={(e) => setRequisitesForm({ ...requisitesForm, region: e.target.value })}
+                      className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white text-xs outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-300 mb-1">
+                      Maktab Direktori F.I.Sh:
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={requisitesForm.directorName}
+                      onChange={(e) => setRequisitesForm({ ...requisitesForm, directorName: e.target.value })}
+                      className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white text-xs outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-300 mb-1">
+                      O'quv ishlari bo'yicha zauch F.I.Sh:
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={requisitesForm.vicePrincipalName}
+                      onChange={(e) => setRequisitesForm({ ...requisitesForm, vicePrincipalName: e.target.value })}
+                      className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white text-xs outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-300 mb-1">
+                      Ruhshunos F.I.Sh:
+                    </label>
+                    <input
+                      type="text"
+                      value={requisitesForm.psychologistName}
+                      onChange={(e) => setRequisitesForm({ ...requisitesForm, psychologistName: e.target.value })}
+                      className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white text-xs outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-300 mb-1">
+                      O'quv yili:
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={requisitesForm.academicYear}
+                      onChange={(e) => setRequisitesForm({ ...requisitesForm, academicYear: e.target.value })}
+                      className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white text-xs outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-300 mb-1">
+                      Tasdiqlash sanasi:
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={requisitesForm.approvalDate}
+                      onChange={(e) => setRequisitesForm({ ...requisitesForm, approvalDate: e.target.value })}
+                      className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white text-xs outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-800">
+                  <button
+                    type="button"
+                    onClick={() => setIsRequisitesModalOpen(false)}
+                    className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-400 hover:bg-slate-800"
+                  >
+                    Bekor qilish
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-5 py-2 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-600/20 cursor-pointer flex items-center gap-1.5"
+                  >
+                    <Save className="w-4 h-4" />
+                    <span>Rekvizitlarni saqlash</span>
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* ── 6. INTERAKTIV CELL TAHRIRLASH MODALI ──────────────────────────── */}
         {cellModal && cellModal.isOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in no-print">
             <div className="w-full max-w-md rounded-2xl border border-slate-800 bg-slate-900 text-white p-6 shadow-2xl space-y-4">

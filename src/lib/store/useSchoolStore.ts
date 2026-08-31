@@ -208,6 +208,14 @@ export function useSchoolStore() {
     }));
   }, []);
 
+  const updateSchoolInfo = useCallback((schoolId: string, updates: Partial<SchoolInfo>) => {
+    updateStore((prev) => ({
+      ...prev,
+      schools: prev.schools.map((s) => (s.id === schoolId ? { ...s, ...updates } : s)),
+    }));
+    addAudit("Maktab rekvizitlari yangilandi", `${updates.name || "Maktab"} ma'lumotlari yangilandi`);
+  }, [addAudit]);
+
   // Class actions
   const addClass = useCallback((cls: SchoolClass) => {
     updateStore((prev) => ({
@@ -416,6 +424,7 @@ export function useSchoolStore() {
     ...state,
     setCurrentSchoolId,
     addSchool,
+    updateSchoolInfo,
     addClass,
     updateClass,
     deleteClass,

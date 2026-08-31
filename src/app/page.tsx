@@ -339,12 +339,18 @@ export default function HomePage() {
               onLessonsChange={store.setLessons}
               onExportExcel={handleExport}
               onOpenZamena={(l) => setSelectedZamenaLesson(l)}
+              onUpdateSchoolInfo={(updates) => {
+                if (currentSchool?.id) {
+                  store.updateSchoolInfo(currentSchool.id, updates);
+                }
+              }}
               schoolName={currentSchool?.name || "39 - umumiy o'rta ta'lim maktabi"}
-              region="Muzrabot tumani"
-              directorName="M. Ramazonov"
-              vicePrincipalName="N. Narziqulov"
-              psychologistName="F.I.Sh"
-              academicYear="2025 - 2026"
+              region={currentSchool?.region || "Muzrabot tumani"}
+              directorName={currentSchool?.directorName || "M. Ramazonov"}
+              vicePrincipalName={currentSchool?.vicePrincipalName || "N. Narziqulov"}
+              psychologistName={currentSchool?.psychologistName || "F.I.Sh"}
+              academicYear={currentSchool?.academicYear || "2025 - 2026"}
+              approvalDate={currentSchool?.approvalDate || "2026-yil 28-mart"}
             />
           ) : store.viewMode === "CLASS" ? (
             <SingleClassView

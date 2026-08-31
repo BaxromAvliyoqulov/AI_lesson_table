@@ -282,6 +282,10 @@ export default function SettingsPage() {
             teachers={schoolTeachers}
             subjects={schoolSubjects}
             rooms={schoolRooms}
+            onUpdateSchoolInfo={(schoolId, updates) => {
+              store.updateSchoolInfo(schoolId, updates);
+              showToast("Maktab rekvizitlari muvaffaqiyatli saqlandi", "success");
+            }}
           />
         )}
       </main>

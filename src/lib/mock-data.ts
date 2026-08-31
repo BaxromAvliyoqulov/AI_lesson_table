@@ -1,8 +1,34 @@
 import { SchoolInfo, Branch, Shift, Subject, Teacher, Room, SchoolClass } from "@/types";
 
 export const initialSchools: SchoolInfo[] = [
-  { id: "school_39", name: "39-Umumiy o'rta ta'lim maktabi", slug: "maktab-39", branchesCount: 1, classesCount: 17, teachersCount: 40 },
-  { id: "school_21", name: "21-Umumiy o'rta ta'lim maktabi", slug: "maktab-21", branchesCount: 2, classesCount: 22, teachersCount: 25 },
+  {
+    id: "school_39",
+    name: "39-Umumiy o'rta ta'lim maktabi",
+    slug: "maktab-39",
+    region: "Muzrabot tumani",
+    directorName: "M. Ramazonov",
+    vicePrincipalName: "N. Narziqulov",
+    psychologistName: "F.I.Sh",
+    academicYear: "2025 - 2026",
+    approvalDate: "2026-yil 28-mart",
+    branchesCount: 2,
+    classesCount: 25,
+    teachersCount: 48,
+  },
+  {
+    id: "school_21",
+    name: "21-Umumiy o'rta ta'lim maktabi",
+    slug: "maktab-21",
+    region: "Toshkent sh., Chilonzor tumani",
+    directorName: "A. Xoliqov",
+    vicePrincipalName: "S. Rahimov",
+    psychologistName: "N. Karimova",
+    academicYear: "2025 - 2026",
+    approvalDate: "2026-yil 1-sentyabr",
+    branchesCount: 2,
+    classesCount: 22,
+    teachersCount: 25,
+  },
 ];
 
 export const initialBranches: Branch[] = [
