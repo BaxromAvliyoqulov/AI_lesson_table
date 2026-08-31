@@ -49,12 +49,12 @@ interface SchoolStoreState {
   history: Lesson[][];
   zoomLevel: number;
   selectedBranch: string;
-  viewMode: "CLASS" | "MASTER" | "TEACHER";
+  viewMode: "OFFICIAL_39" | "MASTER" | "CLASS" | "TEACHER";
   selectedClassId: string;
   isGenerating: boolean;
 }
 
-const STORAGE_KEY = "dars_jadval_ai_store_v2";
+const STORAGE_KEY = "dars_jadval_ai_store_v3";
 
 // Initial state generator
 function createInitialState(): SchoolStoreState {
@@ -110,7 +110,7 @@ function createInitialState(): SchoolStoreState {
     history: [],
     zoomLevel: 100,
     selectedBranch: "ALL",
-    viewMode: "MASTER",
+    viewMode: "OFFICIAL_39",
     selectedClassId: "c_school_39_1a",
     isGenerating: false,
   };
@@ -392,7 +392,7 @@ export function useSchoolStore() {
     updateStore((prev) => ({ ...prev, selectedBranch }));
   }, []);
 
-  const setViewMode = useCallback((viewMode: "CLASS" | "MASTER" | "TEACHER") => {
+  const setViewMode = useCallback((viewMode: "OFFICIAL_39" | "MASTER" | "CLASS" | "TEACHER") => {
     updateStore((prev) => ({ ...prev, viewMode }));
   }, []);
 

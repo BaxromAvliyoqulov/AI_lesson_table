@@ -11,6 +11,7 @@ import { ZamenaModal } from "@/components/zamena/ZamenaModal";
 import { ExcelImportModal } from "@/components/excel/ExcelImportModal";
 import { exportScheduleToExcel } from "@/lib/excel/excel-export";
 import { CSPSolver } from "@/lib/solver/csp-solver";
+import { Official39TableView } from "@/components/views/Official39TableView";
 import { Lesson, SolverResult } from "@/types";
 import {
   Sparkles,
@@ -183,29 +184,17 @@ export default function HomePage() {
 
       {/* View Mode Switcher Sub-Header */}
       <div className="border-b border-border/80 bg-card/60 px-4 md:px-6 py-2.5 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-1.5 bg-muted/40 p-1 rounded-xl border border-border/60">
+        <div className="flex items-center gap-1.5 bg-muted/40 p-1 rounded-xl border border-border/60 flex-wrap">
           <button
-            onClick={() => store.setViewMode("CLASS")}
+            onClick={() => store.setViewMode("OFFICIAL_39")}
             className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-bold transition-all cursor-pointer ${
-              store.viewMode === "CLASS"
-                ? "bg-primary text-primary-foreground shadow-md shadow-primary/20"
+              store.viewMode === "OFFICIAL_39"
+                ? "bg-emerald-600 text-white shadow-md shadow-emerald-600/25 ring-1 ring-emerald-400/40"
                 : "text-muted-foreground hover:text-foreground hover:bg-background/60"
             }`}
           >
-            <GraduationCap className="h-4 w-4" />
-            <span>Sinf Bo'yicha Jadval</span>
-          </button>
-
-          <button
-            onClick={() => store.setViewMode("TEACHER")}
-            className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-bold transition-all cursor-pointer ${
-              store.viewMode === "TEACHER"
-                ? "bg-primary text-primary-foreground shadow-md shadow-primary/20"
-                : "text-muted-foreground hover:text-foreground hover:bg-background/60"
-            }`}
-          >
-            <Users className="h-4 w-4" />
-            <span>O'qituvchi Jadvali</span>
+            <FileSpreadsheet className="h-4 w-4 text-emerald-300" />
+            <span>39-Maktab Rasmiy Jadvali (Excel)</span>
           </button>
 
           <button
@@ -217,7 +206,31 @@ export default function HomePage() {
             }`}
           >
             <LayoutGrid className="h-4 w-4" />
-            <span>Umumiy Master Doska</span>
+            <span>Master Doska (Interaktiv)</span>
+          </button>
+
+          <button
+            onClick={() => store.setViewMode("CLASS")}
+            className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-bold transition-all cursor-pointer ${
+              store.viewMode === "CLASS"
+                ? "bg-primary text-primary-foreground shadow-md shadow-primary/20"
+                : "text-muted-foreground hover:text-foreground hover:bg-background/60"
+            }`}
+          >
+            <GraduationCap className="h-4 w-4" />
+            <span>Sinf Bo'yicha</span>
+          </button>
+
+          <button
+            onClick={() => store.setViewMode("TEACHER")}
+            className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-bold transition-all cursor-pointer ${
+              store.viewMode === "TEACHER"
+                ? "bg-primary text-primary-foreground shadow-md shadow-primary/20"
+                : "text-muted-foreground hover:text-foreground hover:bg-background/60"
+            }`}
+          >
+            <Users className="h-4 w-4" />
+            <span>O'qituvchi Bo'yicha</span>
           </button>
         </div>
 
@@ -314,6 +327,24 @@ export default function HomePage() {
                 </button>
               </div>
             </div>
+          ) : store.viewMode === "OFFICIAL_39" ? (
+            <Official39TableView
+              classes={schoolClasses}
+              subjects={schoolSubjects}
+              teachers={schoolTeachers}
+              rooms={schoolRooms}
+              lessons={schoolLessons}
+              branches={schoolBranches}
+              shifts={schoolShifts}
+              onLessonsChange={store.setLessons}
+              onExportExcel={handleExport}
+              schoolName={currentSchool?.name || "39 - umumiy o'rta ta'lim maktabi"}
+              region="Muzrabot tumani"
+              directorName="M. Ramazonov"
+              vicePrincipalName="N. Narziqulov"
+              psychologistName="F.I.Sh"
+              academicYear="2025 - 2026"
+            />
           ) : store.viewMode === "CLASS" ? (
             <SingleClassView
               classes={schoolClasses}
