@@ -1141,39 +1141,39 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
               </table>
             </div>
           </div>
-        </div>
 
-        {/* ── 4. RASMIY IMZO QATORLARI ───────────────────────────────────────── */}
-        <div
-          className="w-full mt-6 flex justify-between items-center text-xs sm:text-sm font-serif pt-4 cursor-pointer group"
-          onClick={() => {
-            setRequisitesForm({
-              name: schoolName,
-              region: region,
-              directorName: directorName,
-              vicePrincipalName: vicePrincipalName,
-              psychologistName: psychologistName,
-              academicYear: academicYear,
-              approvalDate: approvalDate,
-            });
-            setIsRequisitesModalOpen(true);
-          }}
-          title="Zauch va Ruhshunos rekvizitlarini tahrirlash uchun bosing"
-        >
-          <div>
-            <p>
-              <span className="font-bold">O'quv ishlar bo'yicha direktor o'rinbosari:</span>{" "}
-              <span className="inline-block border-b border-black w-36"></span>{" "}
-              <span className="font-semibold underline decoration-dotted decoration-blue-500/50">{vicePrincipalName}</span>
-            </p>
-          </div>
+          {/* ── 4. RASMIY IMZO QATORLARI (Jadval kengligiga 100% moslangan) ──────────── */}
+          <div
+            className="mt-6 flex justify-between items-center text-xs sm:text-sm font-serif pt-3 cursor-pointer group"
+            onClick={() => {
+              setRequisitesForm({
+                name: schoolName,
+                region: region,
+                directorName: directorName,
+                vicePrincipalName: vicePrincipalName,
+                psychologistName: psychologistName,
+                academicYear: academicYear,
+                approvalDate: approvalDate,
+              });
+              setIsRequisitesModalOpen(true);
+            }}
+            title="Zauch va Ruhshunos rekvizitlarini tahrirlash uchun bosing"
+          >
+            <div>
+              <p>
+                <span className="font-bold">O'quv ishlar bo'yicha direktor o'rinbosari:</span>{" "}
+                <span className="inline-block border-b border-black w-36"></span>{" "}
+                <span className="font-semibold underline decoration-dotted decoration-blue-500/50">{vicePrincipalName}</span>
+              </p>
+            </div>
 
-          <div>
-            <p>
-              <span className="font-bold">Ruhshunos:</span>{" "}
-              <span className="inline-block border-b border-black w-36"></span>{" "}
-              <span className="font-semibold underline decoration-dotted decoration-blue-500/50">{psychologistName}</span>
-            </p>
+            <div className="pr-4">
+              <p>
+                <span className="font-bold">Ruhshunos:</span>{" "}
+                <span className="inline-block border-b border-black w-36"></span>{" "}
+                <span className="font-semibold underline decoration-dotted decoration-blue-500/50">{psychologistName}</span>
+              </p>
+            </div>
           </div>
         </div>
         </div>
