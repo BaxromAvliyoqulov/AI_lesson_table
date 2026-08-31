@@ -971,14 +971,14 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
                           className={`hover:bg-blue-50/30 transition-colors ${
                             isLastPeriod
                               ? "border-b-[3.5px] border-black"
-                              : "border-b border-gray-300"
+                              : "border-b border-black"
                           }`}
                         >
                           {/* Vertikal Kun ustuni (Har bir kun alohida qalin hoshiya bilan ajratilgan) */}
                           {pIndex === 0 && (
                             <td
                               rowSpan={displayPeriods.length}
-                              className="border-r-2 border-l border-t border-b-[3.5px] border-black bg-slate-100 font-extrabold text-[10.5px] tracking-widest text-center align-middle select-none w-7 p-1 shadow-sm text-slate-900"
+                              className="border-2 border-black bg-slate-100 font-extrabold text-[10.5px] tracking-widest text-center align-middle select-none w-7 p-1 shadow-sm text-slate-900"
                               style={{
                                 writingMode: "vertical-lr",
                                 transform: "rotate(180deg)",
@@ -990,8 +990,8 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
 
                           {/* Dars raqami (1..6) */}
                           <td
-                            className={`border-r border-black font-bold text-center px-1 py-1 w-5 bg-gray-50 ${
-                              isLastPeriod ? "border-b-[3.5px] border-b-black" : "border-b border-gray-300"
+                            className={`border border-black font-bold text-center px-1 py-1 w-5 bg-gray-50 ${
+                              isLastPeriod ? "border-b-[3.5px] border-b-black" : ""
                             }`}
                           >
                             {periodInfo.period}
@@ -999,8 +999,8 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
 
                           {/* Dars vaqti (8.00-8.45...) */}
                           <td
-                            className={`border-r border-black font-mono text-[9px] text-gray-700 px-1 py-1 w-16 text-center whitespace-nowrap bg-gray-50 ${
-                              isLastPeriod ? "border-b-[3.5px] border-b-black" : "border-b border-gray-300"
+                            className={`border border-black font-mono text-[9px] text-gray-700 px-1 py-1 w-16 text-center whitespace-nowrap bg-gray-50 ${
+                              isLastPeriod ? "border-b-[3.5px] border-b-black" : ""
                             }`}
                           >
                             {periodInfo.time}
@@ -1093,16 +1093,16 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
             </table>
 
             {/* O'ng tomondagi O'qituvchilarning I.F.O va Fanlari Reestri */}
-            <div className="ml-3 shrink-0 border border-black font-sans text-[10px] w-80 bg-white">
+            <div className="ml-3 shrink-0 border-2 border-black font-sans text-[10px] w-80 bg-white">
               <div className="bg-gray-100 border-b border-black p-1 text-center font-bold text-xs uppercase">
                 O'qituvchilar va Fanlar Reestri
               </div>
               <table className="w-full border-collapse text-left">
                 <thead>
                   <tr className="bg-gray-200 border-b border-black text-[9px]">
-                    <th className="border-r border-black p-1 text-center w-7 font-bold">№</th>
-                    <th className="border-r border-black p-1 font-bold w-36">O'qituvchi F.I.Sh</th>
-                    <th className="p-1 font-bold text-slate-800">O'tadigan Fani / Fanlari</th>
+                    <th className="border border-black p-1 text-center w-7 font-bold">№</th>
+                    <th className="border border-black p-1 font-bold w-36">O'qituvchi F.I.Sh</th>
+                    <th className="border border-black p-1 font-bold text-slate-800">O'tadigan Fani / Fanlari</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1116,7 +1116,7 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
                         key={teacher.id}
                         onMouseEnter={() => setHoveredTeacherId(teacher.id)}
                         onMouseLeave={() => setHoveredTeacherId(null)}
-                        className={`border-b border-gray-200 transition-colors cursor-pointer ${
+                        className={`border-b border-black transition-colors cursor-pointer ${
                           isHovered
                             ? "bg-amber-200 font-bold"
                             : num % 2 === 0
@@ -1125,13 +1125,13 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
                         }`}
                         title={`${teacher.fullName} (${subjectsStr}) — darslarini jadvalda ko'rish`}
                       >
-                        <td className="border-r border-black p-1 text-center font-mono font-bold text-gray-700">
+                        <td className="border border-black p-1 text-center font-mono font-bold text-gray-700">
                           {num}
                         </td>
-                        <td className="border-r border-black p-1 font-semibold truncate max-w-[130px]">
+                        <td className="border border-black p-1 font-semibold truncate max-w-[130px]">
                           {teacher.fullName}
                         </td>
-                        <td className="p-1 text-[9px] text-slate-700 font-medium truncate max-w-[140px]">
+                        <td className="border border-black p-1 text-[9px] text-slate-700 font-medium truncate max-w-[140px]">
                           {subjectsStr}
                         </td>
                       </tr>
