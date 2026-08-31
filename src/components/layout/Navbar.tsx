@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { useSession, signOut } from "next-auth/react";
 import {
   Calendar,
   Sparkles,
@@ -17,6 +18,9 @@ import {
   ChevronDown,
   Building2,
   Plus,
+  Shield,
+  LogOut,
+  User,
 } from "lucide-react";
 import { SchoolInfo } from "@/types";
 
@@ -69,6 +73,8 @@ export const Navbar: React.FC<NavbarProps> = ({
       slug: "maktab-39",
     };
 
+  const { data: session } = useSession();
+
   const toggleTheme = () => {
     setIsDark(!isDark);
     if (!isDark) {
@@ -80,6 +86,22 @@ export const Navbar: React.FC<NavbarProps> = ({
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/80 bg-background/95 backdrop-blur-md transition-colors">
+      {/* Super Admin Notice Bar if viewing as Super Admin */}
+      {session?.user?.role === "SUPER_ADMIN" && (
+        <div className="bg-gradient-to-r from-amber-500/20 via-orange-500/15 to-transparent border-b border-amber-500/30 px-4 py-1.5 flex items-center justify-between text-xs">
+          <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400 font-semibold">
+            <Shield className="w-3.5 h-3.5" />
+            <span>Siz Super Admin huquqi bilan maktab jadvalini ko'rmoqdasiz</span>
+          </div>
+          <a
+            href="/super-admin"
+            className="text-amber-700 dark:text-amber-300 hover:underline font-bold text-[11px] flex items-center gap-1"
+          >
+            ← Super Admin Paneliga qaytish
+          </a>
+        </div>
+      )}
+
       <div className="flex h-16 items-center justify-between px-4 md:px-6">
         {/* Logo & Maktab Tanlash (Multi-tenant) */}
         <div className="flex items-center gap-3">
@@ -262,6 +284,15 @@ export const Navbar: React.FC<NavbarProps> = ({
             title="Mavzuni almashtirish"
           >
             {isDark ? <Sun className="h-4 w-4 text-amber-500" /> : <Moon className="h-4 w-4" />}
+          </button>
+
+          {/* Chiqish (Logout) */}
+          <button
+            onClick={() => signOut({ callbackUrl: "/login" })}
+            className="p-2 rounded-lg border border-border bg-card hover:bg-rose-500/10 text-muted-foreground hover:text-rose-500 transition-colors"
+            title="Tizimdan chiqish (Logout)"
+          >
+            <LogOut className="h-4 w-4" />
           </button>
         </div>
       </div>

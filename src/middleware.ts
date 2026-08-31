@@ -22,9 +22,9 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  // Super Admin faqat /super-admin/* ga kirishi mumkin
-  if (session.user.role === "SUPER_ADMIN" && !pathname.startsWith("/super-admin")) {
-    return NextResponse.redirect(new URL("/super-admin", req.url));
+  // /super-admin bo'limiga faqat SUPER_ADMIN kira oladi
+  if (pathname.startsWith("/super-admin") && session.user.role !== "SUPER_ADMIN") {
+    return NextResponse.redirect(new URL("/", req.url));
   }
 
   // Maktab Admin — setup wizard tugatilmagan bo'lsa /setup ga yo'naltir
