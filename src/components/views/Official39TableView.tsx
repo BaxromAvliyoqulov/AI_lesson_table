@@ -315,6 +315,46 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
     return filtered.length > 0 ? filtered : teachers;
   }, [teachers, displayClasses, lessons, stageFilter]);
 
+  // Har bir o'qituvchining o'tadigan fanlari ro'yxati (Fan nomi / qisqartmasi)
+  const teacherSubjectsMap = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const t of teachers) {
+      const subjectNames = new Set<string>();
+      // 1. O'qituvchiga biriktirilgan fanlar (subjectIds)
+      if (t.subjectIds && t.subjectIds.length > 0) {
+        t.subjectIds.forEach((sid) => {
+          const s = subjectMap.get(sid);
+          if (s && s.id !== "sub_sinf_soati") {
+            subjectNames.add(s.shortName || s.name);
+          }
+        });
+      }
+      // 2. Sinflar bo'yicha yuklamalardan (ClassSubject)
+      for (const cls of classes) {
+        cls.subjects.forEach((cs) => {
+          if (cs.teacherId === t.id && cs.subjectId !== "sub_sinf_soati") {
+            const s = subjectMap.get(cs.subjectId);
+            if (s) subjectNames.add(s.shortName || s.name);
+          }
+        });
+      }
+      // 3. Haqiqiy qo'yilgan darslardan (Lesson)
+      for (const l of lessons) {
+        if (l.teacherId === t.id && l.subjectId !== "sub_sinf_soati") {
+          const s = subjectMap.get(l.subjectId);
+          if (s) subjectNames.add(s.shortName || s.name);
+        }
+      }
+
+      if (subjectNames.size === 0) {
+        map.set(t.id, "—");
+      } else {
+        map.set(t.id, Array.from(subjectNames).join(", "));
+      }
+    }
+    return map;
+  }, [teachers, classes, lessons, subjectMap]);
+
   // DnD sensorlari
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -819,22 +859,25 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
               </tbody>
             </table>
 
-            {/* O'ng tomondagi O'qituvchilarning I.F.O Reestri (Legend) */}
-            <div className="ml-3 shrink-0 border border-black font-sans text-[10px] w-60 bg-white">
+            {/* O'ng tomondagi O'qituvchilarning I.F.O va Fanlari Reestri */}
+            <div className="ml-3 shrink-0 border border-black font-sans text-[10px] w-80 bg-white">
               <div className="bg-gray-100 border-b border-black p-1 text-center font-bold text-xs uppercase">
-                O'qituvchilarning I.F.O
+                O'qituvchilar va Fanlar Reestri
               </div>
               <table className="w-full border-collapse text-left">
                 <thead>
                   <tr className="bg-gray-200 border-b border-black text-[9px]">
                     <th className="border-r border-black p-1 text-center w-7 font-bold">№</th>
-                    <th className="p-1 font-bold">O'qituvchi F.I.Sh</th>
+                    <th className="border-r border-black p-1 font-bold w-36">O'qituvchi F.I.Sh</th>
+                    <th className="p-1 font-bold text-slate-800">O'tadigan Fani / Fanlari</th>
                   </tr>
                 </thead>
                 <tbody>
                   {displayTeachers.map((teacher) => {
                     const num = teacherNumberMap.get(teacher.id) || 1;
                     const isHovered = hoveredTeacherId === teacher.id;
+                    const subjectsStr = teacherSubjectsMap.get(teacher.id) || "—";
+
                     return (
                       <tr
                         key={teacher.id}
@@ -847,13 +890,16 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
                             ? "bg-white"
                             : "bg-gray-50"
                         }`}
-                        title={`${teacher.fullName}ning barcha darslarini jadvalda ko'rish`}
+                        title={`${teacher.fullName} (${subjectsStr}) — darslarini jadvalda ko'rish`}
                       >
                         <td className="border-r border-black p-1 text-center font-mono font-bold text-gray-700">
                           {num}
                         </td>
-                        <td className="p-1 font-medium truncate max-w-[190px]">
+                        <td className="border-r border-black p-1 font-semibold truncate max-w-[130px]">
                           {teacher.fullName}
+                        </td>
+                        <td className="p-1 text-[9px] text-slate-700 font-medium truncate max-w-[140px]">
+                          {subjectsStr}
                         </td>
                       </tr>
                     );
