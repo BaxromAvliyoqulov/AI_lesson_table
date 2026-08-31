@@ -22,8 +22,22 @@ import {
   Shift,
   DragValidationResult,
 } from "@/types";
-import { LessonCard } from "./LessonCard";
-import { AlertCircle, CheckCircle2, ShieldAlert, X, Building2, Clock } from "lucide-react";
+import { LessonCard, GridDensity } from "./LessonCard";
+import {
+  AlertCircle,
+  CheckCircle2,
+  ShieldAlert,
+  X,
+  Building2,
+  Clock,
+  Search,
+  ZoomIn,
+  ZoomOut,
+  Maximize2,
+  SlidersHorizontal,
+  GraduationCap,
+  Layers,
+} from "lucide-react";
 
 interface MasterGridProps {
   classes: SchoolClass[];
@@ -55,10 +69,12 @@ const GridCell: React.FC<{
   classId: string;
   day: number;
   period: number;
+  density: GridDensity;
   isPrimaryWeekend?: boolean;
   lesson?: Lesson;
   subject?: Subject;
   teacher?: Teacher;
+  teacherNumber?: number;
   room?: Room | null;
   activeValidation?: DragValidationResult | null;
   isOver: boolean;
@@ -68,10 +84,12 @@ const GridCell: React.FC<{
   classId,
   day,
   period,
+  density,
   isPrimaryWeekend,
   lesson,
   subject,
   teacher,
+  teacherNumber,
   room,
   activeValidation,
   isOver,
@@ -102,24 +120,33 @@ const GridCell: React.FC<{
     }
   }
 
+  const minHeightClass =
+    density === "NUMBERED"
+      ? "min-h-[36px]"
+      : density === "COMPACT"
+      ? "min-h-[52px]"
+      : "min-h-[72px]";
+
   return (
     <div
       ref={setNodeRef}
-      className={`min-h-[72px] rounded-lg border p-1 transition-all duration-150 flex flex-col justify-center ${statusBg} ${statusBorder}`}
+      className={`${minHeightClass} rounded-lg border p-1 transition-all duration-150 flex flex-col justify-center ${statusBg} ${statusBorder}`}
     >
       {lesson ? (
         <LessonCard
           lesson={lesson}
           subject={subject}
           teacher={teacher}
+          teacherNumber={teacherNumber}
           room={room}
+          density={density}
           onToggleLock={onToggleLock}
           onOpenZamena={onOpenZamena}
         />
       ) : isPrimaryWeekend ? (
-        <div className="h-full w-full flex flex-col items-center justify-center text-[10px] text-slate-400/50 font-semibold select-none bg-slate-900/10 rounded">
-          <span>Dam olish</span>
-          <span className="text-[8px] text-slate-500/60">(5 kunlik)</span>
+        <div className="h-full w-full flex flex-col items-center justify-center text-[9px] text-slate-400/50 font-semibold select-none bg-slate-900/10 rounded">
+          <span>Dam</span>
+          <span className="text-[8px] text-slate-500/60">(5 kun)</span>
         </div>
       ) : (
         <div className="h-full w-full flex items-center justify-center text-[10px] text-muted-foreground/30 font-mono select-none">
@@ -140,7 +167,7 @@ export const MasterGrid: React.FC<MasterGridProps> = ({
   shifts,
   onLessonsChange,
   onOpenZamena,
-  zoomLevel,
+  zoomLevel: propZoomLevel,
   selectedBranch,
 }) => {
   const [activeLesson, setActiveLesson] = useState<Lesson | null>(null);
@@ -156,17 +183,56 @@ export const MasterGrid: React.FC<MasterGridProps> = ({
   } | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+  // Local grid filters & controls
+  const [stageFilter, setStageFilter] = useState<"ALL" | "PRIMARY" | "MIDDLE" | "HIGH">("ALL");
+  const [shiftFilter, setShiftFilter] = useState<string>("ALL");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [density, setDensity] = useState<GridDensity>("STANDARD");
+  const [zoom, setZoom] = useState(propZoomLevel || 100);
+
   const subjectMap = useMemo(() => new Map(subjects.map((s) => [s.id, s])), [subjects]);
   const teacherMap = useMemo(() => new Map(teachers.map((t) => [t.id, t])), [teachers]);
   const roomMap = useMemo(() => new Map(rooms.map((r) => [r.id, r])), [rooms]);
   const branchMap = useMemo(() => new Map((branches || []).map((b) => [b.id, b])), [branches]);
   const shiftMap = useMemo(() => new Map((shifts || []).map((s) => [s.id, s])), [shifts]);
 
-  // Filial bo'yicha sinflarni filtrlash
+  const teacherNumberMap = useMemo(() => {
+    const map = new Map<string, number>();
+    teachers.forEach((t, i) => map.set(t.id, i + 1));
+    return map;
+  }, [teachers]);
+
+  // Sinflarni filtrlash (Filial + Bosqich + Smena + Qidiruv)
   const filteredClasses = useMemo(() => {
-    if (selectedBranch === "ALL") return classes;
-    return classes.filter((c) => c.branchId === selectedBranch);
-  }, [classes, selectedBranch]);
+    let list = classes;
+
+    // 1. Filial filtri
+    if (selectedBranch !== "ALL") {
+      list = list.filter((c) => c.branchId === selectedBranch);
+    }
+
+    // 2. Bosqich filtri
+    if (stageFilter === "PRIMARY") {
+      list = list.filter((c) => c.grade <= 4);
+    } else if (stageFilter === "MIDDLE") {
+      list = list.filter((c) => c.grade >= 5 && c.grade <= 9);
+    } else if (stageFilter === "HIGH") {
+      list = list.filter((c) => c.grade >= 10);
+    }
+
+    // 3. Smena filtri
+    if (shiftFilter !== "ALL") {
+      list = list.filter((c) => c.shiftId === shiftFilter);
+    }
+
+    // 4. Qidiruv
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      list = list.filter((c) => c.name.toLowerCase().includes(q) || `${c.grade}` === q);
+    }
+
+    return list;
+  }, [classes, selectedBranch, stageFilter, shiftFilter, searchQuery]);
 
   // Lessons map: `${classId}_${day}_${period}` -> Lesson
   const lessonMap = useMemo(() => {
@@ -224,61 +290,65 @@ export const MasterGrid: React.FC<MasterGridProps> = ({
       const clashClass = classes.find((c) => c.id === teacherClash.classId);
       return {
         status: "danger",
-        message: `Bu joyga qo'yib bo'lmaydi — ${teacher?.fullName || "O'qituvchi"} shu vaqtda ${
-          clashClass?.name || "boshqa sinf"
-        }da darsda band.`,
-        conflicts: ["teacher_busy"],
+        message: `Ziddiyat! ${teacher?.fullName || "O'qituvchi"} ayni shu paytda ${
+          clashClass?.name || "boshqa"
+        } sinfida darsda.`,
+        conflicts: ["teacher_clash"],
       };
     }
 
-    // 3. SWAP holati: Agar katakda boshqa dars bo'lsa
-    if (targetExistingLesson && targetExistingLesson.id !== lessonToMove.id) {
-      if (targetExistingLesson.isLocked) {
-        return {
-          status: "danger",
-          message: "Bu dars qulflangan, o'rnini almashtirib bo'lmaydi.",
-          conflicts: ["lesson_locked"],
-        };
-      }
-
-      // Mavjud darsni manba katakka ko'chirganda ziddiyat bormi tekshirish
-      const existingTeacher = teacherMap.get(targetExistingLesson.teacherId);
-      const swapClash = lessons.find(
+    // 3. HARD CONSTRAINT: Xona bandligi
+    if (lessonToMove.roomId) {
+      const roomClash = lessons.find(
         (l) =>
-          l.id !== targetExistingLesson.id &&
           l.id !== lessonToMove.id &&
-          l.teacherId === targetExistingLesson.teacherId &&
-          l.dayOfWeek === lessonToMove.dayOfWeek &&
-          l.periodNumber === lessonToMove.periodNumber
+          l.roomId === lessonToMove.roomId &&
+          l.dayOfWeek === targetDay &&
+          l.periodNumber === targetPeriod &&
+          (!targetExistingLesson || l.id !== targetExistingLesson.id)
       );
-
-      if (swapClash) {
+      if (roomClash) {
+        const room = roomMap.get(lessonToMove.roomId);
         return {
           status: "danger",
-          message: `O'rin almashtirib bo'lmaydi — ${existingTeacher?.fullName || "O'qituvchi"} manba soatda band bo'ladi.`,
-          conflicts: ["swap_clash"],
+          message: `${room?.name || "Xona"} ushbu vaqtda boshqa dars tomonidan band qilingan.`,
+          conflicts: ["room_clash"],
         };
       }
     }
 
-    // 4. SOFT CONSTRAINT: SanPiN yuklama va takrorlanish
-    if (subject && subject.difficultyScore >= 9 && targetPeriod >= 6) {
+    // 4. SOFT CONSTRAINT: Kunlik darslar soni va SanPiN qiyinlik
+    const classLessonsThisDay = lessons.filter(
+      (l) =>
+        l.classId === targetClassId &&
+        l.dayOfWeek === targetDay &&
+        l.id !== lessonToMove.id
+    );
+
+    const targetClass = classes.find((c) => c.id === targetClassId);
+    const isPrimary = targetClass ? targetClass.grade <= 4 : false;
+    const maxDayLessons = isPrimary ? 5 : 6;
+
+    if (classLessonsThisDay.length >= maxDayLessons) {
       return {
         status: "warning",
-        message: `Diqqat: ${subject.name} og'ir fan hisoblanadi (SanPiN). Oxirgi ${targetPeriod}-soatga qo'yish o'quvchilarni toliqtirishi mumkin. Baribir joylashtirilsinmi?`,
-        conflicts: ["sanpin_heavy_late"],
+        message: `SanPiN me'yori: ${targetClass?.name || "Sinf"} uchun ushbu kunda allaqachon ${
+          classLessonsThisDay.length
+        } ta dars bor. Yana dars qo'shish o'quvchilarni toliqtirishi mumkin.`,
+        conflicts: ["daily_limit_exceeded"],
       };
     }
 
     return {
       status: "safe",
-      message: "To'liq xavfsiz — ziddiyat yo'q.",
+      message: "Darsni bu yerga ko'chirish mumkin (Ziddiyatsiz).",
       conflicts: [],
     };
   };
 
   const handleDragStart = (event: DragStartEvent) => {
-    const lesson = lessons.find((l) => l.id === event.active.id);
+    const { active } = event;
+    const lesson = lessons.find((l) => l.id === active.id);
     if (lesson) {
       setActiveLesson(lesson);
     }
@@ -286,13 +356,10 @@ export const MasterGrid: React.FC<MasterGridProps> = ({
 
   const handleDragOver = (event: DragOverEvent) => {
     const { active, over } = event;
-    if (!over || !active) {
+    if (!over || !activeLesson) {
       setActiveValidation(null);
       return;
     }
-
-    const lessonToMove = lessons.find((l) => l.id === active.id);
-    if (!lessonToMove) return;
 
     const overData = over.data.current as {
       classId: string;
@@ -303,7 +370,7 @@ export const MasterGrid: React.FC<MasterGridProps> = ({
 
     if (overData) {
       const validation = validateMove(
-        lessonToMove,
+        activeLesson,
         overData.classId,
         overData.day,
         overData.period,
@@ -318,10 +385,10 @@ export const MasterGrid: React.FC<MasterGridProps> = ({
     setActiveLesson(null);
     setActiveValidation(null);
 
-    if (!over) return;
+    if (!over || !active) return;
 
-    const lessonToMove = lessons.find((l) => l.id === active.id);
-    if (!lessonToMove) return;
+    const sourceLesson = lessons.find((l) => l.id === active.id);
+    if (!sourceLesson) return;
 
     const overData = over.data.current as {
       classId: string;
@@ -332,52 +399,45 @@ export const MasterGrid: React.FC<MasterGridProps> = ({
 
     if (!overData) return;
 
-    // O'z joyiga qaytarilsa
+    const { classId: targetClassId, day: targetDay, period: targetPeriod, existingLesson } =
+      overData;
+
     if (
-      lessonToMove.classId === overData.classId &&
-      lessonToMove.dayOfWeek === overData.day &&
-      lessonToMove.periodNumber === overData.period
+      sourceLesson.classId === targetClassId &&
+      sourceLesson.dayOfWeek === targetDay &&
+      sourceLesson.periodNumber === targetPeriod
     ) {
       return;
     }
 
     const validation = validateMove(
-      lessonToMove,
-      overData.classId,
-      overData.day,
-      overData.period,
-      overData.existingLesson
+      sourceLesson,
+      targetClassId,
+      targetDay,
+      targetPeriod,
+      existingLesson
     );
 
-    // Qizil holat — rad etish
     if (validation.status === "danger") {
       setErrorMessage(validation.message);
       setTimeout(() => setErrorMessage(null), 4000);
       return;
     }
 
-    // Sariq holat — Tasdiqlash modali
     if (validation.status === "warning") {
       setWarningModal({
         isOpen: true,
-        sourceLesson: lessonToMove,
-        targetClassId: overData.classId,
-        targetDay: overData.day,
-        targetPeriod: overData.period,
-        existingLesson: overData.existingLesson,
+        sourceLesson,
+        targetClassId,
+        targetDay,
+        targetPeriod,
+        existingLesson,
         message: validation.message,
       });
       return;
     }
 
-    // Yashil holat — Darhol ko'chirish yoki Swap
-    executeMove(
-      lessonToMove,
-      overData.classId,
-      overData.day,
-      overData.period,
-      overData.existingLesson
-    );
+    executeMove(sourceLesson, targetClassId, targetDay, targetPeriod, existingLesson);
   };
 
   const executeMove = (
@@ -389,8 +449,8 @@ export const MasterGrid: React.FC<MasterGridProps> = ({
   ) => {
     let updated = [...lessons];
 
-    if (existingLesson && existingLesson.id !== sourceLesson.id) {
-      // SWAP (O'rin almashtirish)
+    if (existingLesson) {
+      // Katak almashinuvi (SWAP)
       updated = updated.map((l) => {
         if (l.id === sourceLesson.id) {
           return {
@@ -411,7 +471,7 @@ export const MasterGrid: React.FC<MasterGridProps> = ({
         return l;
       });
     } else {
-      // Oddiy bo'sh katakka ko'chirish
+      // Bo'sh katakka ko'chirish
       updated = updated.map((l) =>
         l.id === sourceLesson.id
           ? {
@@ -434,6 +494,14 @@ export const MasterGrid: React.FC<MasterGridProps> = ({
     onLessonsChange(updated);
   };
 
+  // Ustun kengligi zichlikka qarab
+  const colMinWidthClass =
+    density === "NUMBERED"
+      ? "min-w-[80px]"
+      : density === "COMPACT"
+      ? "min-w-[96px]"
+      : "min-w-[145px]";
+
   return (
     <DndContext
       sensors={sensors}
@@ -441,7 +509,111 @@ export const MasterGrid: React.FC<MasterGridProps> = ({
       onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
     >
-      <div className="relative w-full overflow-hidden bg-background">
+      <div className="relative w-full overflow-hidden bg-background flex flex-col">
+        {/* ── TOP CONTROL TOOLBAR ───────────────────────────────────────────── */}
+        <div className="border-b border-border/80 bg-card/60 backdrop-blur-md px-4 py-2.5 flex flex-wrap items-center justify-between gap-3 text-xs">
+          {/* Chap: Bosqich Filterlari */}
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="text-[11px] font-semibold text-muted-foreground mr-1 flex items-center gap-1">
+              <GraduationCap className="w-3.5 h-3.5" />
+              <span>Sinflar:</span>
+            </span>
+
+            {[
+              { id: "ALL", label: `Barchasi (${classes.length})` },
+              { id: "PRIMARY", label: `1-4 Boshlang'ich (${classes.filter((c) => c.grade <= 4).length})` },
+              { id: "MIDDLE", label: `5-9 O'rta (${classes.filter((c) => c.grade >= 5 && c.grade <= 9).length})` },
+              { id: "HIGH", label: `10-11 Yuqori (${classes.filter((c) => c.grade >= 10).length})` },
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setStageFilter(tab.id as any)}
+                className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                  stageFilter === tab.id
+                    ? "bg-primary text-primary-foreground shadow-sm"
+                    : "bg-muted/50 hover:bg-muted text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+
+          {/* O'ng: Qidiruv, Zichlik va Zoom */}
+          <div className="flex items-center gap-2.5 flex-wrap">
+            {/* Qidiruv */}
+            <div className="relative w-32 sm:w-40">
+              <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+              <input
+                type="text"
+                placeholder="Sinf qidirish..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-8 pr-2.5 py-1 rounded-lg border border-border bg-background text-xs focus:ring-1 focus:ring-primary outline-none"
+              />
+            </div>
+
+            {/* Ko'rinish zichligi (Density) */}
+            <div className="flex items-center rounded-lg border border-border p-0.5 bg-background">
+              <button
+                onClick={() => setDensity("STANDARD")}
+                className={`px-2 py-0.5 rounded text-[11px] font-medium transition-all ${
+                  density === "STANDARD" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+                }`}
+                title="Keng to'liq karta"
+              >
+                Keng
+              </button>
+              <button
+                onClick={() => setDensity("COMPACT")}
+                className={`px-2 py-0.5 rounded text-[11px] font-medium transition-all ${
+                  density === "COMPACT" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+                }`}
+                title="Zich (Barcha sinflar bir ekranga sig'adi)"
+              >
+                Zich
+              </button>
+              <button
+                onClick={() => setDensity("NUMBERED")}
+                className={`px-2 py-0.5 rounded text-[11px] font-medium transition-all ${
+                  density === "NUMBERED" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+                }`}
+                title="39-maktab raqamli ko'rinishi"
+              >
+                Raqamli
+              </button>
+            </div>
+
+            {/* Zoom Controls */}
+            <div className="flex items-center gap-1 bg-background rounded-lg border border-border p-0.5">
+              <button
+                onClick={() => setZoom(Math.max(50, zoom - 10))}
+                className="p-1 hover:bg-muted rounded text-muted-foreground hover:text-foreground"
+                title="Kichraytirish"
+              >
+                <ZoomOut className="w-3.5 h-3.5" />
+              </button>
+              <span className="font-mono text-[11px] font-bold px-1 min-w-[36px] text-center">
+                {zoom}%
+              </span>
+              <button
+                onClick={() => setZoom(Math.min(150, zoom + 10))}
+                className="p-1 hover:bg-muted rounded text-muted-foreground hover:text-foreground"
+                title="Kattalashtirish"
+              >
+                <ZoomIn className="w-3.5 h-3.5" />
+              </button>
+              <button
+                onClick={() => setZoom(zoom === 100 ? 70 : 100)}
+                className="p-1 hover:bg-muted rounded text-muted-foreground hover:text-foreground ml-0.5"
+                title={zoom === 100 ? "Ekranga sig'dirish (Fit)" : "100% tiklash"}
+              >
+                <Maximize2 className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+        </div>
+
         {/* Error Toast */}
         {errorMessage && (
           <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 rounded-xl border border-rose-500/50 bg-rose-950/90 text-rose-200 px-4 py-3 shadow-2xl backdrop-blur-md animate-in fade-in slide-in-from-bottom-5">
@@ -456,15 +628,13 @@ export const MasterGrid: React.FC<MasterGridProps> = ({
           </div>
         )}
 
-        {/* Warning Modal (Sariq holat tasdiqlash) */}
+        {/* Warning Modal */}
         {warningModal && warningModal.isOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in">
             <div className="w-full max-w-md rounded-2xl border border-border bg-card p-6 shadow-2xl">
               <div className="flex items-center gap-3 text-amber-500 mb-3">
                 <AlertCircle className="h-6 w-6" />
-                <h3 className="font-bold text-base text-foreground">
-                  Ogohlantirish (Soft Constraint)
-                </h3>
+                <h3 className="font-bold text-base text-foreground">Ogohlantirish (Soft Constraint)</h3>
               </div>
               <p className="text-xs text-muted-foreground leading-relaxed mb-6">
                 {warningModal.message}
@@ -472,7 +642,7 @@ export const MasterGrid: React.FC<MasterGridProps> = ({
               <div className="flex items-center justify-end gap-2">
                 <button
                   onClick={() => setWarningModal(null)}
-                  className="rounded-lg border border-border px-4 py-2 text-xs font-semibold hover:bg-muted transition-colors"
+                  className="rounded-lg border border-border px-4 py-2 text-xs font-semibold hover:bg-muted transition-colors cursor-pointer"
                 >
                   Bekor qilish
                 </button>
@@ -487,7 +657,7 @@ export const MasterGrid: React.FC<MasterGridProps> = ({
                     );
                     setWarningModal(null);
                   }}
-                  className="rounded-lg bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 text-xs font-semibold shadow-md transition-colors"
+                  className="rounded-lg bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 text-xs font-semibold shadow-md transition-colors cursor-pointer"
                 >
                   Baribir joylashtirish
                 </button>
@@ -496,17 +666,17 @@ export const MasterGrid: React.FC<MasterGridProps> = ({
           </div>
         )}
 
-        {/* Master Grid Scroll Container */}
+        {/* ── MASTER GRID SCROLL CONTAINER ─────────────────────────────────── */}
         <div
-          className="w-full overflow-auto max-h-[calc(100vh-4rem)] p-4 transition-transform origin-top-left"
-          style={{ transform: `scale(${zoomLevel / 100})` }}
+          className="w-full overflow-auto max-h-[calc(100vh-8rem)] p-3 transition-transform origin-top-left"
+          style={{ transform: `scale(${zoom / 100})`, transformOrigin: "top left" }}
         >
           <div className="inline-block min-w-full align-middle">
             <table className="min-w-full border-collapse border border-border text-left">
               {/* Sticky Table Header (Sinflar) */}
               <thead className="sticky top-0 z-30 bg-card/95 backdrop-blur-md shadow-sm">
                 <tr>
-                  <th className="sticky left-0 z-40 w-36 border border-border bg-card/95 p-3 text-xs font-bold text-muted-foreground uppercase tracking-wider backdrop-blur-md">
+                  <th className="sticky left-0 z-40 w-32 border border-border bg-card/95 p-2 text-xs font-bold text-muted-foreground uppercase tracking-wider backdrop-blur-md">
                     Kun / Soat
                   </th>
                   {filteredClasses.map((cls) => {
@@ -517,11 +687,11 @@ export const MasterGrid: React.FC<MasterGridProps> = ({
                     return (
                       <th
                         key={cls.id}
-                        className={`min-w-[145px] border border-border p-2.5 text-center text-xs font-bold text-foreground transition-colors ${
+                        className={`${colMinWidthClass} border border-border p-2 text-center text-xs font-bold text-foreground transition-colors ${
                           isBranchNonMain ? "bg-indigo-500/5 dark:bg-indigo-950/20" : ""
                         }`}
                       >
-                        <div className="flex flex-col items-center gap-1">
+                        <div className="flex flex-col items-center gap-0.5">
                           <span className="text-sm font-extrabold text-blue-600 dark:text-blue-400 tracking-tight">
                             {cls.name}
                           </span>
@@ -531,19 +701,19 @@ export const MasterGrid: React.FC<MasterGridProps> = ({
                             </span>
                             {branch && (
                               <span
-                                className={`text-[9px] px-1.5 py-0.2 rounded-md font-semibold ${
+                                className={`text-[8px] px-1 py-0.2 rounded font-semibold ${
                                   branch.isMain
                                     ? "bg-muted/80 text-muted-foreground"
                                     : "bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20"
                                 }`}
                                 title={branch.name}
                               >
-                                {branch.name.length > 11 ? branch.name.slice(0, 9) + "..." : branch.name}
+                                {branch.name.length > 8 ? branch.name.slice(0, 7) + ".." : branch.name}
                               </span>
                             )}
                             {shift && (
-                              <span className="text-[9px] px-1 py-0.2 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 font-medium">
-                                {shift.name.includes("2") ? "2-smena" : "1-smena"}
+                              <span className="text-[8px] px-1 py-0.2 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 font-medium">
+                                {shift.name.includes("2") ? "2-sm" : "1-sm"}
                               </span>
                             )}
                           </div>
@@ -562,7 +732,7 @@ export const MasterGrid: React.FC<MasterGridProps> = ({
                     <tr className="bg-muted/40 font-bold">
                       <td
                         colSpan={filteredClasses.length + 1}
-                        className="border border-border px-3 py-1.5 text-xs text-foreground/90 font-semibold bg-muted/60"
+                        className="sticky left-0 border border-border px-3 py-1 text-xs text-foreground/90 font-semibold bg-muted/70"
                       >
                         {day.name}
                       </td>
@@ -572,10 +742,10 @@ export const MasterGrid: React.FC<MasterGridProps> = ({
                     {PERIODS.map((period) => (
                       <tr key={`${day.id}_${period}`} className="hover:bg-muted/10">
                         {/* Sticky Chap Ustun: Period Raqami va Kirish-Chiqish Vaqtlari */}
-                        <td className="sticky left-0 z-20 border border-border bg-card/95 p-2 text-xs font-semibold tabular-nums text-muted-foreground backdrop-blur-md">
+                        <td className="sticky left-0 z-20 border border-border bg-card/95 p-1.5 text-xs font-semibold tabular-nums text-muted-foreground backdrop-blur-md">
                           <div className="flex flex-col">
                             <span className="font-extrabold text-foreground text-xs">{period}-dars</span>
-                            <span className="text-[10px] font-mono text-blue-600 dark:text-blue-400 font-bold">
+                            <span className="text-[9px] font-mono text-blue-600 dark:text-blue-400 font-bold">
                               {period === 1
                                 ? "08:00 - 08:45"
                                 : period === 2
@@ -602,23 +772,30 @@ export const MasterGrid: React.FC<MasterGridProps> = ({
                           const teacher = cellLesson
                             ? teacherMap.get(cellLesson.teacherId)
                             : undefined;
-                          const room = cellLesson?.roomId
+                          const teacherNum = cellLesson
+                            ? teacherNumberMap.get(cellLesson.teacherId)
+                            : undefined;
+                          const room = cellLesson && cellLesson.roomId
                             ? roomMap.get(cellLesson.roomId)
                             : null;
+
+                          const isPrimaryWeekend = day.id === 6 && (cls.isPrimary || cls.grade <= 4);
 
                           return (
                             <td
                               key={`${cls.id}_${day.id}_${period}`}
-                              className="border border-border p-1 align-top"
+                              className="border border-border p-1"
                             >
                               <GridCell
                                 classId={cls.id}
                                 day={day.id}
                                 period={period}
-                                isPrimaryWeekend={day.id === 6 && (cls.isPrimary || cls.grade <= 4)}
+                                density={density}
+                                isPrimaryWeekend={isPrimaryWeekend}
                                 lesson={cellLesson}
                                 subject={subject}
                                 teacher={teacher}
+                                teacherNumber={teacherNum}
                                 room={room}
                                 activeValidation={activeValidation}
                                 isOver={false}
@@ -637,15 +814,17 @@ export const MasterGrid: React.FC<MasterGridProps> = ({
           </div>
         </div>
 
-        {/* Drag Overlay (Ko'chirilayotgan dars nusxasi) */}
+        {/* Drag Overlay */}
         <DragOverlay>
           {activeLesson ? (
-            <div className="w-[140px] opacity-90 shadow-2xl scale-105">
+            <div className="w-36 opacity-90 rotate-2 shadow-2xl scale-105">
               <LessonCard
                 lesson={activeLesson}
                 subject={subjectMap.get(activeLesson.subjectId)}
                 teacher={teacherMap.get(activeLesson.teacherId)}
+                teacherNumber={teacherNumberMap.get(activeLesson.teacherId)}
                 room={activeLesson.roomId ? roomMap.get(activeLesson.roomId) : null}
+                density={density}
                 isDragging
               />
             </div>

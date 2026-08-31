@@ -6,11 +6,15 @@ import { CSS } from "@dnd-kit/utilities";
 import { Lock, Unlock, UserCheck, MapPin } from "lucide-react";
 import { Lesson, Subject, Teacher, Room } from "@/types";
 
+export type GridDensity = "STANDARD" | "COMPACT" | "NUMBERED";
+
 interface LessonCardProps {
   lesson: Lesson;
   subject?: Subject;
   teacher?: Teacher;
+  teacherNumber?: number;
   room?: Room | null;
+  density?: GridDensity;
   onToggleLock?: (lessonId: string) => void;
   onOpenZamena?: (lesson: Lesson) => void;
   isDragging?: boolean;
@@ -20,7 +24,9 @@ export const LessonCard: React.FC<LessonCardProps> = ({
   lesson,
   subject,
   teacher,
+  teacherNumber = 1,
   room,
+  density = "STANDARD",
   onToggleLock,
   onOpenZamena,
   isDragging = false,
@@ -45,6 +51,70 @@ export const LessonCard: React.FC<LessonCardProps> = ({
 
   const activeDragging = isDragging || isSortableDragging;
 
+  // ── 1. NUMBERED MODE (39-maktab andozasi: Fan + Raqam) ─────────────────────
+  if (density === "NUMBERED") {
+    return (
+      <div
+        ref={setNodeRef}
+        style={style}
+        {...attributes}
+        {...listeners}
+        className={`group relative flex items-center justify-between rounded-md border border-border/80 border-l-[3px] bg-card px-1.5 py-1 text-[11px] shadow-sm select-none transition-all ${
+          activeDragging
+            ? "opacity-40 ring-2 ring-blue-500 scale-95 z-50 cursor-grabbing shadow-lg"
+            : lesson.isLocked
+            ? "bg-muted/40 cursor-default"
+            : "hover:border-blue-300 dark:hover:border-blue-700 hover:shadow-md cursor-grab"
+        }`}
+        title={`${subject?.name || "Fan"} — ${teacher?.fullName || "O'qituvchi"}`}
+      >
+        <span className="font-bold truncate text-[10px]">
+          {subject?.shortName || subject?.name || "Fan"}{" "}
+          <span className="text-primary font-extrabold">({teacherNumber})</span>
+        </span>
+        {lesson.isLocked && <Lock className="h-2.5 w-2.5 text-indigo-500 shrink-0 ml-1" />}
+      </div>
+    );
+  }
+
+  // ── 2. COMPACT MODE (Barcha 22 ta sinf bir ekranga sig'ishi uchun zich) ────
+  if (density === "COMPACT") {
+    return (
+      <div
+        ref={setNodeRef}
+        style={style}
+        {...attributes}
+        {...listeners}
+        className={`group relative flex flex-col justify-between rounded-md border border-border/80 border-l-[3px] bg-card p-1.5 text-[10px] shadow-sm select-none transition-all min-h-[50px] ${
+          activeDragging
+            ? "opacity-40 ring-2 ring-blue-500 scale-95 z-50 cursor-grabbing shadow-lg"
+            : lesson.isLocked
+            ? "bg-muted/40 cursor-default"
+            : "hover:border-blue-300 dark:hover:border-blue-700 hover:shadow-md cursor-grab"
+        }`}
+      >
+        <div className="flex items-start justify-between gap-0.5">
+          <span className="font-bold truncate text-[10px] leading-tight text-foreground" title={subject?.name}>
+            {subject?.shortName || subject?.name || "Fan"}
+          </span>
+          {lesson.isLocked && <Lock className="h-2.5 w-2.5 text-indigo-500 shrink-0" />}
+        </div>
+
+        <div className="flex items-center justify-between text-[9px] text-muted-foreground mt-0.5">
+          <span className="truncate max-w-[55px]" title={teacher?.fullName}>
+            {teacher?.fullName ? teacher.fullName.split(" ")[0] : ""}
+          </span>
+          {room && (
+            <span className="text-[8px] text-blue-600 dark:text-blue-400 font-mono truncate max-w-[35px]" title={room.name}>
+              {room.name.slice(0, 5)}
+            </span>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // ── 3. STANDARD MODE (Keng batafsil karta) ─────────────────────────────────
   return (
     <div
       ref={setNodeRef}
@@ -76,7 +146,7 @@ export const LessonCard: React.FC<LessonCardProps> = ({
               e.stopPropagation();
               onOpenZamena?.(lesson);
             }}
-            className="p-0.5 rounded hover:bg-muted text-muted-foreground hover:text-blue-600 transition-colors"
+            className="p-0.5 rounded hover:bg-muted text-muted-foreground hover:text-blue-600 transition-colors cursor-pointer"
             title="O'rinbosar (Zamena) tayinlash"
           >
             <UserCheck className="h-3 w-3" />
@@ -89,7 +159,7 @@ export const LessonCard: React.FC<LessonCardProps> = ({
               e.stopPropagation();
               onToggleLock?.(lesson.id);
             }}
-            className="p-0.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+            className="p-0.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
             title={lesson.isLocked ? "Qulfni ochish" : "Qulflash (joyida saqlash)"}
           >
             {lesson.isLocked ? (
