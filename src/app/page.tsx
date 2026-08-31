@@ -339,6 +339,8 @@ export default function HomePage() {
               onLessonsChange={store.setLessons}
               onExportExcel={handleExport}
               onOpenZamena={(l) => setSelectedZamenaLesson(l)}
+              zoomLevel={store.zoomLevel}
+              onZoomChange={store.setZoomLevel}
               onUpdateSchoolInfo={(updates) => {
                 if (currentSchool?.id) {
                   store.updateSchoolInfo(currentSchool.id, updates);

@@ -40,6 +40,8 @@ import {
   Award,
   Save,
   ChevronDown,
+  ZoomIn,
+  ZoomOut,
 } from "lucide-react";
 
 export type FilterScope =
@@ -63,6 +65,8 @@ interface Official39TableViewProps {
   onExportExcel?: () => void;
   onOpenZamena?: (lesson: Lesson) => void;
   onUpdateSchoolInfo?: (updates: Partial<SchoolInfo>) => void;
+  zoomLevel?: number;
+  onZoomChange?: (zoom: number) => void;
   schoolName?: string;
   region?: string;
   directorName?: string;
@@ -210,6 +214,8 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
   onExportExcel,
   onOpenZamena,
   onUpdateSchoolInfo,
+  zoomLevel = 100,
+  onZoomChange,
   schoolName = "39 - umumiy o'rta ta'lim maktabi",
   region = "Muzrabot tumani",
   directorName = "M. Ramazonov",
@@ -652,8 +658,38 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
             </div>
           </div>
 
-          {/* O'ng: Rekvizitlar, Excel va Chop etish tugmalari */}
+          {/* O'ng: Zoom, Rekvizitlar, Excel va Chop etish tugmalari */}
           <div className="flex items-center gap-2.5 flex-wrap self-end md:self-auto">
+            {/* Zoom Boshqaruvi */}
+            <div className="flex items-center gap-1 rounded-xl bg-slate-800 border border-slate-700 p-1 shadow-sm">
+              <button
+                type="button"
+                onClick={() => onZoomChange && onZoomChange(Math.max(50, zoomLevel - 10))}
+                disabled={zoomLevel <= 50}
+                className="p-1.5 rounded-lg hover:bg-slate-700 text-slate-300 hover:text-white disabled:opacity-40 transition-colors cursor-pointer"
+                title="Kichraytirish (-10%)"
+              >
+                <ZoomOut className="w-3.5 h-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => onZoomChange && onZoomChange(100)}
+                className="px-2 text-xs font-semibold tabular-nums text-slate-300 hover:text-white hover:underline cursor-pointer"
+                title="100% ga qaytarish"
+              >
+                {zoomLevel}%
+              </button>
+              <button
+                type="button"
+                onClick={() => onZoomChange && onZoomChange(Math.min(150, zoomLevel + 10))}
+                disabled={zoomLevel >= 150}
+                className="p-1.5 rounded-lg hover:bg-slate-700 text-slate-300 hover:text-white disabled:opacity-40 transition-colors cursor-pointer"
+                title="Kattalashtirish (+10%)"
+              >
+                <ZoomIn className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
             {/* Maktab Rekvizitlarini tezkor tahrirlash tugmasi */}
             <button
               onClick={() => {
@@ -695,8 +731,13 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
           </div>
         </div>
 
-        {/* ── 1. RASMIY HUJJAT SARLAVHASI (TASDIQLAYMAN & MAKTAB NOMI) ─────────── */}
-        <div className="w-full mb-4 font-serif">
+        {/* ── ZOOM CONTAINER (Butun jadval va rasmiy hujjat uchun) ───────────── */}
+        <div
+          className="w-full flex flex-col origin-top-left transition-transform duration-150"
+          style={{ zoom: `${zoomLevel}%` }}
+        >
+          {/* ── 1. RASMIY HUJJAT SARLAVHASI (TASDIQLAYMAN & MAKTAB NOMI) ─────────── */}
+          <div className="w-full mb-4 font-serif">
           <div className="flex justify-between items-start text-xs sm:text-sm leading-relaxed mb-3">
             {/* Chap: TASDIQLAYMAN */}
             <div
@@ -998,6 +1039,7 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
               <span className="font-semibold underline decoration-dotted decoration-blue-500/50">{psychologistName}</span>
             </p>
           </div>
+        </div>
         </div>
 
         {/* ── 5. INTERAKTIV REKVIZITLARNI TAHRIRLASH MODALI ─────────────────── */}

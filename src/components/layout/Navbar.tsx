@@ -202,21 +202,25 @@ export const Navbar: React.FC<NavbarProps> = ({
           {/* Zoom Boshqaruvi */}
           <div className="hidden lg:flex items-center rounded-lg border border-border bg-card p-1 shadow-sm">
             <button
-              onClick={() => onZoomChange(Math.max(75, zoomLevel - 10))}
-              disabled={zoomLevel <= 75}
-              className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground disabled:opacity-40 transition-colors"
-              title="Kichraytirish"
+              onClick={() => onZoomChange(Math.max(50, zoomLevel - 10))}
+              disabled={zoomLevel <= 50}
+              className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground disabled:opacity-40 transition-colors cursor-pointer"
+              title="Kichraytirish (-10%)"
             >
               <ZoomOut className="h-3.5 w-3.5" />
             </button>
-            <span className="px-2 text-xs font-semibold tabular-nums text-muted-foreground">
-              {zoomLevel}%
-            </span>
             <button
-              onClick={() => onZoomChange(Math.min(125, zoomLevel + 10))}
-              disabled={zoomLevel >= 125}
-              className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground disabled:opacity-40 transition-colors"
-              title="Kattalashtirish"
+              onClick={() => onZoomChange(100)}
+              className="px-2 text-xs font-semibold tabular-nums text-muted-foreground hover:text-foreground hover:underline cursor-pointer"
+              title="100% ga qaytarish"
+            >
+              {zoomLevel}%
+            </button>
+            <button
+              onClick={() => onZoomChange(Math.min(150, zoomLevel + 10))}
+              disabled={zoomLevel >= 150}
+              className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground disabled:opacity-40 transition-colors cursor-pointer"
+              title="Kattalashtirish (+10%)"
             >
               <ZoomIn className="h-3.5 w-3.5" />
             </button>
