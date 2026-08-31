@@ -32,7 +32,15 @@ const STEPS = [
 ];
 
 const defaultData: SetupData = {
-  school: { name: "", region: "", directorFullName: "", academicVicePrincipalName: "", psychologistName: "", academicYear: "2024-2025", term: "1-chorak" },
+  school: {
+    name: "",
+    region: "",
+    directorFullName: "",
+    academicVicePrincipalName: "",
+    psychologistName: "",
+    academicYear: "2025-2026",
+    term: "1-chorak",
+  },
   subjects: [],
   teachers: [],
   shifts: [],

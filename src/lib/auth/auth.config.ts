@@ -67,4 +67,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     error: "/login",
   },
   session: { strategy: "jwt" },
+  secret:
+    process.env.AUTH_SECRET ||
+    process.env.NEXTAUTH_SECRET ||
+    "jadvalai-dev-secret-key-2026-uzb-maktab-saas-platform-32chars-min",
+  trustHost: true,
 });

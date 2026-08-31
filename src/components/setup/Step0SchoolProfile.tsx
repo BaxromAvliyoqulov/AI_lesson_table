@@ -7,7 +7,7 @@ import { School, MapPin, User, Calendar } from "lucide-react";
 
 type Props = { data: SetupData; updateData: <K extends keyof SetupData>(k: K, v: SetupData[K]) => void; onNext: () => void; onBack: () => void };
 
-const ACADEMIC_YEARS = ["2024-2025", "2025-2026", "2026-2027"];
+const ACADEMIC_YEARS = ["2025-2026", "2026-2027", "2027-2028"];
 const TERMS = ["1-chorak", "2-chorak", "3-chorak", "4-chorak"];
 
 export function Step0SchoolProfile({ data, updateData, onNext }: Props) {

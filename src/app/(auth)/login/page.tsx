@@ -3,12 +3,25 @@
 import React, { useState, useTransition } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Eye, EyeOff, GraduationCap, Loader2, AlertCircle, Calendar, Sparkles } from "lucide-react";
+import { Eye, EyeOff, Loader2, AlertCircle, Calendar, Sparkles, KeyRound, Shield, School } from "lucide-react";
 
 const ERROR_MESSAGES: Record<string, string> = {
   CredentialsSignin: "Email yoki parol noto'g'ri",
   SUBSCRIPTION_SUSPENDED: "Obunangiz to'xtatilgan. Platforma administratori bilan bog'laning.",
   default: "Kirish amalga oshmadi. Qayta urinib ko'ring.",
+};
+
+const DEMO_ACCOUNTS = {
+  schoolAdmin: {
+    label: "Maktab Admin",
+    email: "admin@demo-maktab.uz",
+    password: "admin123",
+  },
+  superAdmin: {
+    label: "Super Admin",
+    email: "superadmin@jadvalai.uz",
+    password: "admin123",
+  },
 };
 
 export default function LoginPage() {
@@ -25,13 +38,13 @@ export default function LoginPage() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !password) return;
-
     setError(null);
+
     startTransition(async () => {
       try {
         const res = await signIn("credentials", {
-          email,
-          password,
+          email: email.trim(),
+          password: password.trim(),
           redirect: false,
         });
 
@@ -47,15 +60,29 @@ export default function LoginPage() {
     });
   };
 
+  const fillCredentials = (type: "schoolAdmin" | "superAdmin") => {
+    const acc = DEMO_ACCOUNTS[type];
+    setEmail(acc.email);
+    setPassword(acc.password);
+    setError(null);
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 flex items-center justify-center p-4">
-      {/* Background grid pattern */}
-      <div className="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg width=\'60\' height=\'60\' viewBox=\'0 0 60 60\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'none\' fill-rule=\'evenodd\'%3E%3Cg fill=\'%234f46e5\' fill-opacity=\'0.05\'%3E%3Cpath d=\'M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z\'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E')] opacity-40" />
+      {/* Background grid */}
+      <div
+        className="absolute inset-0 opacity-30"
+        style={{
+          backgroundImage:
+            "radial-gradient(circle at 1px 1px, rgba(99,102,241,0.18) 1px, transparent 0)",
+          backgroundSize: "32px 32px",
+        }}
+      />
 
       <div className="relative w-full max-w-md">
-        {/* Logo */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center gap-3 mb-4">
+        {/* Logo & Header */}
+        <div className="text-center mb-6">
+          <div className="inline-flex items-center gap-3 mb-3">
             <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-amber-400 flex items-center justify-center shadow-lg shadow-indigo-500/30">
               <Calendar className="w-6 h-6 text-white" />
             </div>
@@ -71,12 +98,48 @@ export default function LoginPage() {
           <p className="text-indigo-300 text-sm mt-1">Maktab boshqaruv paneliga kirish</p>
         </div>
 
-        {/* Card */}
-        <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-8 shadow-2xl">
-          <form onSubmit={handleSubmit} className="space-y-5">
+        {/* Demo Credentials Quick-Fill Card */}
+        <div className="mb-5 p-4 rounded-2xl bg-indigo-500/10 border border-indigo-500/25 backdrop-blur-md">
+          <div className="flex items-center gap-2 mb-2 text-indigo-300 text-xs font-semibold uppercase tracking-wider">
+            <KeyRound className="w-3.5 h-3.5 text-amber-400" />
+            <span>Sinov uchun login va parollar</span>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2 mt-2.5">
+            <button
+              type="button"
+              onClick={() => fillCredentials("schoolAdmin")}
+              className="p-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-left transition-all hover:border-indigo-400/40 group cursor-pointer"
+            >
+              <div className="flex items-center gap-1.5 text-xs font-semibold text-white group-hover:text-indigo-300">
+                <School className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+                <span>Maktab Admin</span>
+              </div>
+              <p className="text-[11px] text-slate-400 mt-1 font-mono truncate">admin@demo-maktab.uz</p>
+              <p className="text-[10px] text-amber-400/90 font-mono mt-0.5">Parol: admin123</p>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => fillCredentials("superAdmin")}
+              className="p-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-left transition-all hover:border-amber-400/40 group cursor-pointer"
+            >
+              <div className="flex items-center gap-1.5 text-xs font-semibold text-white group-hover:text-amber-300">
+                <Shield className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                <span>Super Admin</span>
+              </div>
+              <p className="text-[11px] text-slate-400 mt-1 font-mono truncate">superadmin@jadvalai.uz</p>
+              <p className="text-[10px] text-amber-400/90 font-mono mt-0.5">Parol: admin123</p>
+            </button>
+          </div>
+        </div>
+
+        {/* Login Form Card */}
+        <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-7 shadow-2xl">
+          <form onSubmit={handleSubmit} className="space-y-4">
             {/* Email */}
             <div>
-              <label className="block text-sm font-medium text-indigo-200 mb-2">
+              <label className="block text-xs font-medium text-indigo-200 uppercase tracking-wider mb-2">
                 Email manzil
               </label>
               <input
@@ -88,13 +151,13 @@ export default function LoginPage() {
                 placeholder="admin@maktab.uz"
                 required
                 disabled={isPending}
-                className="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all disabled:opacity-50"
+                className="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all disabled:opacity-50 text-sm"
               />
             </div>
 
             {/* Parol */}
             <div>
-              <label className="block text-sm font-medium text-indigo-200 mb-2">
+              <label className="block text-xs font-medium text-indigo-200 uppercase tracking-wider mb-2">
                 Parol
               </label>
               <div className="relative">
@@ -107,7 +170,7 @@ export default function LoginPage() {
                   placeholder="••••••••"
                   required
                   disabled={isPending}
-                  className="w-full px-4 py-3 pr-12 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all disabled:opacity-50"
+                  className="w-full px-4 py-3 pr-12 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all disabled:opacity-50 text-sm font-mono"
                 />
                 <button
                   type="button"
@@ -120,44 +183,51 @@ export default function LoginPage() {
               </div>
             </div>
 
-            {/* Xato */}
+            {/* Xato xabari */}
             {error && (
-              <div className="flex items-start gap-3 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-300">
-                <AlertCircle className="w-5 h-5 mt-0.5 shrink-0" />
-                <span className="text-sm">{error}</span>
+              <div className="flex items-start gap-3 p-3.5 rounded-xl bg-red-500/15 border border-red-500/30 text-red-200">
+                <AlertCircle className="w-4 h-4 mt-0.5 shrink-0 text-red-400" />
+                <span className="text-xs leading-relaxed">{error}</span>
               </div>
             )}
 
-            {/* Submit */}
+            {/* Submit tugmasi */}
             <button
               id="login-submit"
               type="submit"
               disabled={isPending || !email || !password}
-              className="w-full py-3 px-6 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white font-semibold transition-all duration-200 shadow-lg shadow-indigo-500/30 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="w-full py-3.5 px-6 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white font-semibold transition-all duration-200 shadow-lg shadow-indigo-500/30 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer mt-2"
             >
               {isPending ? (
                 <>
-                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <Loader2 className="w-4 h-4 animate-spin" />
                   Kirilmoqda...
                 </>
               ) : (
-                "Kirish"
+                "Tizimga kirish →"
               )}
             </button>
           </form>
 
-          <div className="mt-6 pt-6 border-t border-white/10 text-center">
+          <div className="mt-5 pt-5 border-t border-white/10 flex items-center justify-between text-xs">
+            <a
+              href="/setup"
+              className="text-slate-400 hover:text-white transition-colors"
+            >
+              Yangi maktabni sozlash (Wizard)
+            </a>
             <a
               href="/super-admin/login"
-              className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors"
+              className="text-indigo-400 hover:text-indigo-300 font-medium transition-colors"
             >
-              Super Admin sifatida kirish →
+              Super Admin →
             </a>
           </div>
         </div>
 
-        <p className="text-center text-xs text-indigo-500 mt-6">
-          © 2025 JadvalAI — Ko'p filialli maktablar uchun
+        {/* Footer */}
+        <p className="text-center text-xs text-indigo-400/60 mt-6 font-medium">
+          © 2026 JadvalAI — Maktab dars jadvalini avtomatlashtirish platformasi
         </p>
       </div>
     </div>
