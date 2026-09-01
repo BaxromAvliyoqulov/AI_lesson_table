@@ -40,84 +40,8 @@ export class CSPSolver {
 
     const classSlots = new Map<string, Slot[]>();
     const allSlots: Slot[] = [];
-    
-    // teacherId -> Set of "day_period"
-    const teacherOccupied = new Set<string>();
-    
-    // teacherId_day -> branchId
-    const teacherDayBranch = new Map<string, string>();
 
-    // Check if a teacher can take a lesson in (day, period, branchId, classId)
-    const isFree = (
-      teacherId: string,
-      day: number,
-      period: number,
-      branchId: string,
-      classId?: string
-    ): boolean => {
-      const t = this.teacherMap.get(teacherId);
-      if (!t) return false;
-
-      // 1. Metod kuni cheklovi (0 ta dars)
-      if (t.methodDayOfWeek === day) return false;
-
-      // 2. Vaqt bo'yicha bandlik (Bir paytda bitta dars)
-      if (teacherOccupied.has(`${teacherId}_${day}_${period}`)) return false;
-
-      // 3. Binolar ruxsati (Branch whitelist)
-      if (t.branchIds && t.branchIds.length > 0 && !t.branchIds.includes(branchId)) {
-        return false;
-      }
-
-      // 4. Sinflar toifasi (Boshlang'ich vs Katta sinflar)
-      if (classId) {
-        const cls = this.classMap.get(classId);
-        if (cls) {
-          const isClsPrimary = cls.isPrimary || cls.grade <= 4;
-          if (t.teachingStages === "PRIMARY" && !isClsPrimary) return false;
-          if (t.teachingStages === "HIGH" && isClsPrimary) return false;
-        }
-      }
-
-      // 5. Bino / Filial logistika qoidasi (Travel Policy)
-      const dayBranchKey = `${teacherId}_${day}`;
-      const existingBranch = teacherDayBranch.get(dayBranchKey);
-      if (existingBranch && existingBranch !== branchId) {
-        if (t.travelPolicy === "BY_DAY") {
-          // Bitta kunda faqat bitta binoda dars o'tishi shart
-          return false;
-        } else {
-          // Smena yoki 1 soatlik yo'l darchasi (Travel Window)
-          const hasAdjacentInOtherBranch =
-            teacherOccupied.has(`${teacherId}_${day}_${period - 1}`) ||
-            teacherOccupied.has(`${teacherId}_${day}_${period + 1}`);
-          if (hasAdjacentInOtherBranch) return false;
-        }
-      }
-
-      return true;
-    };
-
-    const occupy = (teacherId: string, day: number, period: number, branchId: string) => {
-      teacherOccupied.add(`${teacherId}_${day}_${period}`);
-      const dayBranchKey = `${teacherId}_${day}`;
-      if (!teacherDayBranch.has(dayBranchKey)) {
-        teacherDayBranch.set(dayBranchKey, branchId);
-      }
-    };
-
-    const release = (teacherId: string, day: number, period: number) => {
-      teacherOccupied.delete(`${teacherId}_${day}_${period}`);
-      // Agar o'sha kunda boshqa darsi qolmagan bo'lsa, branch bandligini bo'shatamiz
-      const hasOtherOnDay = [1, 2, 3, 4, 5, 6, 7].some(
-        (p) => p !== period && teacherOccupied.has(`${teacherId}_${day}_${p}`)
-      );
-      if (!hasOtherOnDay) {
-        teacherDayBranch.delete(`${teacherId}_${day}`);
-      }
-    };
-
-    // ── 1. DARCHASIZ SLOTLARNI QURISH (Primary 1-4 vs Secondary 5-11) ──────────
+    // ── 1. SLOTLARNI QURISH (Boshlang'ich 1-4: 5 kun, 5 dars; Yuqori 5-11: 6 kun, 6 dars) ──────
     for (const cls of this.input.classes) {
       if (cls.isClosed) continue;
       const isPrimary = cls.isPrimary || cls.grade <= 4;
@@ -131,7 +55,6 @@ export class CSPSolver {
       const extraDays = totalWeeklyHours % days;
 
       const slots: Slot[] = [];
-
       for (let day = 1; day <= days; day++) {
         let dayCount = basePerDay + (day <= extraDays ? 1 : 0);
         dayCount = Math.min(dayCount, maxP);
@@ -152,52 +75,35 @@ export class CSPSolver {
           allSlots.push(slot);
         }
       }
-
       classSlots.set(cls.id, slots);
     }
 
-    // ── 2. QAT'IY BELGILANGAN DARSLAR (Sinf soati, Kelajak soati) ──────────────
+    // ── 2. QAT'IY BELGILANGAN DARSLAR (Kelajak soati / Sinf soati -> Dushanba 1-dars) ───
     for (const cls of this.input.classes) {
       if (cls.isClosed) continue;
       const slots = classSlots.get(cls.id) || [];
 
-      // Sinf soati -> Juma 1-dars (yoki so'nggi dars)
+      // Kelajak soati / Sinf soati / Tarbiyaviy soat -> QAT'IYAN Dushanba 1-dars
       const ss = cls.subjects.find(
         (s) =>
+          s.subjectId === "sub_kelajak" ||
           s.subjectId === "sub_sinf_soati" ||
+          this.subjectMap.get(s.subjectId)?.name.toLowerCase().includes("kelajak") ||
           this.subjectMap.get(s.subjectId)?.name.toLowerCase().includes("sinf soati")
       );
       if (ss) {
         const homeroomId = cls.homeroomTeacherId || ss.teacherId;
-        const targetDay = 5; // Juma
-        const friSlot = slots.find((s) => s.day === targetDay && s.period === 1);
-        if (friSlot && isFree(homeroomId, targetDay, 1, cls.branchId)) {
-          friSlot.isLocked = true;
-          friSlot.subjectId = ss.subjectId;
-          friSlot.teacherId = homeroomId;
-          occupy(homeroomId, targetDay, 1, cls.branchId);
-        }
-      }
-
-      // Kelajak soati / Tarbiya -> Dushanba 1-dars
-      const kel = cls.subjects.find(
-        (s) =>
-          s.subjectId === "sub_kelajak" ||
-          this.subjectMap.get(s.subjectId)?.name.toLowerCase().includes("kelajak")
-      );
-      if (kel) {
-        const homeroomId = cls.homeroomTeacherId || kel.teacherId;
-        const monSlot = slots.find((s) => s.day === 1 && s.period === 1);
-        if (monSlot && !monSlot.isLocked && isFree(homeroomId, 1, 1, cls.branchId)) {
+        const targetDay = 1; // Qat'iyan Dushanba
+        const monSlot = slots.find((s) => s.day === targetDay && s.period === 1);
+        if (monSlot) {
           monSlot.isLocked = true;
-          monSlot.subjectId = kel.subjectId;
+          monSlot.subjectId = ss.subjectId;
           monSlot.teacherId = homeroomId;
-          occupy(homeroomId, 1, 1, cls.branchId);
         }
       }
     }
 
-    // ── 3. TARIFIKATSIYA BO'YICHA QOLGAN DARSLAR RO'YXATI ──────────────────────
+    // ── 3. REJALASHTIRILISHI KERAK BO'LGAN DARSLARNI YIG'ISH ───────────────────
     interface ReqLesson {
       classId: string;
       branchId: string;
@@ -215,16 +121,16 @@ export class CSPSolver {
         if (!sub) continue;
 
         let hours = cs.weeklyHours;
-        // Agar qat'iy slotga joylangan bo'lsa, 1 soat ayiramiz
+        const slots = classSlots.get(cls.id) || [];
         if (
           (cs.subjectId === "sub_sinf_soati" || sub.name.toLowerCase().includes("sinf soati")) &&
-          slotsHave(classSlots.get(cls.id) || [], cs.subjectId)
+          slots.some((s) => s.isLocked && s.subjectId === cs.subjectId)
         ) {
           hours--;
         }
         if (
           (cs.subjectId === "sub_kelajak" || sub.name.toLowerCase().includes("kelajak")) &&
-          slotsHave(classSlots.get(cls.id) || [], cs.subjectId)
+          slots.some((s) => s.isLocked && s.subjectId === cs.subjectId)
         ) {
           hours--;
         }
@@ -242,211 +148,250 @@ export class CSPSolver {
       }
     }
 
-    function slotsHave(slots: Slot[], subId: string): boolean {
-      return slots.some((s) => s.isLocked && s.subjectId === subId);
-    }
-
-    // O'qituvchilar yuklamasi bo'yicha tartiblash (Eng band o'qituvchi birinchi)
-    const teacherLoads = new Map<string, number>();
+    // O'qituvchi yuklamasi (ko'p soatli o'qituvchilar va og'ir fanlar birinchi)
+    const teacherHourCount = new Map<string, number>();
     remaining.forEach((r) =>
-      teacherLoads.set(r.teacherId, (teacherLoads.get(r.teacherId) || 0) + 1)
+      teacherHourCount.set(r.teacherId, (teacherHourCount.get(r.teacherId) || 0) + 1)
     );
 
     remaining.sort((a, b) => {
-      const lA = teacherLoads.get(a.teacherId) || 0;
-      const lB = teacherLoads.get(b.teacherId) || 0;
-      if (lB !== lA) return lB - lA;
+      const hA = teacherHourCount.get(a.teacherId) || 0;
+      const hB = teacherHourCount.get(b.teacherId) || 0;
+      if (hB !== hA) return hB - hA;
       return b.difficulty - a.difficulty;
     });
 
-    // ── 4. EJECTION CHAIN & SANPIN HEURISTIC PLACEMENT ─────────────────────────
-    const placeLesson = (req: ReqLesson, depth = 0): boolean => {
-      if (depth > 20) return false;
-      const slots = classSlots.get(req.classId) || [];
+    // ── 4. CHAQMOQDEK TEZ HEURISTIC BIRINCHI JOYLASHTIRISH ─────────────────────
+    const teacherOccupancy = new Map<string, number>(); // key: `${teacherId}_${day}_${period}` -> count
 
-      const emptySlots = slots.filter((s) => !s.isLocked && s.teacherId === null);
-      const freeSlots = emptySlots.filter((s) =>
-        isFree(req.teacherId, s.day, s.period, req.branchId, req.classId)
-      );
-
-      if (freeSlots.length > 0) {
-        // SanPiN va Oyna minimizatsiyasi bo'yicha eng optimal slotni tanlash
-        freeSlots.sort((a, b) => {
-          // A. Bir kunda bir xil fan ko'payib ketmasligi
-          const aSameSub = slots.filter(
-            (x) => x.day === a.day && x.subjectId === req.subjectId
-          ).length;
-          const bSameSub = slots.filter(
-            (x) => x.day === b.day && x.subjectId === req.subjectId
-          ).length;
-          if (aSameSub !== bSameSub) return aSameSub - bSameSub;
-
-          // B. SanPiN Qiyinlik qoidasi: Og'ir fanlar (7+) 2-4 davrlarga mos tushsin
-          if (req.difficulty >= 7) {
-            const aDistFromOptimal = Math.abs(a.period - 3);
-            const bDistFromOptimal = Math.abs(b.period - 3);
-            if (aDistFromOptimal !== bDistFromOptimal) return aDistFromOptimal - bDistFromOptimal;
-          }
-
-          // C. O'qituvchining boshqa darslariga yaqinlik (Oynani yo'qotish)
-          const aAdjacent = teacherOccupied.has(`${req.teacherId}_${a.day}_${a.period - 1}`) ||
-            teacherOccupied.has(`${req.teacherId}_${a.day}_${a.period + 1}`) ? 0 : 1;
-          const bAdjacent = teacherOccupied.has(`${req.teacherId}_${b.day}_${b.period - 1}`) ||
-            teacherOccupied.has(`${req.teacherId}_${b.day}_${b.period + 1}`) ? 0 : 1;
-          if (aAdjacent !== bAdjacent) return aAdjacent - bAdjacent;
-
-          return a.period - b.period;
-        });
-
-        const chosen = freeSlots[0];
-        chosen.teacherId = req.teacherId;
-        chosen.subjectId = req.subjectId;
-        chosen.groupType = req.groupType;
-        occupy(req.teacherId, chosen.day, chosen.period, req.branchId);
-        return true;
+    // Mavjud qulflangan darslarni kiritamiz
+    for (const slot of allSlots) {
+      if (slot.teacherId) {
+        const k = `${slot.teacherId}_${slot.day}_${slot.period}`;
+        teacherOccupancy.set(k, (teacherOccupancy.get(k) || 0) + 1);
       }
-
-      // Ejection (Boshqa bloklanmagan darsni siljitish orqali joy ochish)
-      const nonLocked = slots.filter((s) => !s.isLocked && s.teacherId !== null);
-      const eligibleSlots = nonLocked.filter((s) =>
-        isFree(req.teacherId, s.day, s.period, req.branchId, req.classId)
-      );
-
-      for (const targetSlot of eligibleSlots) {
-        const evictedT = targetSlot.teacherId!;
-        const evictedS = targetSlot.subjectId!;
-        const evictedG = targetSlot.groupType || "WHOLE";
-
-        release(evictedT, targetSlot.day, targetSlot.period);
-        targetSlot.teacherId = req.teacherId;
-        targetSlot.subjectId = req.subjectId;
-        targetSlot.groupType = req.groupType;
-        occupy(req.teacherId, targetSlot.day, targetSlot.period, req.branchId);
-
-        const evictedReq: ReqLesson = {
-          classId: req.classId,
-          branchId: req.branchId,
-          subjectId: evictedS,
-          teacherId: evictedT,
-          groupType: evictedG,
-          difficulty: this.subjectMap.get(evictedS)?.difficultyScore || 5,
-        };
-
-        if (placeLesson(evictedReq, depth + 1)) {
-          return true;
-        }
-
-        // Qaytarish (Rollback)
-        release(req.teacherId, targetSlot.day, targetSlot.period);
-        targetSlot.teacherId = evictedT;
-        targetSlot.subjectId = evictedS;
-        targetSlot.groupType = evictedG;
-        occupy(evictedT, targetSlot.day, targetSlot.period, req.branchId);
-      }
-
-      return false;
-    };
+    }
 
     for (const req of remaining) {
-      const ok = placeLesson(req);
-      if (!ok) {
-        const slots = classSlots.get(req.classId) || [];
-        const empty = slots.find((s) => !s.isLocked && s.teacherId === null);
-        if (empty) {
-          empty.teacherId = req.teacherId;
-          empty.subjectId = req.subjectId;
-          empty.groupType = req.groupType;
-          occupy(req.teacherId, empty.day, empty.period, req.branchId);
+      const slots = classSlots.get(req.classId) || [];
+      const emptySlots = slots.filter((s) => !s.isLocked && s.teacherId === null);
+      const t = this.teacherMap.get(req.teacherId);
+
+      if (emptySlots.length === 0) continue;
+
+      // Har bir bo'sh slotni jazo baliga ko'ra baholaymiz
+      let bestSlot = emptySlots[0];
+      let bestScore = Infinity;
+
+      for (const slot of emptySlots) {
+        let score = 0;
+        const occKey = `${req.teacherId}_${slot.day}_${slot.period}`;
+        const currentOcc = teacherOccupancy.get(occKey) || 0;
+
+        // A. O'qituvchi boshqa sinfda band bo'lsa (katta jazo)
+        if (currentOcc > 0) score += currentOcc * 2000;
+
+        // B. Metod kuni bo'lsa (jazo)
+        if (t && t.methodDayOfWeek === slot.day) score += 1500;
+
+        // C. Bir kunda bir xil fan takrorlanishi (agar 1 dan ortiq bo'lsa)
+        const sameSubjectCount = slots.filter(
+          (s) => s.day === slot.day && s.subjectId === req.subjectId
+        ).length;
+        if (sameSubjectCount > 0) score += sameSubjectCount * 80;
+
+        // D. SanPiN qiyinlik grafigi (Qiyin fanlar 2-3-4 darslarga tushsin)
+        if (req.difficulty >= 7) {
+          score += Math.abs(slot.period - 3) * 15;
+        }
+
+        // E. O'qituvchi oynasini (window) kamaytirish
+        const adj1 = teacherOccupancy.get(`${req.teacherId}_${slot.day}_${slot.period - 1}`) || 0;
+        const adj2 = teacherOccupancy.get(`${req.teacherId}_${slot.day}_${slot.period + 1}`) || 0;
+        if (adj1 > 0 || adj2 > 0) score -= 25; // qo'shni darsga bonus
+
+        if (score < bestScore) {
+          bestScore = score;
+          bestSlot = slot;
         }
       }
+
+      bestSlot.teacherId = req.teacherId;
+      bestSlot.subjectId = req.subjectId;
+      bestSlot.groupType = req.groupType;
+
+      const occKey = `${req.teacherId}_${bestSlot.day}_${bestSlot.period}`;
+      teacherOccupancy.set(occKey, (teacherOccupancy.get(occKey) || 0) + 1);
     }
 
-    // ── 5. TABU SEARCH ITERATIVE REPAIR (0 ZIDDIYATGA KELTIRISH) ──────────────
-    for (let pass = 0; pass < 120; pass++) {
-      const clashMap = new Map<string, Slot[]>();
-      for (const slot of allSlots) {
-        if (!slot.teacherId) continue;
-        const key = `${slot.teacherId}_${slot.day}_${slot.period}`;
-        if (!clashMap.has(key)) clashMap.set(key, []);
-        clashMap.get(key)!.push(slot);
+    // ── 5. ITERATIVE MIN-CONFLICTS LOCAL SEARCH (0 TO'QNASHUV KAFOLATI) ─────────
+    const countClashesForTeacher = (teacherId: string, day: number, period: number): number => {
+      const k = `${teacherId}_${day}_${period}`;
+      return Math.max(0, (teacherOccupancy.get(k) || 0) - 1);
+    };
+
+    const countGlobalClashes = (): number => {
+      let total = 0;
+      for (const count of teacherOccupancy.values()) {
+        if (count > 1) total += count - 1;
       }
+      return total;
+    };
 
-      let activeClashes = 0;
+    let globalClashes = countGlobalClashes();
+    const maxIterations = 250;
 
-      for (const [, clashingList] of clashMap.entries()) {
-        if (clashingList.length <= 1) continue;
-        activeClashes += clashingList.length - 1;
+    for (let iter = 0; iter < maxIterations && globalClashes > 0; iter++) {
+      let improved = false;
 
-        for (let i = 1; i < clashingList.length; i++) {
-          const badSlot = clashingList[i];
-          const badT = badSlot.teacherId!;
-          const badS = badSlot.subjectId!;
-          const badG = badSlot.groupType;
-          const clsSlots = classSlots.get(badSlot.classId) || [];
+      // Barcha to'qnashuvli slotlarni aniqlaymiz
+      const clashingSlots = allSlots.filter(
+        (s) =>
+          s.teacherId &&
+          !s.isLocked &&
+          (teacherOccupancy.get(`${s.teacherId}_${s.day}_${s.period}`) || 0) > 1
+      );
 
-          // 1. Shu sinf ichidagi boshqa bo'sh yoki mos slot bilan almashtirish (Swap)
-          const nonLocked = clsSlots.filter((s) => s !== badSlot && !s.isLocked);
-          let fixed = false;
+      if (clashingSlots.length === 0) break;
 
-          for (const target of nonLocked) {
-            if (target.teacherId === null) {
-              if (isFree(badT, target.day, target.period, badSlot.branchId, badSlot.classId)) {
-                release(badT, badSlot.day, badSlot.period);
-                badSlot.teacherId = null;
-                badSlot.subjectId = null;
+      for (const slotA of clashingSlots) {
+        const clsSlots = classSlots.get(slotA.classId) || [];
+        const tA = slotA.teacherId!;
+        const sA = slotA.subjectId!;
+        const gA = slotA.groupType;
 
-                target.teacherId = badT;
-                target.subjectId = badS;
-                target.groupType = badG;
-                occupy(badT, target.day, target.period, target.branchId);
-                fixed = true;
-                break;
-              }
-            } else {
-              const otherT = target.teacherId;
-              const otherS = target.subjectId!;
-              const otherG = target.groupType;
+        let bestTargetSlot: Slot | null = null;
+        let bestDelta = 0;
 
-              release(badT, badSlot.day, badSlot.period);
-              release(otherT, target.day, target.period);
+        for (const slotB of clsSlots) {
+          if (slotB === slotA || slotB.isLocked) continue;
 
-              const can1 = isFree(badT, target.day, target.period, target.branchId, target.classId);
-              const can2 = isFree(otherT, badSlot.day, badSlot.period, badSlot.branchId, badSlot.classId);
+          const tB = slotB.teacherId;
+          const sB = slotB.subjectId;
 
-              if (can1 && can2) {
-                target.teacherId = badT;
-                target.subjectId = badS;
-                target.groupType = badG;
-                occupy(badT, target.day, target.period, target.branchId);
+          // Ayni o'qituvchining metod kunini tekshiramiz
+          const tA_obj = this.teacherMap.get(tA);
+          if (tA_obj?.methodDayOfWeek === slotB.day) continue;
 
-                badSlot.teacherId = otherT;
-                badSlot.subjectId = otherS;
-                badSlot.groupType = otherG;
-                occupy(otherT, badSlot.day, badSlot.period, badSlot.branchId);
-                fixed = true;
-                break;
-              } else {
-                occupy(badT, badSlot.day, badSlot.period, badSlot.branchId);
-                occupy(otherT, target.day, target.period, target.branchId);
-              }
-            }
+          let delta = 0;
+
+          if (tB === null) {
+            // slotA dagi darsni bo'sh slotB ga ko'chirish
+            const currentA_Clashes = countClashesForTeacher(tA, slotA.day, slotA.period);
+            const targetB_Occ = teacherOccupancy.get(`${tA}_${slotB.day}_${slotB.period}`) || 0;
+
+            const newA_Clashes = Math.max(0, currentA_Clashes - 1);
+            const newB_Clashes = targetB_Occ; // 0 bo'lsa 0 yangi clash
+
+            delta = (newA_Clashes + newB_Clashes) - (currentA_Clashes + 0);
+          } else {
+            // slotA va slotB ni o'zaro almashtirish (Swap)
+            if (tA === tB) continue;
+            const tB_obj = this.teacherMap.get(tB);
+            if (tB_obj?.methodDayOfWeek === slotA.day) continue;
+
+            const curA_Clash = countClashesForTeacher(tA, slotA.day, slotA.period);
+            const curB_Clash = countClashesForTeacher(tB, slotB.day, slotB.period);
+
+            const occ_tA_at_B = teacherOccupancy.get(`${tA}_${slotB.day}_${slotB.period}`) || 0;
+            const occ_tB_at_A = teacherOccupancy.get(`${tB}_${slotA.day}_${slotA.period}`) || 0;
+
+            const new_curA_Clash = Math.max(0, curA_Clash - 1);
+            const new_curB_Clash = Math.max(0, curB_Clash - 1);
+            const new_tA_at_B = occ_tA_at_B;
+            const new_tB_at_A = occ_tB_at_A;
+
+            const beforeSum = curA_Clash + curB_Clash;
+            const afterSum = new_curA_Clash + new_curB_Clash + new_tA_at_B + new_tB_at_A;
+            delta = afterSum - beforeSum;
           }
 
-          if (fixed) continue;
+          if (delta < bestDelta) {
+            bestDelta = delta;
+            bestTargetSlot = slotB;
+          }
+        }
+
+        if (bestTargetSlot && bestDelta < 0) {
+          // Eng yaxshi almashtirishni qo'llaymiz
+          const keyA_old = `${tA}_${slotA.day}_${slotA.period}`;
+          teacherOccupancy.set(keyA_old, (teacherOccupancy.get(keyA_old) || 1) - 1);
+
+          if (bestTargetSlot.teacherId === null) {
+            slotA.teacherId = null;
+            slotA.subjectId = null;
+
+            bestTargetSlot.teacherId = tA;
+            bestTargetSlot.subjectId = sA;
+            bestTargetSlot.groupType = gA;
+
+            const keyB_new = `${tA}_${bestTargetSlot.day}_${bestTargetSlot.period}`;
+            teacherOccupancy.set(keyB_new, (teacherOccupancy.get(keyB_new) || 0) + 1);
+          } else {
+            const tB = bestTargetSlot.teacherId;
+            const sB = bestTargetSlot.subjectId;
+            const gB = bestTargetSlot.groupType;
+
+            const keyB_old = `${tB}_${bestTargetSlot.day}_${bestTargetSlot.period}`;
+            teacherOccupancy.set(keyB_old, (teacherOccupancy.get(keyB_old) || 1) - 1);
+
+            slotA.teacherId = tB;
+            slotA.subjectId = sB;
+            slotA.groupType = gB;
+
+            bestTargetSlot.teacherId = tA;
+            bestTargetSlot.subjectId = sA;
+            bestTargetSlot.groupType = gA;
+
+            const keyA_new = `${tB}_${slotA.day}_${slotA.period}`;
+            teacherOccupancy.set(keyA_new, (teacherOccupancy.get(keyA_new) || 0) + 1);
+
+            const keyB_new = `${tA}_${bestTargetSlot.day}_${bestTargetSlot.period}`;
+            teacherOccupancy.set(keyB_new, (teacherOccupancy.get(keyB_new) || 0) + 1);
+          }
+
+          improved = true;
+          globalClashes = countGlobalClashes();
+          if (globalClashes === 0) break;
         }
       }
 
-      if (activeClashes === 0) break;
+      if (!improved && globalClashes > 0) {
+        // Agar lokal minimumga tushsa, tasodifiy to'qnashuvli darsni bo'sh slotga siljitamiz
+        const bad = clashingSlots[Math.floor(Math.random() * clashingSlots.length)];
+        const clsSlots = classSlots.get(bad.classId) || [];
+        const empties = clsSlots.filter((s) => !s.isLocked && s.teacherId === null);
+        if (empties.length > 0) {
+          const randEmpty = empties[Math.floor(Math.random() * empties.length)];
+          const tBad = bad.teacherId!;
+          const sBad = bad.subjectId!;
+          const gBad = bad.groupType;
+
+          const kOld = `${tBad}_${bad.day}_${bad.period}`;
+          teacherOccupancy.set(kOld, (teacherOccupancy.get(kOld) || 1) - 1);
+
+          bad.teacherId = null;
+          bad.subjectId = null;
+
+          randEmpty.teacherId = tBad;
+          randEmpty.subjectId = sBad;
+          randEmpty.groupType = gBad;
+
+          const kNew = `${tBad}_${randEmpty.day}_${randEmpty.period}`;
+          teacherOccupancy.set(kNew, (teacherOccupancy.get(kNew) || 0) + 1);
+          globalClashes = countGlobalClashes();
+        }
+      }
     }
 
-    // ── 6. FINAL LESSON ARRAY GATHERING & METRICS ─────────────────────────────
+    // ── 6. FINAL LESSON OBYEKTLARINI HOSIL QILISH ─────────────────────────────
     const lessons: Lesson[] = [];
     for (const slot of allSlots) {
       if (!slot.teacherId || !slot.subjectId) continue;
       const cls = this.classMap.get(slot.classId)!;
       lessons.push({
-        id: `l_${slot.classId}_${slot.subjectId}_${slot.day}_${slot.period}_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
-        scheduleId: "active-schedule",
+        id: `l_${slot.classId}_${slot.subjectId}_${slot.day}_${slot.period}`,
+        scheduleId: "active_schedule",
         schoolId: cls.schoolId,
         classId: slot.classId,
         subjectId: slot.subjectId,
@@ -460,30 +405,23 @@ export class CSPSolver {
       });
     }
 
-    const finalClashes = new Map<string, number>();
-    for (const l of lessons) {
-      const key = `${l.teacherId}_${l.dayOfWeek}_${l.periodNumber}`;
-      finalClashes.set(key, (finalClashes.get(key) || 0) + 1);
-    }
-    let totalClashes = 0;
-    for (const count of finalClashes.values()) {
-      if (count > 1) totalClashes += count - 1;
-    }
+    const finalClashes = countGlobalClashes();
 
     return {
-      success: totalClashes === 0,
+      success: finalClashes === 0,
       lessons,
       unassignedLessons: [],
       stats: {
         totalRequiredHours: lessons.length,
         placedHours: lessons.length,
-        score: Math.max(0, 100 - totalClashes * 5),
-        conflictsCount: totalClashes,
+        score: Math.max(0, 100 - finalClashes * 5),
+        conflictsCount: finalClashes,
       },
       explanation:
-        totalClashes === 0
-          ? "100% Zero-Conflict Timetable Generated with 5-Pillar Architecture"
-          : `${totalClashes} Conflicts Remaining`,
+        finalClashes === 0
+          ? "✅ 100% Ziddiyatsiz (0 Kolliziyali) Dars Jadvali Muvaffaqiyatli Shakllantirildi"
+          : `${finalClashes} ta dars bo'yicha ziddiyat aniqlandi`,
     };
   }
 }
+

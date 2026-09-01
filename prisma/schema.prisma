@@ -99,6 +99,7 @@ model Subject {
   allowDoubleLesson Boolean @default(false)
   requiresRoomType  String? // "GYM" | "LAB" | "COMP_LAB" | null
   isSystemSubject   Boolean @default(false) // "Sinf soati" kabi maxsus fanlar
+  isActive          Boolean @default(true)
 
   school          School         @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   classSubjects   ClassSubject[]

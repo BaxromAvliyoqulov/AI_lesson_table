@@ -16,6 +16,7 @@ import { TeacherModal } from "@/components/settings/modals/TeacherModal";
 import { SubjectModal } from "@/components/settings/modals/SubjectModal";
 import { RoomModal } from "@/components/settings/modals/RoomModal";
 import { CurriculumModal } from "@/components/settings/modals/CurriculumModal";
+import { TeacherWorkloadModal } from "@/components/settings/modals/TeacherWorkloadModal";
 import {
   GraduationCap,
   Users,
@@ -59,6 +60,9 @@ export default function SettingsPage() {
 
   const [isCurriculumModalOpen, setIsCurriculumModalOpen] = useState(false);
   const [curriculumClass, setCurriculumClass] = useState<SchoolClass | null>(null);
+
+  const [isWorkloadModalOpen, setIsWorkloadModalOpen] = useState(false);
+  const [workloadTeacher, setWorkloadTeacher] = useState<Teacher | null>(null);
 
   // Toast state
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
@@ -129,22 +133,60 @@ export default function SettingsPage() {
 
             <div className="flex items-center gap-2">
               {store.syncStatus === "syncing" && (
-                <span className="text-xs px-3 py-1 rounded-full font-bold bg-amber-50 text-amber-700 border border-amber-200 animate-pulse flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const res = await store.syncToCloud();
+                    if (res.success) showToast("✅ Neon PostgreSQL bulutiga saqlandi!");
+                  }}
+                  className="text-xs px-3 py-1 rounded-full font-bold bg-amber-50 text-amber-700 border border-amber-200 animate-pulse flex items-center gap-1.5 cursor-pointer hover:bg-amber-100"
+                >
                   <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping"></span>
                   Neon DB Saqlanmoqda...
-                </span>
+                </button>
               )}
               {store.syncStatus === "synced" && (
-                <span className="text-xs px-3 py-1 rounded-full font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const res = await store.syncToCloud();
+                    if (res.success) showToast("✅ Neon PostgreSQL bulutiga to'liq sinxronlandi!");
+                  }}
+                  className="text-xs px-3 py-1 rounded-full font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1.5 cursor-pointer hover:bg-emerald-100 hover:shadow-sm transition-all"
+                  title="Qayta sinxronlash uchun bosing"
+                >
                   <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
                   Neon Cloud Sync: Faol
-                </span>
+                </button>
               )}
               {store.syncStatus === "offline" && (
-                <span className="text-xs px-3 py-1 rounded-full font-bold bg-zinc-100 text-zinc-700 border border-zinc-200 flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const res = await store.syncToCloud();
+                    if (res.success) showToast("✅ Neon PostgreSQL bulutiga ulandi va saqlandi!");
+                  }}
+                  className="text-xs px-3 py-1 rounded-full font-bold bg-zinc-100 text-zinc-700 border border-zinc-200 flex items-center gap-1.5 cursor-pointer hover:bg-zinc-200"
+                  title="Bulutga ulash uchun bosing"
+                >
                   <span className="w-2 h-2 rounded-full bg-zinc-400"></span>
-                  Lokal Keshda
-                </span>
+                  Lokal Kesh (Sinxronlash)
+                </button>
+              )}
+              {store.syncStatus === "error" && (
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const res = await store.syncToCloud();
+                    if (res.success) showToast("✅ Qayta sinxronlandi!");
+                    else showToast("Xatolik: " + res.error, "error");
+                  }}
+                  className="text-xs px-3 py-1 rounded-full font-bold bg-rose-50 text-rose-700 border border-rose-200 flex items-center gap-1.5 cursor-pointer hover:bg-rose-100"
+                  title="Qayta urinish uchun bosing"
+                >
+                  <span className="w-2 h-2 rounded-full bg-rose-500"></span>
+                  Qayta sinxronlash
+                </button>
               )}
             </div>
           </div>
@@ -207,6 +249,10 @@ export default function SettingsPage() {
               setCurriculumClass(cls);
               setIsCurriculumModalOpen(true);
             }}
+            onSetHomeroomTeacher={(classId, teacherId) => {
+              store.setHomeroomTeacher(classId, teacherId);
+              showToast("Sinf rahbari yangilandi", "success");
+            }}
           />
         )}
 
@@ -227,6 +273,14 @@ export default function SettingsPage() {
             onDeleteTeacher={(id) => {
               store.deleteTeacher(id);
               showToast("O'qituvchi o'chirildi", "success");
+            }}
+            onSetTeacherHomeroomClass={(teacherId, classId) => {
+              store.setTeacherHomeroomClass(teacherId, classId);
+              showToast("O'qituvchi sinf rahbarligi yangilandi", "success");
+            }}
+            onOpenTeacherWorkload={(t) => {
+              setWorkloadTeacher(t);
+              setIsWorkloadModalOpen(true);
             }}
           />
         )}
@@ -255,6 +309,26 @@ export default function SettingsPage() {
             onDeleteSubject={(id) => {
               store.deleteSubject(id);
               showToast("Fan o'chirildi", "success");
+            }}
+            onToggleActive={(id, newState) => {
+              store.toggleSubjectStatus(id, newState);
+              showToast(newState ? "Fan faollashtirildi" : "Fan nofaol qilindi", "success");
+            }}
+            onAddPresetSubject={(preset) => {
+              const newSub: Subject = {
+                id: preset.id || `sub_${Date.now()}`,
+                schoolId: store.currentSchoolId,
+                name: preset.name || "Yangi fan",
+                shortName: preset.shortName || preset.name || "Fan",
+                colorTag: preset.colorTag || "#3B82F6",
+                difficultyScore: preset.difficultyScore || 5,
+                allowDoubleLesson: preset.allowDoubleLesson || false,
+                requiresRoomType: preset.requiresRoomType || null,
+                methodDayOfWeek: preset.methodDayOfWeek ?? null,
+                isActive: true,
+              };
+              store.addSubject(newSub);
+              showToast(`${newSub.name} fani qo'shildi`, "success");
             }}
           />
         )}
@@ -333,6 +407,8 @@ export default function SettingsPage() {
         subjects={schoolSubjects}
         branches={schoolBranches}
         shifts={schoolShifts}
+        classes={schoolClasses}
+        allTeachers={schoolTeachers}
         onSave={(teacherData) => {
           if (editingTeacher) {
             store.updateTeacher(teacherData);
@@ -383,9 +459,25 @@ export default function SettingsPage() {
         targetClass={curriculumClass}
         allSubjects={schoolSubjects}
         allTeachers={schoolTeachers}
+        allClasses={schoolClasses}
         onSave={(classId, subjectsList) => {
           store.saveCurriculum(classId, subjectsList);
           showToast("Fanlar taqsimoti muvaffaqiyatli saqlandi", "success");
+        }}
+      />
+
+      <TeacherWorkloadModal
+        isOpen={isWorkloadModalOpen}
+        onClose={() => {
+          setIsWorkloadModalOpen(false);
+          setWorkloadTeacher(null);
+        }}
+        teacher={workloadTeacher}
+        classes={schoolClasses}
+        subjects={schoolSubjects}
+        onSave={(teacherId, assignments) => {
+          store.saveTeacherWorkload(teacherId, assignments);
+          showToast("O'qituvchi dars yuklamasi muvaffaqiyatli saqlandi", "success");
         }}
       />
     </div>

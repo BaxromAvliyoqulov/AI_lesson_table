@@ -13,13 +13,62 @@ import {
   Calendar,
   Layers,
   Sparkles,
+  CheckCircle2,
+  XCircle,
+  Power,
+  SlidersHorizontal,
 } from "lucide-react";
+
+export const STANDARD_UZBEK_SUBJECTS: Array<{
+  id: string;
+  name: string;
+  shortName: string;
+  colorTag: string;
+  difficultyScore: number;
+  allowDoubleLesson: boolean;
+  requiresRoomType?: "LAB" | "COMP_LAB" | "GYM" | "GENERAL" | null;
+  methodDayOfWeek: number | null;
+}> = [
+  { id: "sub_ona", name: "Ona tili", shortName: "Ona tili", colorTag: "#EC4899", difficultyScore: 9, allowDoubleLesson: false, methodDayOfWeek: 2 },
+  { id: "sub_adab", name: "Adabiyot", shortName: "Adabiyot", colorTag: "#DB2777", difficultyScore: 8, allowDoubleLesson: false, methodDayOfWeek: 2 },
+  { id: "sub_oqish", name: "O'qish savodxonligi", shortName: "O'qish", colorTag: "#F43F5E", difficultyScore: 7, allowDoubleLesson: false, methodDayOfWeek: 2 },
+  { id: "sub_mat", name: "Matematika", shortName: "Matematika", colorTag: "#3B82F6", difficultyScore: 11, allowDoubleLesson: true, methodDayOfWeek: 3 },
+  { id: "sub_alg", name: "Algebra", shortName: "Algebra", colorTag: "#2563EB", difficultyScore: 12, allowDoubleLesson: true, methodDayOfWeek: 3 },
+  { id: "sub_geom", name: "Geometriya", shortName: "Geometriya", colorTag: "#1D4ED8", difficultyScore: 10, allowDoubleLesson: false, methodDayOfWeek: 3 },
+  { id: "sub_ing", name: "Ingliz tili", shortName: "Ingliz tili", colorTag: "#8B5CF6", difficultyScore: 8, allowDoubleLesson: false, methodDayOfWeek: 5 },
+  { id: "sub_rus", name: "Rus tili", shortName: "Rus tili", colorTag: "#A855F7", difficultyScore: 8, allowDoubleLesson: false, methodDayOfWeek: 5 },
+  { id: "sub_nemis", name: "Nemis tili", shortName: "Nemis tili", colorTag: "#9333EA", difficultyScore: 8, allowDoubleLesson: false, methodDayOfWeek: 5 },
+  { id: "sub_fransuz", name: "Fransuz tili", shortName: "Fransuz tili", colorTag: "#7C3AED", difficultyScore: 8, allowDoubleLesson: false, methodDayOfWeek: 5 },
+  { id: "sub_tabiiy", name: "Tabiiy fan (Science)", shortName: "Tabiiy fan", colorTag: "#059669", difficultyScore: 7, allowDoubleLesson: false, methodDayOfWeek: 4 },
+  { id: "sub_fiz", name: "Fizika", shortName: "Fizika", colorTag: "#06B6D4", difficultyScore: 10, allowDoubleLesson: true, requiresRoomType: "LAB", methodDayOfWeek: 3 },
+  { id: "sub_kim", name: "Kimyo", shortName: "Kimyo", colorTag: "#10B981", difficultyScore: 10, allowDoubleLesson: true, requiresRoomType: "LAB", methodDayOfWeek: 4 },
+  { id: "sub_bio", name: "Biologiya", shortName: "Biologiya", colorTag: "#84CC16", difficultyScore: 7, allowDoubleLesson: false, methodDayOfWeek: 4 },
+  { id: "sub_geo", name: "Geografiya", shortName: "Geografiya", colorTag: "#14B8A6", difficultyScore: 6, allowDoubleLesson: false, methodDayOfWeek: 4 },
+  { id: "sub_tar", name: "Tarix", shortName: "Tarix", colorTag: "#F59E0B", difficultyScore: 7, allowDoubleLesson: false, methodDayOfWeek: 2 },
+  { id: "sub_ozb_tar", name: "O'zbekiston tarixi", shortName: "O'zb. Tarixi", colorTag: "#D97706", difficultyScore: 7, allowDoubleLesson: false, methodDayOfWeek: 2 },
+  { id: "sub_jahon_tar", name: "Jahon tarixi", shortName: "Jahon tarixi", colorTag: "#B45309", difficultyScore: 7, allowDoubleLesson: false, methodDayOfWeek: 2 },
+  { id: "sub_inf", name: "Informatika va AT", shortName: "Informatika", colorTag: "#6366F1", difficultyScore: 8, allowDoubleLesson: false, requiresRoomType: "COMP_LAB", methodDayOfWeek: 3 },
+  { id: "sub_jism", name: "Jismoniy tarbiya", shortName: "Jismoniy", colorTag: "#EF4444", difficultyScore: 2, allowDoubleLesson: false, requiresRoomType: "GYM", methodDayOfWeek: 1 },
+  { id: "sub_sanat", name: "Tasviriy san'at", shortName: "Tasviriy san'at", colorTag: "#D946EF", difficultyScore: 1, allowDoubleLesson: false, methodDayOfWeek: 1 },
+  { id: "sub_chiz", name: "Chizmachilik", shortName: "Chizmachilik", colorTag: "#C026D3", difficultyScore: 3, allowDoubleLesson: false, methodDayOfWeek: 1 },
+  { id: "sub_musiqa", name: "Musiqa madaniyati", shortName: "Musiqa", colorTag: "#F43F5E", difficultyScore: 1, allowDoubleLesson: false, methodDayOfWeek: 1 },
+  { id: "sub_texno", name: "Texnologiya (Mehnat)", shortName: "Texnologiya", colorTag: "#EA580C", difficultyScore: 3, allowDoubleLesson: true, methodDayOfWeek: 1 },
+  { id: "sub_tarbiya", name: "Tarbiya", shortName: "Tarbiya", colorTag: "#F97316", difficultyScore: 3, allowDoubleLesson: false, methodDayOfWeek: 2 },
+  { id: "sub_iqtisod", name: "Iqtisodiy bilim asoslari", shortName: "Iqtisod", colorTag: "#10B981", difficultyScore: 4, allowDoubleLesson: false, methodDayOfWeek: 5 },
+  { id: "sub_huquq", name: "Davlat va huquq asoslari", shortName: "Huquq", colorTag: "#64748B", difficultyScore: 5, allowDoubleLesson: false, methodDayOfWeek: 2 },
+  { id: "sub_tadbirkor", name: "Tadbirkorlik asoslari", shortName: "Tadbirkorlik", colorTag: "#0D9488", difficultyScore: 4, allowDoubleLesson: false, methodDayOfWeek: 5 },
+  { id: "sub_chqbt", name: "CHQBT (Harbiy tayyorgarlik)", shortName: "CHQBT", colorTag: "#475569", difficultyScore: 3, allowDoubleLesson: false, methodDayOfWeek: 5 },
+  { id: "sub_astronomiya", name: "Astronomiya", shortName: "Astronomiya", colorTag: "#0284C7", difficultyScore: 6, allowDoubleLesson: false, methodDayOfWeek: 3 },
+  { id: "sub_sinf_soati", name: "Kelajak soati (Sinf soati)", shortName: "Kelajak s.", colorTag: "#8B5CF6", difficultyScore: 1, allowDoubleLesson: false, methodDayOfWeek: 1 },
+];
 
 interface SubjectsTabProps {
   subjects: Subject[];
   onAddSubject: () => void;
   onEditSubject: (subject: Subject) => void;
   onDeleteSubject: (subjectId: string) => void;
+  onToggleActive?: (subjectId: string, newState?: boolean) => void;
+  onAddPresetSubject?: (preset: Partial<Subject>) => void;
 }
 
 const WEEKDAYS = ["Dushanba", "Seshanba", "Chorshanba", "Payshanba", "Juma", "Shanba"];
@@ -37,77 +86,211 @@ export const SubjectsTab: React.FC<SubjectsTabProps> = ({
   onAddSubject,
   onEditSubject,
   onDeleteSubject,
+  onToggleActive,
+  onAddPresetSubject,
 }) => {
   const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"ALL" | "ACTIVE" | "INACTIVE">("ALL");
+  const [selectedPresetId, setSelectedPresetId] = useState("");
+
+  const activeCount = useMemo(
+    () => subjects.filter((s) => s.isActive !== false).length,
+    [subjects]
+  );
+  const inactiveCount = subjects.length - activeCount;
+
+  const existingSubjectNames = useMemo(
+    () => new Set(subjects.map((s) => s.name.toLowerCase().trim())),
+    [subjects]
+  );
+
+  // Available presets that are not yet added
+  const missingPresets = useMemo(() => {
+    return STANDARD_UZBEK_SUBJECTS.filter(
+      (p) =>
+        !existingSubjectNames.has(p.name.toLowerCase().trim()) &&
+        !subjects.some((s) => s.id === p.id)
+    );
+  }, [existingSubjectNames, subjects]);
 
   const filteredSubjects = useMemo(() => {
-    if (!search.trim()) return subjects;
-    const q = search.toLowerCase();
-    return subjects.filter(
-      (s) =>
+    return subjects.filter((s) => {
+      // 1. Status Filter
+      if (statusFilter === "ACTIVE" && s.isActive === false) return false;
+      if (statusFilter === "INACTIVE" && s.isActive !== false) return false;
+
+      // 2. Search Query
+      if (!search.trim()) return true;
+      const q = search.toLowerCase();
+      return (
         s.name.toLowerCase().includes(q) ||
         (s.shortName && s.shortName.toLowerCase().includes(q))
-    );
-  }, [subjects, search]);
+      );
+    });
+  }, [subjects, search, statusFilter]);
+
+  const handleAddPreset = () => {
+    if (!selectedPresetId || !onAddPresetSubject) return;
+    const preset = STANDARD_UZBEK_SUBJECTS.find((p) => p.id === selectedPresetId);
+    if (!preset) return;
+
+    onAddPresetSubject({
+      id: `${preset.id}_${Date.now()}`,
+      name: preset.name,
+      shortName: preset.shortName,
+      colorTag: preset.colorTag,
+      difficultyScore: preset.difficultyScore,
+      allowDoubleLesson: preset.allowDoubleLesson,
+      requiresRoomType: preset.requiresRoomType || null,
+      methodDayOfWeek: preset.methodDayOfWeek,
+      isActive: true,
+    });
+
+    setSelectedPresetId("");
+  };
 
   return (
     <div className="space-y-4">
-      {/* Top toolbar */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-4 rounded-3xl bg-card border border-border">
-        <div className="relative flex-1 sm:w-72">
-          <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
-          <input
-            type="text"
-            placeholder="Fan nomi bo'yicha qidiring..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-9 pr-3.5 py-2 text-xs rounded-xl border border-border bg-background focus:ring-2 focus:ring-primary/20 focus:border-primary placeholder:text-muted-foreground/60"
-          />
+      {/* ── TOP TOOLBAR ──────────────────────────────────────────────────────── */}
+      <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3.5 p-4 rounded-3xl bg-card border border-border min-w-0 shadow-xs">
+        {/* Chap: Qidiruv va Status Filtrlari */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 flex-1 min-w-0">
+          <div className="relative flex-1 sm:max-w-xs min-w-0">
+            <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <input
+              type="text"
+              placeholder="Fan nomi bo'yicha qidiring..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full pl-9 pr-3.5 py-2 text-xs rounded-xl border border-border bg-background focus:ring-2 focus:ring-primary/20 focus:border-primary placeholder:text-muted-foreground/60"
+            />
+          </div>
+
+          {/* Status Filter Pills */}
+          <div className="flex items-center gap-1 p-1 bg-muted/40 rounded-2xl border border-border shrink-0">
+            <button
+              type="button"
+              onClick={() => setStatusFilter("ALL")}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                statusFilter === "ALL"
+                  ? "bg-background text-foreground shadow-xs border border-border"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              Barchasi ({subjects.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setStatusFilter("ACTIVE")}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+                statusFilter === "ACTIVE"
+                  ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 shadow-xs"
+                  : "text-muted-foreground hover:text-emerald-600"
+              }`}
+            >
+              <span className="w-2 h-2 rounded-full bg-emerald-500" />
+              <span>Faol ({activeCount})</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setStatusFilter("INACTIVE")}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+                statusFilter === "INACTIVE"
+                  ? "bg-muted text-foreground border border-border shadow-xs"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <span className="w-2 h-2 rounded-full bg-muted-foreground/40" />
+              <span>Nofaol ({inactiveCount})</span>
+            </button>
+          </div>
         </div>
 
-        <button
-          onClick={onAddSubject}
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold bg-primary text-primary-foreground hover:bg-primary/90 shadow-md shadow-primary/20 transition-all cursor-pointer shrink-0"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Yangi fan qo'shish</span>
-        </button>
+        {/* O'ng: Tezkor Standart Qo'shish + Yangi Fan */}
+        <div className="flex items-center gap-2 flex-wrap min-w-0 justify-end">
+          {/* Quick preset subject addition */}
+          {onAddPresetSubject && missingPresets.length > 0 && (
+            <div className="flex items-center gap-1.5 min-w-0">
+              <select
+                value={selectedPresetId}
+                onChange={(e) => setSelectedPresetId(e.target.value)}
+                className="px-3 py-2 text-xs rounded-xl border border-border bg-background cursor-pointer max-w-[190px] truncate font-medium"
+              >
+                <option value="">⚡ Standart fanni tanlash...</option>
+                {missingPresets.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    + {p.name} ({p.difficultyScore} ball)
+                  </option>
+                ))}
+              </select>
+
+              <button
+                type="button"
+                onClick={handleAddPreset}
+                disabled={!selectedPresetId}
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold bg-amber-500/15 text-amber-800 dark:text-amber-200 border border-amber-500/30 hover:bg-amber-500/25 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer shrink-0"
+                title="Tanlangan standart fanni maktab katalogiga qo'shish"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                <span>Qo'shish</span>
+              </button>
+            </div>
+          )}
+
+          <button
+            onClick={onAddSubject}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold bg-primary text-primary-foreground hover:bg-primary/90 shadow-md shadow-primary/20 transition-all cursor-pointer shrink-0"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Yangi fan qo'shish</span>
+          </button>
+        </div>
       </div>
 
-      {/* Subjects Grid */}
+      {/* ── SUBJECTS GRID ────────────────────────────────────────────────────── */}
       {filteredSubjects.length === 0 ? (
         <div className="py-16 text-center rounded-3xl border border-dashed border-border bg-card/40">
           <BookOpen className="w-12 h-12 text-muted-foreground/40 mx-auto mb-3" />
           <p className="text-sm font-semibold text-foreground">Fan topilmadi</p>
           <p className="text-xs text-muted-foreground mt-1">
-            Qidiruv so'zini o'zgartiring yoki yangi fan qo'shing
+            Qidiruv so'zini o'zgartiring yoki yuqoridagi filtrlarni tekshiring
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3.5">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3.5 min-w-0">
           {filteredSubjects.map((subject) => {
             const sanpin = getSanPiNBadge(subject.difficultyScore);
+            const isActive = subject.isActive !== false;
 
             return (
               <div
                 key={subject.id}
-                className="flex flex-col justify-between p-4 rounded-3xl border border-border/80 bg-card/80 hover:bg-card hover:border-primary/40 hover:shadow-lg transition-all"
+                className={`flex flex-col justify-between p-4 rounded-3xl border transition-all min-w-0 overflow-hidden ${
+                  isActive
+                    ? "border-border/80 bg-card/90 hover:bg-card hover:border-primary/40 hover:shadow-lg"
+                    : "border-border/40 bg-muted/20 opacity-70 hover:opacity-100 hover:border-border"
+                }`}
               >
-                <div>
-                  <div className="flex items-start justify-between gap-2 mb-3">
-                    <div className="flex items-center gap-2.5">
+                <div className="min-w-0">
+                  {/* Card Header: Icon + Title + Actions */}
+                  <div className="flex items-start justify-between gap-2 mb-3 min-w-0">
+                    <div className="flex items-center gap-2.5 min-w-0 flex-1">
                       <div
-                        className="w-10 h-10 rounded-2xl flex items-center justify-center text-white font-extrabold text-xs shadow-md shrink-0"
+                        className={`w-10 h-10 rounded-2xl flex items-center justify-center text-white font-extrabold text-xs shadow-md shrink-0 transition-transform ${
+                          !isActive ? "grayscale opacity-60" : ""
+                        }`}
                         style={{ backgroundColor: subject.colorTag }}
                       >
-                        {subject.shortName || subject.name.slice(0, 3).toUpperCase()}
+                        {subject.shortName ? subject.shortName.slice(0, 3).toUpperCase() : subject.name.slice(0, 2).toUpperCase()}
                       </div>
-                      <div className="truncate">
-                        <h4 className="font-bold text-foreground text-sm truncate" title={subject.name}>
-                          {subject.name}
-                        </h4>
-                        <p className="text-[11px] text-muted-foreground">
-                          Qisqartmasi: <span className="font-semibold">{subject.shortName || "-"}</span>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5">
+                          <h4 className="font-bold text-foreground text-sm truncate" title={subject.name}>
+                            {subject.name}
+                          </h4>
+                        </div>
+                        <p className="text-[11px] text-muted-foreground truncate">
+                          Qisqa: {subject.shortName || subject.name}
                         </p>
                       </div>
                     </div>
@@ -134,45 +317,81 @@ export const SubjectsTab: React.FC<SubjectsTabProps> = ({
                     </div>
                   </div>
 
-                  {/* Badges & Meta */}
-                  <div className="space-y-1.5 text-xs text-muted-foreground bg-muted/20 p-2.5 rounded-2xl border border-border/60">
-                    <div className="flex items-center justify-between text-[11px]">
-                      <span>SanPiN yuklama:</span>
-                      <span className={`px-2 py-0.5 rounded-md font-bold text-[10px] border ${sanpin.badgeClass}`}>
+                  {/* Metadata Box */}
+                  <div className="space-y-1.5 text-xs text-muted-foreground bg-muted/20 p-2.5 rounded-2xl border border-border/60 mb-3 min-w-0">
+                    <div className="flex items-center justify-between text-[11px] gap-2">
+                      <span className="flex items-center gap-1 shrink-0">
+                        <Layers className="w-3 h-3 shrink-0" />
+                        <span>SanPiN balli:</span>
+                      </span>
+                      <span className={`px-2 py-0.5 rounded-md font-bold text-[10px] border shrink-0 ${sanpin.badgeClass}`}>
                         {subject.difficultyScore} ball • {sanpin.label}
                       </span>
                     </div>
 
-                    <div className="flex items-center justify-between text-[11px]">
-                      <span className="flex items-center gap-1">
-                        <DoorOpen className="w-3 h-3" />
-                        <span>Xona talabi:</span>
+                    <div className="flex items-center justify-between text-[11px] gap-2">
+                      <span className="flex items-center gap-1 shrink-0">
+                        <DoorOpen className="w-3 h-3 shrink-0" />
+                        <span>Talab etiladigan xona:</span>
                       </span>
-                      <span className="font-semibold text-foreground">
-                        {subject.requiresRoomType
-                          ? ROOM_TYPE_LABELS[subject.requiresRoomType] || subject.requiresRoomType
-                          : "Oddiy xona"}
+                      <span className="font-medium text-foreground truncate">
+                        {subject.requiresRoomType ? ROOM_TYPE_LABELS[subject.requiresRoomType] : "Oddiy sinf xonasi"}
                       </span>
                     </div>
 
-                    {subject.methodDayOfWeek && (
-                      <div className="flex items-center justify-between text-[11px] pt-1 border-t border-border/40">
-                        <span className="flex items-center gap-1">
-                          <Calendar className="w-3 h-3" />
-                          <span>Metod kuni:</span>
-                        </span>
-                        <span className="font-bold text-amber-600">
-                          {WEEKDAYS[subject.methodDayOfWeek - 1]}
-                        </span>
-                      </div>
-                    )}
-
-                    {subject.allowDoubleLesson && (
-                      <div className="text-[10px] text-primary font-bold pt-1 border-t border-border/40">
-                        ✓ 2 soat ketma-ket (para) ruxsat etilgan
-                      </div>
-                    )}
+                    <div className="flex items-center justify-between text-[11px] gap-2">
+                      <span className="flex items-center gap-1 shrink-0">
+                        <Calendar className="w-3 h-3 shrink-0" />
+                        <span>Metod kuni:</span>
+                      </span>
+                      <span className="font-semibold text-foreground shrink-0 text-right">
+                        {subject.methodDayOfWeek ? (
+                          <span className="px-1.5 py-0.5 rounded bg-primary/10 text-primary font-bold text-[10px]">
+                            {WEEKDAYS[subject.methodDayOfWeek - 1]}
+                          </span>
+                        ) : (
+                          <span className="text-[10px] text-muted-foreground">Belgilanmagan</span>
+                        )}
+                      </span>
+                    </div>
                   </div>
+                </div>
+
+                {/* ── CARD FOOTER: ACTIVE / INACTIVE TOGGLE SWITCH ─────────────── */}
+                <div className="pt-2.5 border-t border-border/60 flex items-center justify-between gap-2 text-[11px] min-w-0">
+                  {/* Left: Active/Inactive Switch Toggle */}
+                  <button
+                    type="button"
+                    onClick={() => onToggleActive && onToggleActive(subject.id, !isActive)}
+                    className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl font-bold text-[11px] transition-all cursor-pointer shrink-0 border ${
+                      isActive
+                        ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30 hover:bg-emerald-500/25"
+                        : "bg-muted text-muted-foreground border-border hover:bg-muted/80"
+                    }`}
+                    title={
+                      isActive
+                        ? "Fan faol: dars jadvallarida foydalaniladi. O'chirish uchun bosing."
+                        : "Fan nofaol: dars jadvallarida ko'rinmaydi. Faollashtirish uchun bosing."
+                    }
+                  >
+                    <span
+                      className={`w-2 h-2 rounded-full shrink-0 ${
+                        isActive ? "bg-emerald-500 animate-pulse" : "bg-muted-foreground/50"
+                      }`}
+                    />
+                    <span>{isActive ? "🟢 Faol dars" : "⚪ Nofaol"}</span>
+                  </button>
+
+                  {/* Right: Para dars belgisi */}
+                  <span
+                    className={`font-semibold px-2 py-0.5 rounded-md text-[10px] truncate ${
+                      subject.allowDoubleLesson
+                        ? "bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20"
+                        : "text-muted-foreground/60"
+                    }`}
+                  >
+                    {subject.allowDoubleLesson ? "Juft (para)" : "Yakka"}
+                  </span>
                 </div>
               </div>
             );

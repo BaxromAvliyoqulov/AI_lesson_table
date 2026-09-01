@@ -184,6 +184,14 @@ export default function HomePage() {
         onBranchChange={store.setSelectedBranch}
         branches={schoolBranches}
         syncStatus={store.syncStatus}
+        onSyncCloud={async () => {
+          const res = await store.syncToCloud();
+          if (res.success) {
+            showToast("✅ Barcha ma'lumotlar Neon PostgreSQL bulutiga to'liq sinxronlandi!");
+          } else {
+            showToast("Sinxronizatsiyada xatolik: " + (res.error || "Ulanish xatosi"), "error");
+          }
+        }}
       />
 
       {/* View Mode Switcher Sub-Header */}

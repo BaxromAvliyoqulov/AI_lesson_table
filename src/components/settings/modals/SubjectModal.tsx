@@ -50,6 +50,7 @@ export const SubjectModal: React.FC<SubjectModalProps> = ({
   const [allowDoubleLesson, setAllowDoubleLesson] = useState(false);
   const [requiresRoomType, setRequiresRoomType] = useState<RoomType | "">("");
   const [methodDayOfWeek, setMethodDayOfWeek] = useState<number | "">("");
+  const [isActive, setIsActive] = useState(true);
 
   useEffect(() => {
     if (editingSubject) {
@@ -60,6 +61,7 @@ export const SubjectModal: React.FC<SubjectModalProps> = ({
       setAllowDoubleLesson(editingSubject.allowDoubleLesson);
       setRequiresRoomType(editingSubject.requiresRoomType || "");
       setMethodDayOfWeek(editingSubject.methodDayOfWeek || "");
+      setIsActive(editingSubject.isActive !== false);
     } else {
       setName("");
       setShortName("");
@@ -68,6 +70,7 @@ export const SubjectModal: React.FC<SubjectModalProps> = ({
       setAllowDoubleLesson(false);
       setRequiresRoomType("");
       setMethodDayOfWeek("");
+      setIsActive(true);
     }
   }, [editingSubject, isOpen]);
 
@@ -87,6 +90,7 @@ export const SubjectModal: React.FC<SubjectModalProps> = ({
       allowDoubleLesson,
       requiresRoomType: requiresRoomType === "" ? null : (requiresRoomType as RoomType),
       methodDayOfWeek: methodDayOfWeek === "" ? null : Number(methodDayOfWeek),
+      isActive,
     };
 
     onSave(subjectData);
@@ -241,15 +245,25 @@ export const SubjectModal: React.FC<SubjectModalProps> = ({
               </select>
             </div>
 
-            <div className="flex items-center pt-6">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pt-2">
+              <label className="flex items-center gap-2 text-xs font-semibold text-foreground cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={isActive}
+                  onChange={(e) => setIsActive(e.target.checked)}
+                  className="rounded border-border text-primary focus:ring-primary w-4 h-4 cursor-pointer"
+                />
+                <span>🟢 Maktabda faol fan</span>
+              </label>
+
               <label className="flex items-center gap-2 text-xs font-medium text-muted-foreground cursor-pointer">
                 <input
                   type="checkbox"
                   checked={allowDoubleLesson}
                   onChange={(e) => setAllowDoubleLesson(e.target.checked)}
-                  className="rounded border-border text-primary focus:ring-primary w-4 h-4"
+                  className="rounded border-border text-primary focus:ring-primary w-4 h-4 cursor-pointer"
                 />
-                <span>2 soat ketma-ket (para) ruxsat</span>
+                <span>2 soat ketma-ket (para)</span>
               </label>
             </div>
           </div>

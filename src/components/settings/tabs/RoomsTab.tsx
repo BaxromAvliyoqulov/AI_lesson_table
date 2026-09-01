@@ -99,21 +99,21 @@ export const RoomsTab: React.FC<RoomsTabProps> = ({
             return (
               <div
                 key={room.id}
-                className="flex flex-col justify-between p-4 rounded-3xl border border-border/80 bg-card/80 hover:bg-card hover:border-primary/40 hover:shadow-lg transition-all"
+                className="flex flex-col justify-between p-4 rounded-3xl border border-border/80 bg-card/80 hover:bg-card hover:border-primary/40 hover:shadow-lg transition-all min-w-0 overflow-hidden"
               >
-                <div>
-                  <div className="flex items-start justify-between gap-2 mb-3">
-                    <div className="flex items-center gap-2.5">
+                <div className="min-w-0">
+                  <div className="flex items-start justify-between gap-2 mb-3 min-w-0">
+                    <div className="flex items-center gap-2.5 min-w-0 flex-1">
                       <div className="w-10 h-10 rounded-2xl bg-amber-500/10 text-amber-600 flex items-center justify-center font-extrabold text-sm shadow-inner shrink-0">
                         <DoorOpen className="w-5 h-5" />
                       </div>
-                      <div className="truncate">
+                      <div className="min-w-0 flex-1">
                         <h4 className="font-bold text-foreground text-sm truncate" title={room.name}>
                           {room.name}
                         </h4>
-                        <p className="text-[11px] text-muted-foreground flex items-center gap-1">
-                          <Building2 className="w-3 h-3" />
-                          <span>{branch?.name || "Asosiy bino"}</span>
+                        <p className="text-[11px] text-muted-foreground flex items-center gap-1 truncate">
+                          <Building2 className="w-3 h-3 shrink-0" />
+                          <span className="truncate">{branch?.name || "Asosiy bino"}</span>
                         </p>
                       </div>
                     </div>
@@ -141,20 +141,20 @@ export const RoomsTab: React.FC<RoomsTabProps> = ({
                   </div>
 
                   {/* Badges */}
-                  <div className="space-y-1.5 text-xs text-muted-foreground bg-muted/20 p-2.5 rounded-2xl border border-border/60">
-                    <div className="flex items-center justify-between text-[11px]">
-                      <span>Turi:</span>
-                      <span className="font-semibold text-foreground">
+                  <div className="space-y-1.5 text-xs text-muted-foreground bg-muted/20 p-2.5 rounded-2xl border border-border/60 min-w-0 overflow-hidden">
+                    <div className="flex items-center justify-between text-[11px] gap-2">
+                      <span className="shrink-0">Turi:</span>
+                      <span className="font-semibold text-foreground shrink-0 text-right truncate">
                         {ROOM_TYPE_LABELS[room.roomType] || room.roomType}
                       </span>
                     </div>
 
-                    <div className="flex items-center justify-between text-[11px]">
-                      <span className="flex items-center gap-1">
-                        <Users className="w-3 h-3" />
+                    <div className="flex items-center justify-between text-[11px] gap-2">
+                      <span className="flex items-center gap-1 shrink-0">
+                        <Users className="w-3 h-3 shrink-0" />
                         <span>Sig'imi:</span>
                       </span>
-                      <span className="font-bold text-primary">{room.capacity} o'quvchi</span>
+                      <span className="font-bold text-primary shrink-0">{room.capacity} o'quvchi</span>
                     </div>
                   </div>
                 </div>

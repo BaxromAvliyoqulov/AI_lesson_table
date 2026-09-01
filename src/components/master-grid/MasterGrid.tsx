@@ -187,7 +187,16 @@ export const MasterGrid: React.FC<MasterGridProps> = ({
   } | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // Local grid filters & controls
+  // 7 xil Aniq Dars Jadvali Ko'rinishlari (1..7)
+  const [filterScope, setFilterScope] = useState<
+    | "MAIN_ALL"
+    | "MAIN_PRIMARY"
+    | "MAIN_HIGH"
+    | "BRANCH_ALL"
+    | "BRANCH_PRIMARY"
+    | "BRANCH_HIGH"
+    | "ALL"
+  >("MAIN_ALL");
   const [stageFilter, setStageFilter] = useState<"ALL" | "PRIMARY" | "MIDDLE" | "HIGH">("ALL");
   const [shiftFilter, setShiftFilter] = useState<string>("ALL");
   const [searchQuery, setSearchQuery] = useState("");
@@ -213,37 +222,58 @@ export const MasterGrid: React.FC<MasterGridProps> = ({
     return map;
   }, [teachers]);
 
-  // Sinflarni filtrlash (Filial + Bosqich + Smena + Qidiruv)
+  // Sinflarni filtrlash (7 xil ko'rinish + Smena + Qidiruv)
   const filteredClasses = useMemo(() => {
-    let list = classes;
+    const isBranch = (c: SchoolClass) =>
+      c.branchId === "b39_2" ||
+      c.branchId?.includes("branch_2") ||
+      c.branchId?.includes("filial") ||
+      c.name.includes("-D") ||
+      c.name.includes("-d") ||
+      c.name.endsWith("D") ||
+      c.name.endsWith("d");
 
-    // 1. Filial filtri
-    if (selectedBranch !== "ALL") {
-      list = list.filter((c) => c.branchId === selectedBranch);
+    const isMain = (c: SchoolClass) => !isBranch(c);
+
+    let list: SchoolClass[];
+    switch (filterScope) {
+      case "MAIN_ALL":
+        list = classes.filter(isMain);
+        break;
+      case "MAIN_PRIMARY":
+        list = classes.filter((c) => isMain(c) && (c.isPrimary || c.grade <= 4));
+        break;
+      case "MAIN_HIGH":
+        list = classes.filter((c) => isMain(c) && !c.isPrimary && c.grade >= 5);
+        break;
+      case "BRANCH_ALL":
+        list = classes.filter(isBranch);
+        break;
+      case "BRANCH_PRIMARY":
+        list = classes.filter((c) => isBranch(c) && (c.isPrimary || c.grade <= 4));
+        break;
+      case "BRANCH_HIGH":
+        list = classes.filter((c) => isBranch(c) && !c.isPrimary && c.grade >= 5);
+        break;
+      case "ALL":
+      default:
+        list = classes;
+        break;
     }
 
-    // 2. Bosqich filtri
-    if (stageFilter === "PRIMARY") {
-      list = list.filter((c) => c.grade <= 4);
-    } else if (stageFilter === "MIDDLE") {
-      list = list.filter((c) => c.grade >= 5 && c.grade <= 9);
-    } else if (stageFilter === "HIGH") {
-      list = list.filter((c) => c.grade >= 10);
-    }
-
-    // 3. Smena filtri
+    // 2. Smena filtri
     if (shiftFilter !== "ALL") {
       list = list.filter((c) => c.shiftId === shiftFilter);
     }
 
-    // 4. Qidiruv
+    // 3. Qidiruv
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase().trim();
       list = list.filter((c) => c.name.toLowerCase().includes(q) || `${c.grade}` === q);
     }
 
     return list;
-  }, [classes, selectedBranch, stageFilter, shiftFilter, searchQuery]);
+  }, [classes, filterScope, shiftFilter, searchQuery]);
 
   // Lessons map: `${classId}_${day}_${period}` -> Lesson
   const lessonMap = useMemo(() => {
@@ -521,28 +551,32 @@ export const MasterGrid: React.FC<MasterGridProps> = ({
       onDragEnd={handleDragEnd}
     >
       <div className="relative w-full overflow-hidden bg-background flex flex-col">
-        {/* ── TOP CONTROL TOOLBAR ───────────────────────────────────────────── */}
+        {/* ── TOP CONTROL TOOLBAR (7 xil Dars Jadvali Ko'rinishi) ───────────────────────────────────────────── */}
         <div className="border-b border-border/80 bg-card/60 backdrop-blur-md px-4 py-2.5 flex flex-wrap items-center justify-between gap-3 text-xs">
-          {/* Chap: Bosqich Filterlari */}
+          {/* Chap: 7 xil Aniq Ko'rinishlar (1..7) */}
           <div className="flex items-center gap-1.5 flex-wrap">
-            <span className="text-[11px] font-semibold text-muted-foreground mr-1 flex items-center gap-1">
-              <GraduationCap className="w-3.5 h-3.5" />
-              <span>Sinflar:</span>
+            <span className="text-[11px] font-extrabold text-muted-foreground mr-1 flex items-center gap-1">
+              <Building2 className="w-3.5 h-3.5 text-primary" />
+              <span>Jadval ko'rinishi:</span>
             </span>
 
             {[
-              { id: "ALL", label: `Barchasi (${classes.length})` },
-              { id: "PRIMARY", label: `1-4 Boshlang'ich (${classes.filter((c) => c.grade <= 4).length})` },
-              { id: "MIDDLE", label: `5-9 O'rta (${classes.filter((c) => c.grade >= 5 && c.grade <= 9).length})` },
-              { id: "HIGH", label: `10-11 Yuqori (${classes.filter((c) => c.grade >= 10).length})` },
+              { id: "MAIN_ALL", label: "1. 🏢 Asosiy Hammasi" },
+              { id: "MAIN_PRIMARY", label: "2. 👦 Asosiy Boshlang'ich" },
+              { id: "MAIN_HIGH", label: "3. 🧑 Asosiy Kattalar" },
+              { id: "BRANCH_ALL", label: "4. 🏠 Filial Hammasi" },
+              { id: "BRANCH_PRIMARY", label: "5. 👦 Filial Boshlang'ich" },
+              { id: "BRANCH_HIGH", label: "6. 🧑 Filial Kattalar" },
+              { id: "ALL", label: "7. 🏛️ Hammasi" },
             ].map((tab) => (
               <button
                 key={tab.id}
-                onClick={() => setStageFilter(tab.id as any)}
-                className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                  stageFilter === tab.id
-                    ? "bg-primary text-primary-foreground shadow-sm"
-                    : "bg-muted/50 hover:bg-muted text-muted-foreground hover:text-foreground"
+                type="button"
+                onClick={() => setFilterScope(tab.id as any)}
+                className={`px-2.5 py-1.5 rounded-xl text-[11px] font-bold transition-all cursor-pointer ${
+                  filterScope === tab.id
+                    ? "bg-primary text-primary-foreground shadow-sm ring-2 ring-primary/20 scale-[1.02]"
+                    : "bg-muted/60 hover:bg-muted text-muted-foreground hover:text-foreground border border-border/50"
                 }`}
               >
                 {tab.label}

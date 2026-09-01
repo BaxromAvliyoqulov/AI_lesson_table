@@ -1,5 +1,6 @@
 import ExcelJS from "exceljs";
 import { Lesson, SchoolClass, Subject, Teacher, Room, Branch, Shift } from "@/types";
+import { sortClassesByName } from "@/lib/utils";
 
 export interface ExcelExportOptions {
   classes: SchoolClass[];
@@ -102,8 +103,8 @@ export async function exportScheduleToExcel(options: ExcelExportOptions) {
       : [{ id: "main", schoolId: "", name: "Asosiy bino", isMain: true }];
 
   for (const branch of branchList) {
-    const branchClasses = classes.filter((c) =>
-      branches.length > 0 ? c.branchId === branch.id : true
+    const branchClasses = sortClassesByName(
+      classes.filter((c) => (branches.length > 0 ? c.branchId === branch.id : true))
     );
     if (branchClasses.length === 0) continue;
 

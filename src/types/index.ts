@@ -43,6 +43,7 @@ export interface Subject {
   allowDoubleLesson: boolean;
   requiresRoomType?: RoomType | null;
   methodDayOfWeek?: number | null; // Fan metod kuni (1=Dushanba, 2=Seshanba ... 6=Shanba)
+  isActive?: boolean;
 }
 
 export interface TeacherAvailability {

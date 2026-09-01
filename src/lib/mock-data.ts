@@ -189,6 +189,36 @@ export const initialSubjects: Subject[] = [
     "methodDayOfWeek": 5
   },
   {
+    "id": "sub_nemis",
+    "schoolId": "school_39",
+    "name": "Nemis tili",
+    "shortName": "Nemis tili",
+    "colorTag": "#9333EA",
+    "difficultyScore": 8,
+    "allowDoubleLesson": false,
+    "methodDayOfWeek": 5
+  },
+  {
+    "id": "sub_fransuz",
+    "schoolId": "school_39",
+    "name": "Fransuz tili",
+    "shortName": "Fransuz tili",
+    "colorTag": "#7C3AED",
+    "difficultyScore": 8,
+    "allowDoubleLesson": false,
+    "methodDayOfWeek": 5
+  },
+  {
+    "id": "sub_oqish",
+    "schoolId": "school_39",
+    "name": "O'qish savodxonligi",
+    "shortName": "O'qish",
+    "colorTag": "#F43F5E",
+    "difficultyScore": 7,
+    "allowDoubleLesson": false,
+    "methodDayOfWeek": 2
+  },
+  {
     "id": "sub_tabiiy",
     "schoolId": "school_39",
     "name": "Tabiiy fan",
@@ -395,12 +425,12 @@ export const initialSubjects: Subject[] = [
   {
     "id": "sub_sinf_soati",
     "schoolId": "school_39",
-    "name": "Sinf soati",
-    "shortName": "Sinf soati",
+    "name": "Kelajak soati (Sinf soati)",
+    "shortName": "Kelajak s.",
     "colorTag": "#8B5CF6",
     "difficultyScore": 1,
     "allowDoubleLesson": false,
-    "methodDayOfWeek": null
+    "methodDayOfWeek": 1
   }
 ];
 

@@ -40,3 +40,6 @@ next-env.d.ts
 *.db
 *.db-journal
 dev.db
+
+# Scratch temp files
+scratch/

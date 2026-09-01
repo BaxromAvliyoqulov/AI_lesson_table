@@ -1,8 +1,9 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Teacher, Subject, Branch, Shift } from "@/types";
+import { Teacher, Subject, Branch, Shift, SchoolClass } from "@/types";
 import { formatUzPhone, sanitizeFullName } from "@/lib/utils";
+import { ClassSelectCombobox } from "../shared/ClassSelectCombobox";
 import {
   X,
   Users,
@@ -28,6 +29,8 @@ interface TeacherModalProps {
   subjects: Subject[];
   branches: Branch[];
   shifts?: Shift[];
+  classes?: SchoolClass[];
+  allTeachers?: Teacher[];
 }
 
 const WEEKDAYS = [
@@ -48,12 +51,15 @@ export const TeacherModal: React.FC<TeacherModalProps> = ({
   subjects,
   branches,
   shifts = [],
+  classes = [],
+  allTeachers = [],
 }) => {
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
   const [weeklyCapacity, setWeeklyCapacity] = useState(20);
   const [maxConsecutive, setMaxConsecutive] = useState(4);
   const [methodDay, setMethodDay] = useState<number | "">("");
+  const [homeroomClassId, setHomeroomClassId] = useState("");
   const [selectedSubjects, setSelectedSubjects] = useState<string[]>([]);
   const [selectedBranches, setSelectedBranches] = useState<string[]>([]);
   const [selectedShifts, setSelectedShifts] = useState<string[]>([]);
@@ -67,6 +73,7 @@ export const TeacherModal: React.FC<TeacherModalProps> = ({
       setWeeklyCapacity(editingTeacher.weeklyHourCapacity);
       setMaxConsecutive(editingTeacher.maxConsecutiveHours);
       setMethodDay(editingTeacher.methodDayOfWeek || "");
+      setHomeroomClassId(editingTeacher.homeroomClassId || "");
       setSelectedSubjects(editingTeacher.subjectIds || []);
       setSelectedBranches(
         editingTeacher.branchIds && editingTeacher.branchIds.length > 0
@@ -86,6 +93,7 @@ export const TeacherModal: React.FC<TeacherModalProps> = ({
       setWeeklyCapacity(20);
       setMaxConsecutive(4);
       setMethodDay("");
+      setHomeroomClassId("");
       setSelectedSubjects([]);
       setSelectedBranches(branches.map((b) => b.id));
       setSelectedShifts(shifts.map((s) => s.id));
@@ -114,7 +122,7 @@ export const TeacherModal: React.FC<TeacherModalProps> = ({
       teachingStages,
       travelPolicy,
       availabilities: editingTeacher?.availabilities || [],
-      homeroomClassId: editingTeacher?.homeroomClassId || null,
+      homeroomClassId: homeroomClassId.trim() || null,
     };
 
     onSave(teacherData);
@@ -163,7 +171,7 @@ export const TeacherModal: React.FC<TeacherModalProps> = ({
                 {editingTeacher ? "O'qituvchini tahrirlash" : "Yangi o'qituvchi qo'shish"}
               </h3>
               <p className="text-xs text-muted-foreground font-medium">
-                O&apos;qituvchi profili, binolari, smenalari va dars toifalarini sozlang
+                O&apos;qituvchi profili, sinf rahbarligi, binolari va fanlarini sozlang
               </p>
             </div>
           </div>
@@ -205,6 +213,31 @@ export const TeacherModal: React.FC<TeacherModalProps> = ({
                 className="w-full px-3.5 py-2.5 rounded-xl border border-border bg-background focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm font-medium"
               />
             </div>
+          </div>
+
+          {/* ── SINF RAHBARLIGI (Biriktirilgan sinf) ────────────────────────── */}
+          <div className="p-3.5 rounded-2xl bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-200/80 dark:border-indigo-800/50">
+            <label className="block text-xs font-bold text-indigo-950 dark:text-indigo-200 mb-1.5 flex items-center justify-between">
+              <span className="flex items-center gap-1.5">
+                <GraduationCap className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                Sinf rahbari (Biriktirilgan sinf)
+              </span>
+              {homeroomClassId && (
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-600 text-white shadow-xs">
+                  Sinf rahbari
+                </span>
+              )}
+            </label>
+            <ClassSelectCombobox
+              value={homeroomClassId}
+              onChange={setHomeroomClassId}
+              classes={classes}
+              teachers={allTeachers.length > 0 ? allTeachers : (editingTeacher ? [editingTeacher] : [])}
+              placeholder="Sinf rahbari bo'lgan sinfni tanlang..."
+            />
+            <p className="text-[11px] text-indigo-900/80 dark:text-indigo-300/80 mt-1.5 leading-relaxed">
+              💡 Sinf rahbarligi biriktirilsa, ushbu sinfning Juma kungi <strong>Sinf soati</strong> fani va rasmiy jadval imzolari avtomatik shu o'qituvchiga ulanadi.
+            </p>
           </div>
 
           {/* Stavka, Ketma-ket dars va Metod kuni */}
@@ -258,7 +291,7 @@ export const TeacherModal: React.FC<TeacherModalProps> = ({
 
           {/* ── 1. BINOLAR TANLOVI (FILIALLAR) ─────────────────────────────── */}
           <div>
-            <label className="block text-xs font-bold text-slate-800 mb-2 flex items-center justify-between">
+            <label className="block text-xs font-bold text-foreground mb-2 flex items-center justify-between">
               <span className="flex items-center gap-1.5">
                 <Building2 className="w-3.5 h-3.5 text-blue-600" />
                 Dars o&apos;tadigan binolari (Filiallar)
@@ -277,13 +310,13 @@ export const TeacherModal: React.FC<TeacherModalProps> = ({
                     onClick={() => toggleBranch(b.id)}
                     className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
                       isSelected
-                        ? "bg-blue-50 border-blue-600 text-blue-700 shadow-sm ring-1 ring-blue-600/30"
+                        ? "bg-blue-50 dark:bg-blue-950/40 border-blue-600 text-blue-700 dark:text-blue-300 shadow-sm ring-1 ring-blue-600/30"
                         : "bg-card border-border hover:border-slate-300 text-muted-foreground"
                     }`}
                   >
                     <div
                       className={`w-4 h-4 rounded-md flex items-center justify-center text-[10px] ${
-                        isSelected ? "bg-blue-600 text-white" : "border border-slate-300 bg-white"
+                        isSelected ? "bg-blue-600 text-white" : "border border-slate-300 bg-white dark:bg-slate-800"
                       }`}
                     >
                       {isSelected && <Check className="w-3 h-3" />}
@@ -297,7 +330,7 @@ export const TeacherModal: React.FC<TeacherModalProps> = ({
                 <button
                   type="button"
                   onClick={() => setSelectedBranches(branches.map((b) => b.id))}
-                  className="px-3 py-2 rounded-xl text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors"
+                  className="px-3 py-2 rounded-xl text-xs font-semibold bg-muted hover:bg-muted/80 text-foreground transition-colors cursor-pointer"
                 >
                   🌐 Ikkala binoda ham
                 </button>
@@ -307,7 +340,7 @@ export const TeacherModal: React.FC<TeacherModalProps> = ({
 
           {/* ── 2. SMENALAR TANLOVI (1-smena, 2-smena) ───────────────────────── */}
           <div>
-            <label className="block text-xs font-bold text-slate-800 mb-2 flex items-center justify-between">
+            <label className="block text-xs font-bold text-foreground mb-2 flex items-center justify-between">
               <span className="flex items-center gap-1.5">
                 <Clock className="w-3.5 h-3.5 text-amber-600" />
                 Dars o&apos;tadigan smenalari
@@ -322,7 +355,7 @@ export const TeacherModal: React.FC<TeacherModalProps> = ({
                 onClick={() => setSelectedShifts(shifts.length > 0 ? [shifts[0].id] : ["s39_1"])}
                 className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
                   selectedShifts.length === 1 && selectedShifts[0] === (shifts[0]?.id || "s39_1")
-                    ? "bg-amber-50 border-amber-600 text-amber-900 shadow-sm ring-1 ring-amber-600/30"
+                    ? "bg-amber-50 dark:bg-amber-950/40 border-amber-600 text-amber-900 dark:text-amber-300 shadow-sm ring-1 ring-amber-600/30"
                     : "bg-card border-border hover:border-slate-300 text-muted-foreground"
                 }`}
               >
@@ -338,7 +371,7 @@ export const TeacherModal: React.FC<TeacherModalProps> = ({
                 className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
                   selectedShifts.length === 1 &&
                   selectedShifts[0] === (shifts[1]?.id || "s39_2")
-                    ? "bg-indigo-50 border-indigo-600 text-indigo-900 shadow-sm ring-1 ring-indigo-600/30"
+                    ? "bg-indigo-50 dark:bg-indigo-950/40 border-indigo-600 text-indigo-900 dark:text-indigo-300 shadow-sm ring-1 ring-indigo-600/30"
                     : "bg-card border-border hover:border-slate-300 text-muted-foreground"
                 }`}
               >
@@ -353,7 +386,7 @@ export const TeacherModal: React.FC<TeacherModalProps> = ({
                 }
                 className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
                   selectedShifts.length > 1 || (shifts.length === 0 && selectedShifts.length === 2)
-                    ? "bg-emerald-50 border-emerald-600 text-emerald-900 shadow-sm ring-1 ring-emerald-600/30"
+                    ? "bg-emerald-50 dark:bg-emerald-950/40 border-emerald-600 text-emerald-900 dark:text-emerald-300 shadow-sm ring-1 ring-emerald-600/30"
                     : "bg-card border-border hover:border-slate-300 text-muted-foreground"
                 }`}
               >
@@ -365,7 +398,7 @@ export const TeacherModal: React.FC<TeacherModalProps> = ({
 
           {/* ── 3. SINFLAR TOIFASI (BOSQICHLAR) ─────────────────────────────── */}
           <div>
-            <label className="block text-xs font-bold text-slate-800 mb-2 flex items-center gap-1.5">
+            <label className="block text-xs font-bold text-foreground mb-2 flex items-center gap-1.5">
               <GraduationCap className="w-3.5 h-3.5 text-purple-600" />
               Dars beradigan sinflari (Toifasi)
             </label>
@@ -375,7 +408,7 @@ export const TeacherModal: React.FC<TeacherModalProps> = ({
                 onClick={() => setTeachingStages("PRIMARY")}
                 className={`flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
                   teachingStages === "PRIMARY"
-                    ? "bg-teal-50 border-teal-600 text-teal-900 shadow-sm ring-1 ring-teal-600/30"
+                    ? "bg-teal-50 dark:bg-teal-950/40 border-teal-600 text-teal-900 dark:text-teal-300 shadow-sm ring-1 ring-teal-600/30"
                     : "bg-card border-border hover:border-slate-300 text-muted-foreground"
                 }`}
               >
@@ -387,7 +420,7 @@ export const TeacherModal: React.FC<TeacherModalProps> = ({
                 onClick={() => setTeachingStages("HIGH")}
                 className={`flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
                   teachingStages === "HIGH"
-                    ? "bg-purple-50 border-purple-600 text-purple-900 shadow-sm ring-1 ring-purple-600/30"
+                    ? "bg-purple-50 dark:bg-purple-950/40 border-purple-600 text-purple-900 dark:text-purple-300 shadow-sm ring-1 ring-purple-600/30"
                     : "bg-card border-border hover:border-slate-300 text-muted-foreground"
                 }`}
               >
@@ -399,7 +432,7 @@ export const TeacherModal: React.FC<TeacherModalProps> = ({
                 onClick={() => setTeachingStages("BOTH")}
                 className={`flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
                   teachingStages === "BOTH"
-                    ? "bg-blue-50 border-blue-600 text-blue-900 shadow-sm ring-1 ring-blue-600/30"
+                    ? "bg-blue-50 dark:bg-blue-950/40 border-blue-600 text-blue-900 dark:text-blue-300 shadow-sm ring-1 ring-blue-600/30"
                     : "bg-card border-border hover:border-slate-300 text-muted-foreground"
                 }`}
               >
@@ -410,8 +443,8 @@ export const TeacherModal: React.FC<TeacherModalProps> = ({
 
           {/* ── 4. BINO VA SMENA LOGISTIKASI (Agar 2 ta binoda dars bersa) ───── */}
           {hasMultipleBranches && (
-            <div className="p-3.5 rounded-2xl bg-amber-50/60 border border-amber-200">
-              <label className="block text-xs font-bold text-amber-950 mb-2 flex items-center gap-1.5">
+            <div className="p-3.5 rounded-2xl bg-amber-50/60 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
+              <label className="block text-xs font-bold text-amber-950 dark:text-amber-200 mb-2 flex items-center gap-1.5">
                 <ArrowRightLeft className="w-3.5 h-3.5 text-amber-700" />
                 Filial va Asosiy Bino o&apos;rtasida harakatlanish qoidasi:
               </label>
@@ -421,14 +454,14 @@ export const TeacherModal: React.FC<TeacherModalProps> = ({
                   onClick={() => setTravelPolicy("BY_SHIFT")}
                   className={`p-2 rounded-xl text-left border text-[11px] transition-all cursor-pointer ${
                     travelPolicy === "BY_SHIFT"
-                      ? "bg-white border-amber-600 text-amber-950 font-bold shadow-sm ring-1 ring-amber-600/40"
-                      : "bg-white/50 border-amber-200/80 text-amber-900/80 hover:bg-white"
+                      ? "bg-card border-amber-600 text-foreground font-bold shadow-sm ring-1 ring-amber-600/40"
+                      : "bg-card/50 border-amber-200/80 dark:border-amber-800/50 text-muted-foreground hover:bg-card"
                   }`}
                 >
                   <div className="font-extrabold flex items-center gap-1">
                     <span>🏢➡️🏫 Smenalar bo&apos;yicha</span>
                   </div>
-                  <div className="text-[10px] text-amber-800 font-medium mt-0.5">
+                  <div className="text-[10px] text-muted-foreground font-medium mt-0.5">
                     1-smena Asosiyda, 2-smena Filialda
                   </div>
                 </button>
@@ -438,14 +471,14 @@ export const TeacherModal: React.FC<TeacherModalProps> = ({
                   onClick={() => setTravelPolicy("BY_DAY")}
                   className={`p-2 rounded-xl text-left border text-[11px] transition-all cursor-pointer ${
                     travelPolicy === "BY_DAY"
-                      ? "bg-white border-amber-600 text-amber-950 font-bold shadow-sm ring-1 ring-amber-600/40"
-                      : "bg-white/50 border-amber-200/80 text-amber-900/80 hover:bg-white"
+                      ? "bg-card border-amber-600 text-foreground font-bold shadow-sm ring-1 ring-amber-600/40"
+                      : "bg-card/50 border-amber-200/80 dark:border-amber-800/50 text-muted-foreground hover:bg-card"
                   }`}
                 >
                   <div className="font-extrabold flex items-center gap-1">
                     <span>📅 Kunlar bo&apos;yicha</span>
                   </div>
-                  <div className="text-[10px] text-amber-800 font-medium mt-0.5">
+                  <div className="text-[10px] text-muted-foreground font-medium mt-0.5">
                     Dush/Chor Asosiy, Sesh/Pay Filial
                   </div>
                 </button>
@@ -455,14 +488,14 @@ export const TeacherModal: React.FC<TeacherModalProps> = ({
                   onClick={() => setTravelPolicy("FLEXIBLE_BUFFER")}
                   className={`p-2 rounded-xl text-left border text-[11px] transition-all cursor-pointer ${
                     travelPolicy === "FLEXIBLE_BUFFER"
-                      ? "bg-white border-amber-600 text-amber-950 font-bold shadow-sm ring-1 ring-amber-600/40"
-                      : "bg-white/50 border-amber-200/80 text-amber-900/80 hover:bg-white"
+                      ? "bg-card border-amber-600 text-foreground font-bold shadow-sm ring-1 ring-amber-600/40"
+                      : "bg-card/50 border-amber-200/80 dark:border-amber-800/50 text-muted-foreground hover:bg-card"
                   }`}
                 >
                   <div className="font-extrabold flex items-center gap-1">
                     <span>⏳ Yo&apos;l darchasi bilan</span>
                   </div>
-                  <div className="text-[10px] text-amber-800 font-medium mt-0.5">
+                  <div className="text-[10px] text-muted-foreground font-medium mt-0.5">
                     AI o&apos;rtada 1 soat oraliq vaqt qoldiradi
                   </div>
                 </button>
@@ -476,27 +509,34 @@ export const TeacherModal: React.FC<TeacherModalProps> = ({
               Dars beradigan fanlari ({selectedSubjects.length} ta tanlandi)
             </label>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-36 overflow-y-auto p-2 rounded-2xl border border-border bg-muted/20 custom-scrollbar">
-              {subjects.map((s) => {
-                const isSelected = selectedSubjects.includes(s.id);
-                return (
-                  <button
-                    key={s.id}
-                    type="button"
-                    onClick={() => toggleSubject(s.id)}
-                    className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium text-left border transition-all cursor-pointer ${
-                      isSelected
-                        ? "bg-primary/10 border-primary text-primary"
-                        : "bg-card border-border hover:border-slate-300 dark:hover:border-slate-700 text-muted-foreground"
-                    }`}
-                  >
-                    <span
-                      className="w-2.5 h-2.5 rounded-full shrink-0"
-                      style={{ backgroundColor: s.colorTag }}
-                    />
-                    <span className="truncate">{s.name}</span>
-                  </button>
-                );
-              })}
+              {subjects
+                .filter((s) => s.isActive !== false || selectedSubjects.includes(s.id))
+                .map((s) => {
+                  const isSelected = selectedSubjects.includes(s.id);
+                  const isInactive = s.isActive === false;
+                  return (
+                    <button
+                      key={s.id}
+                      type="button"
+                      onClick={() => toggleSubject(s.id)}
+                      className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium text-left border transition-all cursor-pointer ${
+                        isSelected
+                          ? "bg-primary/10 border-primary text-primary font-bold shadow-xs"
+                          : isInactive
+                          ? "bg-muted/40 border-border opacity-60 text-muted-foreground"
+                          : "bg-card border-border hover:border-slate-300 dark:hover:border-slate-700 text-muted-foreground"
+                      }`}
+                    >
+                      <span
+                        className="w-2.5 h-2.5 rounded-full shrink-0"
+                        style={{ backgroundColor: s.colorTag }}
+                      />
+                      <span className="truncate">
+                        {s.name} {isInactive ? "(Nofaol)" : ""}
+                      </span>
+                    </button>
+                  );
+                })}
             </div>
           </div>
 

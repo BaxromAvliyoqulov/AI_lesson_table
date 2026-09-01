@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useCallback } from "react";
 import {
   DndContext,
   DragOverlay,
@@ -48,6 +48,7 @@ import {
 } from "lucide-react";
 import { CSPSolver } from "@/lib/solver/csp-solver";
 import { validateDropSlot, DropSlotValidation } from "@/lib/solver/drag-validator";
+import { sortClassesByName } from "@/lib/utils";
 
 export type FilterScope =
   | "MAIN_HIGH"
@@ -361,21 +362,67 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
   } | null>(null);
   const [selectedHomeroomTeacherId, setSelectedHomeroomTeacherId] = useState<string>("");
 
+  const getHomeroomTeacher = useCallback(
+    (cls: SchoolClass): Teacher | undefined => {
+      if (cls.homeroomTeacherId) {
+        const direct = teachers.find((t) => t.id === cls.homeroomTeacherId);
+        if (direct) return direct;
+        const byName = teachers.find(
+          (t) =>
+            t.fullName.toLowerCase() === cls.homeroomTeacherId?.toLowerCase() ||
+            (t.displayNumber && `t_${t.displayNumber}` === cls.homeroomTeacherId)
+        );
+        if (byName) return byName;
+      }
+
+      // Reverse lookup
+      const rawClassId = cls.id.toLowerCase();
+      const rawClassName = cls.name.toLowerCase();
+      const normClassName = rawClassName.replace(/[^a-z0-9]/g, "");
+
+      const byTeacher = teachers.find((t) => {
+        if (!t.homeroomClassId) return false;
+        const tHId = t.homeroomClassId.toLowerCase();
+        return (
+          tHId === rawClassId ||
+          tHId === rawClassName ||
+          tHId.replace(/[^a-z0-9]/g, "") === normClassName
+        );
+      });
+      if (byTeacher) return byTeacher;
+
+      // Sinf soati
+      const sinfSoati = cls.subjects?.find(
+        (s) =>
+          s.subjectId === "sub_sinf_soati" ||
+          s.subjectId?.toLowerCase().includes("sinf_soati")
+      );
+      if (sinfSoati && sinfSoati.teacherId) {
+        return teachers.find((t) => t.id === sinfSoati.teacherId);
+      }
+
+      return undefined;
+    },
+    [teachers]
+  );
+
   const handleSaveHomeroomTeacher = () => {
-    if (!homeroomModal || !selectedHomeroomTeacherId) return;
+    if (!homeroomModal) return;
     if (onSetHomeroomTeacher) {
-      onSetHomeroomTeacher(homeroomModal.cls.id, selectedHomeroomTeacherId);
-    } else if (onLessonsChange) {
+      onSetHomeroomTeacher(homeroomModal.cls.id, selectedHomeroomTeacherId || "");
+      showToast(`${homeroomModal.cls.name} sinf rahbari yangilandi!`, "success");
+    } else if (onLessonsChange && selectedHomeroomTeacherId) {
       const updatedLessons = lessons.map((l) => {
         if (
           l.classId === homeroomModal.cls.id &&
-          (l.subjectId === "sub_sinf_soati" || (l.dayOfWeek === 5 && l.periodNumber === 1))
+          (l.subjectId === "sub_sinf_soati" || (l.dayOfWeek === 1 && l.periodNumber === 1))
         ) {
           return { ...l, teacherId: selectedHomeroomTeacherId };
         }
         return l;
       });
       onLessonsChange(updatedLessons);
+      showToast(`${homeroomModal.cls.name} sinf rahbari yangilandi!`, "success");
     }
     setHomeroomModal(null);
   };
@@ -396,25 +443,42 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
   const teacherMap = useMemo(() => new Map(teachers.map((t) => [t.id, t])), [teachers]);
   const roomMap = useMemo(() => new Map(rooms.map((r) => [r.id, r])), [rooms]);
 
-  // Asosiy bino va Filial (D sinflar) bo'yicha aniq filtrlangan sinflar
+  // Asosiy bino va Filial bo'yicha aniq filtrlangan va tartiblangan sinflar
   const displayClasses = useMemo(() => {
+    const isBranch = (c: SchoolClass) =>
+      c.branchId === "b39_2" ||
+      c.branchId?.includes("branch_2") ||
+      c.branchId?.includes("filial");
+
+    const isMain = (c: SchoolClass) => !isBranch(c);
+
+    let list: SchoolClass[];
     switch (filterScope) {
       case "MAIN_ALL":
-        return classes.filter((c) => c.branchId === "b39_1");
+        list = classes.filter(isMain);
+        break;
       case "MAIN_HIGH":
-        return classes.filter((c) => c.branchId === "b39_1" && !c.isPrimary && c.grade >= 5);
+        list = classes.filter((c) => isMain(c) && !c.isPrimary && c.grade >= 5);
+        break;
       case "MAIN_PRIMARY":
-        return classes.filter((c) => c.branchId === "b39_1" && (c.isPrimary || c.grade <= 4));
+        list = classes.filter((c) => isMain(c) && (c.isPrimary || c.grade <= 4));
+        break;
       case "BRANCH_ALL":
-        return classes.filter((c) => c.branchId === "b39_2");
+        list = classes.filter(isBranch);
+        break;
       case "BRANCH_HIGH":
-        return classes.filter((c) => c.branchId === "b39_2" && !c.isPrimary && c.grade >= 5);
+        list = classes.filter((c) => isBranch(c) && !c.isPrimary && c.grade >= 5);
+        break;
       case "BRANCH_PRIMARY":
-        return classes.filter((c) => c.branchId === "b39_2" && (c.isPrimary || c.grade <= 4));
+        list = classes.filter((c) => isBranch(c) && (c.isPrimary || c.grade <= 4));
+        break;
       case "ALL":
       default:
-        return classes;
+        list = classes;
+        break;
     }
+
+    return sortClassesByName(list);
   }, [classes, filterScope]);
 
   // Boshlang'ich sinflar uchun 5 kunlik hafta (Dushanba-Juma)
@@ -805,79 +869,128 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
                 onChange={(e) => setFilterScope(e.target.value as FilterScope)}
                 className="bg-transparent text-slate-800 text-xs font-bold py-1.5 pr-3 outline-none cursor-pointer"
               >
-                <optgroup label="🏢 Asosiy Maktab" className="bg-white text-slate-900 font-bold">
-                  <option value="MAIN_HIGH" className="bg-white text-slate-900">
-                    🧑 Asosiy maktab — Katta sinf (5-11)
-                  </option>
-                  <option value="MAIN_PRIMARY" className="bg-white text-slate-900">
-                    👦 Asosiy maktab — Boshlang'ich (1-4)
-                  </option>
-                  <option value="MAIN_ALL" className="bg-white text-slate-900">
-                    🏢 Asosiy maktab — Hammasi (1-11)
-                  </option>
-                </optgroup>
-
-                <optgroup label="🏠 Filial Binosi (D-sinflar)" className="bg-white text-amber-700 font-bold">
-                  <option value="BRANCH_HIGH" className="bg-white text-slate-900">
-                    🧑 Filial — Katta sinf (5-D, 6-D, 7-D)
-                  </option>
-                  <option value="BRANCH_PRIMARY" className="bg-white text-slate-900">
-                    👦 Filial — Boshlang'ich (1-D .. 4-D)
-                  </option>
-                  <option value="BRANCH_ALL" className="bg-white text-slate-900">
-                    🏠 Filial — Hammasi (1-D .. 7-D)
-                  </option>
-                </optgroup>
-
-                <optgroup label="🏛️ Umumiy Maktab" className="bg-white text-purple-700 font-bold">
-                  <option value="ALL" className="bg-white text-slate-900">
-                    🏛️ Barcha filiallar (Umumiy maktab)
-                  </option>
-                </optgroup>
+                <option value="MAIN_ALL" className="bg-white text-slate-900 font-bold">
+                  1. 🏢 Asosiy — Hammasi (1-11)
+                </option>
+                <option value="MAIN_PRIMARY" className="bg-white text-slate-900 font-bold">
+                  2. 👦 Asosiy — Boshlang'ich (1-4)
+                </option>
+                <option value="MAIN_HIGH" className="bg-white text-slate-900 font-bold">
+                  3. 🧑 Asosiy — Kattalar (5-11)
+                </option>
+                <option value="BRANCH_ALL" className="bg-white text-slate-900 font-bold">
+                  4. 🏠 Filial — Hammasi (1-7 D)
+                </option>
+                <option value="BRANCH_PRIMARY" className="bg-white text-slate-900 font-bold">
+                  5. 👦 Filial — Boshlang'ich (1-4 D)
+                </option>
+                <option value="BRANCH_HIGH" className="bg-white text-slate-900 font-bold">
+                  6. 🧑 Filial — Kattalar (5-7 D)
+                </option>
+                <option value="ALL" className="bg-white text-slate-900 font-bold">
+                  7. 🏛️ Hammasi (Butun maktab)
+                </option>
               </select>
             </div>
 
-            {/* Tezkor Tab Tugmalari */}
-            <div className="hidden lg:flex items-center gap-1 bg-white p-1 rounded-xl border border-slate-200 shadow-sm">
+            {/* 7 xil Aniq Dars Jadvali Ko'rinishlari (1 dan 7 gacha) */}
+            <div className="flex items-center gap-1 bg-white p-1 rounded-xl border border-slate-200 shadow-sm flex-wrap">
+              {/* 1. Asosiy Hammasi */}
               <button
-                onClick={() => setFilterScope("MAIN_HIGH")}
-                className={`px-2.5 py-1.5 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
-                  filterScope === "MAIN_HIGH"
-                    ? "bg-blue-600 text-white shadow-sm"
+                type="button"
+                onClick={() => setFilterScope("MAIN_ALL")}
+                className={`px-2.5 py-1.5 rounded-lg text-[11px] font-extrabold transition-all cursor-pointer flex items-center gap-1 ${
+                  filterScope === "MAIN_ALL"
+                    ? "bg-indigo-600 text-white shadow-sm"
                     : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
                 }`}
+                title="1. Asosiy binodagi barcha sinflar (1-11 A, B, V)"
               >
-                Asosiy Katta
+                <span>1. 🏢 Asosiy Hammasi</span>
               </button>
+
+              {/* 2. Asosiy Boshlang'ich */}
               <button
+                type="button"
                 onClick={() => setFilterScope("MAIN_PRIMARY")}
-                className={`px-2.5 py-1.5 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
+                className={`px-2.5 py-1.5 rounded-lg text-[11px] font-extrabold transition-all cursor-pointer flex items-center gap-1 ${
                   filterScope === "MAIN_PRIMARY"
                     ? "bg-emerald-600 text-white shadow-sm"
                     : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
                 }`}
+                title="2. Asosiy bino boshlang'ich sinflari (1-4 A, B, V)"
               >
-                Asosiy Boshlang'ich
+                <span>2. 👦 Asosiy Boshlang'ich</span>
               </button>
+
+              {/* 3. Asosiy Kattalar */}
               <button
-                onClick={() => setFilterScope("BRANCH_HIGH")}
-                className={`px-2.5 py-1.5 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
-                  filterScope === "BRANCH_HIGH"
+                type="button"
+                onClick={() => setFilterScope("MAIN_HIGH")}
+                className={`px-2.5 py-1.5 rounded-lg text-[11px] font-extrabold transition-all cursor-pointer flex items-center gap-1 ${
+                  filterScope === "MAIN_HIGH"
+                    ? "bg-blue-600 text-white shadow-sm"
+                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+                }`}
+                title="3. Asosiy bino yuqori sinflari (5-11 A, B, V)"
+              >
+                <span>3. 🧑 Asosiy Kattalar</span>
+              </button>
+
+              {/* 4. Filial Hammasi */}
+              <button
+                type="button"
+                onClick={() => setFilterScope("BRANCH_ALL")}
+                className={`px-2.5 py-1.5 rounded-lg text-[11px] font-extrabold transition-all cursor-pointer flex items-center gap-1 ${
+                  filterScope === "BRANCH_ALL"
                     ? "bg-amber-600 text-white shadow-sm"
                     : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
                 }`}
+                title="4. Filialdagi barcha sinflar (1-D .. 7-D)"
               >
-                Filial Katta (5-7D)
+                <span>4. 🏠 Filial Hammasi</span>
               </button>
+
+              {/* 5. Filial Boshlang'ich */}
               <button
+                type="button"
                 onClick={() => setFilterScope("BRANCH_PRIMARY")}
-                className={`px-2.5 py-1.5 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
+                className={`px-2.5 py-1.5 rounded-lg text-[11px] font-extrabold transition-all cursor-pointer flex items-center gap-1 ${
                   filterScope === "BRANCH_PRIMARY"
                     ? "bg-teal-600 text-white shadow-sm"
                     : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
                 }`}
+                title="5. Filial boshlang'ich sinflari (1-D .. 4-D)"
               >
-                Filial Boshlang'ich (1-4D)
+                <span>5. 👦 Filial Boshlang'ich</span>
+              </button>
+
+              {/* 6. Filial Kattalar */}
+              <button
+                type="button"
+                onClick={() => setFilterScope("BRANCH_HIGH")}
+                className={`px-2.5 py-1.5 rounded-lg text-[11px] font-extrabold transition-all cursor-pointer flex items-center gap-1 ${
+                  filterScope === "BRANCH_HIGH"
+                    ? "bg-orange-600 text-white shadow-sm"
+                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+                }`}
+                title="6. Filial yuqori sinflari (5-D .. 7-D)"
+              >
+                <span>6. 🧑 Filial Kattalar</span>
+              </button>
+
+              {/* 7. Hammasi */}
+              <button
+                type="button"
+                onClick={() => setFilterScope("ALL")}
+                className={`px-2.5 py-1.5 rounded-lg text-[11px] font-extrabold transition-all cursor-pointer flex items-center gap-1 ${
+                  filterScope === "ALL"
+                    ? "bg-purple-600 text-white shadow-sm"
+                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+                }`}
+                title="7. Butun maktab: barcha bino va filiallardagi barcha sinflar"
+              >
+                <span>7. 🏛️ Hammasi</span>
               </button>
             </div>
           </div>
@@ -1074,24 +1187,46 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
                     Vaqti
                   </th>
 
-                  {displayClasses.map((cls) => (
-                    <th
-                      key={cls.id}
-                      colSpan={2}
-                      className={`border border-black px-2 py-1.5 text-center font-black text-xs min-w-[92px] ${
-                        cls.branchId === "b39_2"
-                          ? "bg-amber-100 text-amber-950"
-                          : "bg-slate-100 text-slate-900"
-                      }`}
-                    >
-                      <div className="flex flex-col items-center">
-                        <span className="tracking-wide font-black">{cls.name}</span>
-                        {cls.branchId === "b39_2" && (
-                          <span className="text-[8px] font-bold text-amber-900">(Filial)</span>
-                        )}
-                      </div>
-                    </th>
-                  ))}
+                  {displayClasses.map((cls) => {
+                    const homeroomTeacher = getHomeroomTeacher(cls);
+
+                    return (
+                      <th
+                        key={cls.id}
+                        colSpan={2}
+                        onClick={() => {
+                          setHomeroomModal({
+                            isOpen: true,
+                            cls,
+                            currentTeacherId: homeroomTeacher?.id,
+                          });
+                          setSelectedHomeroomTeacherId(homeroomTeacher?.id || "");
+                        }}
+                        className={`border border-black px-1.5 py-1 text-center font-black text-xs min-w-[92px] cursor-pointer hover:opacity-90 transition-opacity select-none ${
+                          cls.branchId === "b39_2"
+                            ? "bg-amber-100 text-amber-950"
+                            : "bg-slate-100 text-slate-900"
+                        }`}
+                        title={`${cls.name} sinfi — Sinf rahbari: ${homeroomTeacher?.fullName || "Tayinlanmagan"} (O'zgartirish uchun bosing)`}
+                      >
+                        <div className="flex flex-col items-center">
+                          <span className="tracking-wide font-black text-xs">{cls.name}</span>
+                          {homeroomTeacher ? (
+                            <span className="text-[8px] font-semibold text-slate-600 truncate max-w-[85px]">
+                              {homeroomTeacher.fullName.split(" ")[0]}
+                            </span>
+                          ) : (
+                            <span className="text-[7.5px] font-bold text-rose-600/80">
+                              + Rahbar
+                            </span>
+                          )}
+                          {cls.branchId === "b39_2" && (
+                            <span className="text-[7.5px] font-bold text-amber-900">(Filial)</span>
+                          )}
+                        </div>
+                      </th>
+                    );
+                  })}
                 </tr>
 
                 {/* 2-qator: Har bir sinf tagida Fan | № ustunlari */}
@@ -1217,9 +1352,7 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
                     Sinf rahbar
                   </td>
                   {displayClasses.map((cls) => {
-                    const homeroomTeacher =
-                      teachers.find((t) => t.id === cls.homeroomTeacherId) ||
-                      teachers.find((t) => t.homeroomClassId === cls.id);
+                    const homeroomTeacher = getHomeroomTeacher(cls);
                     const shortName = homeroomTeacher
                       ? homeroomTeacher.fullName.split(" ").slice(0, 2).join(" ")
                       : "—";
@@ -1672,8 +1805,7 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
                 <button
                   type="button"
                   onClick={handleSaveHomeroomTeacher}
-                  disabled={!selectedHomeroomTeacherId}
-                  className="px-5 py-2 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white shadow-md shadow-blue-600/20 cursor-pointer transition-all"
+                  className="px-5 py-2 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-500 text-white shadow-md shadow-blue-600/20 cursor-pointer transition-all"
                 >
                   Saqlash va Sinxronlash
                 </button>
