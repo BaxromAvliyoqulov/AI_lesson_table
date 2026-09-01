@@ -168,16 +168,35 @@ function saveLocalStorageState(state: SchoolStoreState) {
   }
 }
 
-function updateStore(updater: (prev: SchoolStoreState) => SchoolStoreState) {
+// Real-time multi-tab & multi-device broadcast channel
+const syncChannel =
+  typeof window !== "undefined" && "BroadcastChannel" in window
+    ? new BroadcastChannel("dars_jadval_live_cloud_sync")
+    : null;
+
+function notifyLiveSync() {
+  try {
+    syncChannel?.postMessage({ type: "LIVE_STORE_MUTATION", timestamp: Date.now() });
+  } catch {
+    // Ignore channel post errors
+  }
+}
+
+function updateStore(updater: (prev: SchoolStoreState) => SchoolStoreState, broadcast = true) {
   storeState = updater(storeState);
   saveLocalStorageState(storeState);
   listeners.forEach((listener) => listener());
+  if (broadcast) {
+    notifyLiveSync();
+  }
 }
 
 export function useSchoolStore() {
-  const fetchServerData = useCallback(async (schoolIdToFetch?: string) => {
+  const fetchServerData = useCallback(async (schoolIdToFetch?: string, silent = false) => {
     const targetId = schoolIdToFetch || storeState.currentSchoolId;
-    updateStore((prev) => ({ ...prev, syncStatus: "syncing" }));
+    if (!silent) {
+      updateStore((prev) => ({ ...prev, syncStatus: "syncing" }), false);
+    }
     try {
       const res = await getSchoolFullData(targetId);
       if (res.success && res.data) {
@@ -193,29 +212,36 @@ export function useSchoolStore() {
           bellPeriods,
         } = res.data;
 
-        updateStore((prev) => ({
-          ...prev,
-          currentSchoolId: schoolInfo.id,
-          schools: [
-            schoolInfo,
-            ...prev.schools.filter((s) => s.id !== schoolInfo.id && s.id !== "school_39"),
-          ],
-          branches: branches.length > 0 ? branches : prev.branches,
-          shifts: shifts.length > 0 ? shifts : prev.shifts,
-          subjects: subjects.length > 0 ? subjects : prev.subjects,
-          rooms: rooms.length > 0 ? rooms : prev.rooms,
-          teachers: teachers.length > 0 ? teachers : prev.teachers,
-          classes: classes.length > 0 ? sortClassesByName(classes) : sortClassesByName(prev.classes),
-          lessons: lessons.length > 0 ? lessons : prev.lessons,
-          bellPeriods: bellPeriods.length > 0 ? bellPeriods : prev.bellPeriods,
-          syncStatus: "synced",
-        }));
+        updateStore(
+          (prev) => ({
+            ...prev,
+            currentSchoolId: schoolInfo.id,
+            schools: [
+              schoolInfo,
+              ...prev.schools.filter((s) => s.id !== schoolInfo.id && s.id !== "school_39"),
+            ],
+            branches: branches.length > 0 ? branches : prev.branches,
+            shifts: shifts.length > 0 ? shifts : prev.shifts,
+            subjects: subjects.length > 0 ? subjects : prev.subjects,
+            rooms: rooms.length > 0 ? rooms : prev.rooms,
+            teachers: teachers.length > 0 ? teachers : prev.teachers,
+            classes: classes.length > 0 ? sortClassesByName(classes) : sortClassesByName(prev.classes),
+            lessons: lessons.length > 0 ? lessons : prev.lessons,
+            bellPeriods: bellPeriods.length > 0 ? bellPeriods : prev.bellPeriods,
+            syncStatus: "synced",
+          }),
+          false
+        );
       } else {
-        updateStore((prev) => ({ ...prev, syncStatus: "synced" }));
+        if (!silent) {
+          updateStore((prev) => ({ ...prev, syncStatus: "synced" }), false);
+        }
       }
     } catch (err) {
       console.error("fetchServerData xatosi:", err);
-      updateStore((prev) => ({ ...prev, syncStatus: "offline" }));
+      if (!silent) {
+        updateStore((prev) => ({ ...prev, syncStatus: "offline" }), false);
+      }
     }
   }, []);
 
@@ -224,10 +250,51 @@ export function useSchoolStore() {
       hasHydrated = true;
       const saved = getLocalStorageState();
       if (saved) {
-        updateStore((prev) => ({ ...prev, ...saved, isGenerating: false }));
+        updateStore((prev) => ({ ...prev, ...saved, isGenerating: false }), false);
       }
       fetchServerData();
     }
+
+    // 1. Oyna yoki vkladka aktivlashganda (Tab Focus) darhol bulutdan yangilash
+    const handleWindowFocus = () => {
+      fetchServerData(undefined, true);
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        fetchServerData(undefined, true);
+      }
+    };
+
+    // 2. Multi-tab BroadcastChannel qabul qilish
+    const handleBroadcastMessage = (e: MessageEvent) => {
+      if (e.data?.type === "LIVE_STORE_MUTATION") {
+        fetchServerData(undefined, true);
+      }
+    };
+
+    if (syncChannel) {
+      syncChannel.addEventListener("message", handleBroadcastMessage);
+    }
+
+    window.addEventListener("focus", handleWindowFocus);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    // 3. Har 6 soniyada Zauch/Admin kiritgan yangi o'zgarishlarni jimjit sinxronlash (Background Heartbeat)
+    const heartbeatInterval = setInterval(() => {
+      if (document.visibilityState === "visible" && !storeState.isGenerating) {
+        fetchServerData(undefined, true);
+      }
+    }, 6000);
+
+    return () => {
+      window.removeEventListener("focus", handleWindowFocus);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      if (syncChannel) {
+        syncChannel.removeEventListener("message", handleBroadcastMessage);
+      }
+      clearInterval(heartbeatInterval);
+    };
   }, [fetchServerData]);
 
   const state = useSyncExternalStore(
