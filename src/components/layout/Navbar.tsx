@@ -113,84 +113,70 @@ export const Navbar: React.FC<NavbarProps> = ({
         <div className="flex items-center gap-3">
           <Logo size="md" showText={false} />
 
-          <div className="relative">
-            <button
-              onClick={() => setIsSchoolMenuOpen(!isSchoolMenuOpen)}
-              className="flex items-center gap-2 rounded-xl p-1 hover:bg-muted transition-colors text-left group"
-            >
-              <div>
-                <div className="flex items-center gap-1.5">
-                  <span className="font-extrabold text-sm sm:text-base tracking-tight bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-                    Jadval.AI
-                  </span>
-                  <span className="rounded-full bg-blue-100 dark:bg-blue-950/80 px-2 py-0.5 text-[9px] font-bold text-blue-700 dark:text-blue-300">
-                    SaaS v2.0
-                  </span>
+          <div className="relative flex flex-col justify-center">
+            <div className="flex items-center gap-1.5">
+              <span className="font-extrabold text-sm sm:text-base tracking-tight bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+                Jadval.AI
+              </span>
+              <span className="rounded-full bg-blue-100 dark:bg-blue-950/80 px-2 py-0.5 text-[9px] font-bold text-blue-700 dark:text-blue-300">
+                SaaS v2.0
+              </span>
 
-                  {/* Cloud Status Badge */}
-                  {syncStatus === "syncing" && (
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onSyncCloud?.();
-                      }}
-                      className="hidden sm:inline-flex items-center gap-1 text-[9px] font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full animate-pulse cursor-pointer hover:bg-amber-100"
-                      title="Bulutga saqlanmoqda..."
-                    >
-                      <RefreshCw className="w-2.5 h-2.5 animate-spin" />
-                      <span>Neon DB Saqlanmoqda...</span>
-                    </button>
-                  )}
-                  {syncStatus === "synced" && (
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onSyncCloud?.();
-                      }}
-                      className="hidden sm:inline-flex items-center gap-1 text-[9px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full cursor-pointer hover:bg-emerald-100 hover:shadow-sm transition-all"
-                      title="Neon PostgreSQL bulutiga to'liq sinxronlangan (Qayta sinxronlash uchun bosing)"
-                    >
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                      <span>Neon DB: Faol</span>
-                    </button>
-                  )}
-                  {syncStatus === "offline" && (
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onSyncCloud?.();
-                      }}
-                      className="hidden sm:inline-flex items-center gap-1 text-[9px] font-bold text-zinc-600 bg-zinc-100 border border-zinc-200 px-2 py-0.5 rounded-full cursor-pointer hover:bg-zinc-200"
-                      title="Lokal keshda. Bulutga ulash uchun bosing"
-                    >
-                      <span className="w-1.5 h-1.5 rounded-full bg-zinc-400"></span>
-                      <span>Lokal Kesh (Sinxronlash)</span>
-                    </button>
-                  )}
-                  {syncStatus === "error" && (
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onSyncCloud?.();
-                      }}
-                      className="hidden sm:inline-flex items-center gap-1 text-[9px] font-bold text-rose-700 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-full cursor-pointer hover:bg-rose-100"
-                      title="Xatolik. Qayta urinish uchun bosing"
-                    >
-                      <span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
-                      <span>Qayta sinxronlash</span>
-                    </button>
-                  )}
-                </div>
-                <div className="flex items-center gap-1 text-xs font-semibold text-foreground">
-                  <Building2 className="h-3 w-3 text-blue-600" />
-                  <span>{currentSchool?.name || "Maktabni tanlang"}</span>
-                  <ChevronDown className="h-3 w-3 text-muted-foreground group-hover:text-foreground" />
-                </div>
-              </div>
+              {/* Cloud Status Badge */}
+              {syncStatus === "syncing" && (
+                <button
+                  type="button"
+                  onClick={onSyncCloud}
+                  className="hidden sm:inline-flex items-center gap-1 text-[9px] font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full animate-pulse cursor-pointer hover:bg-amber-100"
+                  title="Bulutga saqlanmoqda..."
+                >
+                  <RefreshCw className="w-2.5 h-2.5 animate-spin" />
+                  <span>Neon DB Saqlanmoqda...</span>
+                </button>
+              )}
+              {syncStatus === "synced" && (
+                <button
+                  type="button"
+                  onClick={onSyncCloud}
+                  className="hidden sm:inline-flex items-center gap-1 text-[9px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full cursor-pointer hover:bg-emerald-100 hover:shadow-sm transition-all"
+                  title="Neon PostgreSQL bulutiga to'liq sinxronlangan (Qayta sinxronlash uchun bosing)"
+                >
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                  <span>Neon DB: Faol</span>
+                </button>
+              )}
+              {syncStatus === "offline" && (
+                <button
+                  type="button"
+                  onClick={onSyncCloud}
+                  className="hidden sm:inline-flex items-center gap-1 text-[9px] font-bold text-zinc-600 bg-zinc-100 border border-zinc-200 px-2 py-0.5 rounded-full cursor-pointer hover:bg-zinc-200"
+                  title="Lokal keshda. Bulutga ulash uchun bosing"
+                >
+                  <span className="w-1.5 h-1.5 rounded-full bg-zinc-400"></span>
+                  <span>Lokal Kesh (Sinxronlash)</span>
+                </button>
+              )}
+              {syncStatus === "error" && (
+                <button
+                  type="button"
+                  onClick={onSyncCloud}
+                  className="hidden sm:inline-flex items-center gap-1 text-[9px] font-bold text-rose-700 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-full cursor-pointer hover:bg-rose-100"
+                  title="Xatolik. Qayta urinish uchun bosing"
+                >
+                  <span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
+                  <span>Qayta sinxronlash</span>
+                </button>
+              )}
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setIsSchoolMenuOpen(!isSchoolMenuOpen)}
+              className="flex items-center gap-1 text-xs font-semibold text-foreground hover:bg-muted/80 px-1.5 py-0.5 rounded-lg transition-colors cursor-pointer w-fit group text-left mt-0.5"
+            >
+              <Building2 className="h-3 w-3 text-blue-600" />
+              <span className="truncate max-w-[200px]">{currentSchool?.name || "Maktabni tanlang"}</span>
+              <ChevronDown className="h-3 w-3 text-muted-foreground group-hover:text-foreground" />
             </button>
 
             {/* Maktablar Ro'yxati Dropdown */}
