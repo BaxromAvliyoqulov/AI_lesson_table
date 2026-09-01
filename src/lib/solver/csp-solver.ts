@@ -6,7 +6,9 @@ import {
   Subject,
   Teacher,
   Room,
+  ClassSubject,
 } from "@/types";
+import { generateStandardCurriculumForClass } from "@/lib/curriculum-templates";
 
 export class CSPSolver {
   private input: SolverInput;
@@ -41,15 +43,63 @@ export class CSPSolver {
     const classSlots = new Map<string, Slot[]>();
     const allSlots: Slot[] = [];
 
-    // ── 1. SLOTLARNI QURISH (Boshlang'ich 1-4: 5 kun, 5 dars; Yuqori 5-11: 6 kun, 6 dars) ──────
+    // ── 0. SINFLARNING O'QUV REJALARINI TAYYORLASH (Auto-Standard Fallback) ──────
+    const effectiveClassSubjects = new Map<string, ClassSubject[]>();
+
+    for (const cls of this.input.classes) {
+      if (cls.isClosed) continue;
+
+      let subjects = cls.subjects && cls.subjects.length > 0 ? [...cls.subjects] : [];
+
+      // Agar sinfda fanlar belgilanmagan bo'lsa yoki 10 soatdan kam bo'lsa, Davlat standarti bo'yicha to'ldirish
+      const currentHours = subjects.reduce((sum, s) => sum + (Number(s.weeklyHours) || 0), 0);
+      if (currentHours < 15) {
+        const standard = generateStandardCurriculumForClass(
+          cls.grade,
+          cls.id,
+          cls.homeroomTeacherId,
+          this.input.subjects,
+          this.input.teachers
+        );
+        if (standard.length > 0) {
+          // Mavjud fanlarni saqlab, yetishmayotganlarini qo'shish
+          const existingSubIds = new Set(subjects.map((s) => s.subjectId));
+          const missing = standard.filter((st) => !existingSubIds.has(st.subjectId));
+          subjects = [...subjects, ...missing];
+        }
+      }
+
+      // Har bir fanga o'qituvchi tayinlanganligini tekshirish
+      const validatedSubjects: ClassSubject[] = subjects.map((cs) => {
+        let tid = cs.teacherId;
+        if (!tid || !this.teacherMap.has(tid)) {
+          // Mos o'qituvchini avto-topish
+          const matchingTeacher = this.input.teachers.find((t) => t.subjectIds?.includes(cs.subjectId));
+          tid = matchingTeacher ? matchingTeacher.id : this.input.teachers[0]?.id || "t_default";
+        }
+        return {
+          ...cs,
+          teacherId: tid,
+          weeklyHours: Math.max(1, Number(cs.weeklyHours) || 1),
+        };
+      });
+
+      effectiveClassSubjects.set(cls.id, validatedSubjects);
+    }
+
+    // ── 1. SLOTLARNI QURISH (Boshlang'ich 1-4: 5 kun, 4-5 dars; Yuqori 5-11: 6 kun, 5-6 dars) ──────
     for (const cls of this.input.classes) {
       if (cls.isClosed) continue;
       const isPrimary = cls.isPrimary || cls.grade <= 4;
       const days = isPrimary ? 5 : this.daysCount;
       const maxP = isPrimary ? 5 : 6;
 
-      let totalWeeklyHours = 0;
-      cls.subjects.forEach((cs) => (totalWeeklyHours += cs.weeklyHours));
+      const subjects = effectiveClassSubjects.get(cls.id) || [];
+      let totalWeeklyHours = subjects.reduce((sum, s) => sum + s.weeklyHours, 0);
+
+      // Agar soat kam bo'lsa, me'yoriy sig'im yaratish
+      const minHours = isPrimary ? 22 : 30;
+      totalWeeklyHours = Math.max(minHours, totalWeeklyHours);
 
       const basePerDay = Math.floor(totalWeeklyHours / days);
       const extraDays = totalWeeklyHours % days;
@@ -82,24 +132,24 @@ export class CSPSolver {
     for (const cls of this.input.classes) {
       if (cls.isClosed) continue;
       const slots = classSlots.get(cls.id) || [];
+      const subjects = effectiveClassSubjects.get(cls.id) || [];
 
       // Kelajak soati / Sinf soati / Tarbiyaviy soat -> QAT'IYAN Dushanba 1-dars
-      const ss = cls.subjects.find(
+      const ss = subjects.find(
         (s) =>
           s.subjectId === "sub_kelajak" ||
           s.subjectId === "sub_sinf_soati" ||
           this.subjectMap.get(s.subjectId)?.name.toLowerCase().includes("kelajak") ||
           this.subjectMap.get(s.subjectId)?.name.toLowerCase().includes("sinf soati")
       );
-      if (ss) {
-        const homeroomId = cls.homeroomTeacherId || ss.teacherId;
-        const targetDay = 1; // Qat'iyan Dushanba
-        const monSlot = slots.find((s) => s.day === targetDay && s.period === 1);
-        if (monSlot) {
-          monSlot.isLocked = true;
-          monSlot.subjectId = ss.subjectId;
-          monSlot.teacherId = homeroomId;
-        }
+
+      const homeroomId = cls.homeroomTeacherId || ss?.teacherId || this.input.teachers[0]?.id;
+      const monSlot = slots.find((s) => s.day === 1 && s.period === 1);
+
+      if (monSlot && homeroomId) {
+        monSlot.isLocked = true;
+        monSlot.subjectId = ss?.subjectId || "sub_sinf_soati";
+        monSlot.teacherId = homeroomId;
       }
     }
 
@@ -116,22 +166,20 @@ export class CSPSolver {
     const remaining: ReqLesson[] = [];
     for (const cls of this.input.classes) {
       if (cls.isClosed) continue;
-      for (const cs of cls.subjects) {
-        const sub = this.subjectMap.get(cs.subjectId);
-        if (!sub) continue;
+      const subjects = effectiveClassSubjects.get(cls.id) || [];
+      const slots = classSlots.get(cls.id) || [];
 
+      for (const cs of subjects) {
+        const sub = this.subjectMap.get(cs.subjectId);
         let hours = cs.weeklyHours;
-        const slots = classSlots.get(cls.id) || [];
-        if (
-          (cs.subjectId === "sub_sinf_soati" || sub.name.toLowerCase().includes("sinf soati")) &&
-          slots.some((s) => s.isLocked && s.subjectId === cs.subjectId)
-        ) {
-          hours--;
-        }
-        if (
-          (cs.subjectId === "sub_kelajak" || sub.name.toLowerCase().includes("kelajak")) &&
-          slots.some((s) => s.isLocked && s.subjectId === cs.subjectId)
-        ) {
+
+        const isSinfSoati =
+          cs.subjectId === "sub_sinf_soati" ||
+          cs.subjectId === "sub_kelajak" ||
+          sub?.name.toLowerCase().includes("sinf soati") ||
+          sub?.name.toLowerCase().includes("kelajak");
+
+        if (isSinfSoati && slots.some((s) => s.isLocked && s.day === 1 && s.period === 1)) {
           hours--;
         }
 
@@ -142,13 +190,13 @@ export class CSPSolver {
             subjectId: cs.subjectId,
             teacherId: cs.teacherId,
             groupType: cs.groupType || "WHOLE",
-            difficulty: sub.difficultyScore || 5,
+            difficulty: sub?.difficultyScore || 5,
           });
         }
       }
     }
 
-    // O'qituvchi yuklamasi (ko'p soatli o'qituvchilar va og'ir fanlar birinchi)
+    // O'qituvchi yuklamasi bo'yicha saralash
     const teacherHourCount = new Map<string, number>();
     remaining.forEach((r) =>
       teacherHourCount.set(r.teacherId, (teacherHourCount.get(r.teacherId) || 0) + 1)
@@ -164,7 +212,6 @@ export class CSPSolver {
     // ── 4. CHAQMOQDEK TEZ HEURISTIC BIRINCHI JOYLASHTIRISH ─────────────────────
     const teacherOccupancy = new Map<string, number>(); // key: `${teacherId}_${day}_${period}` -> count
 
-    // Mavjud qulflangan darslarni kiritamiz
     for (const slot of allSlots) {
       if (slot.teacherId) {
         const k = `${slot.teacherId}_${slot.day}_${slot.period}`;
@@ -179,7 +226,6 @@ export class CSPSolver {
 
       if (emptySlots.length === 0) continue;
 
-      // Har bir bo'sh slotni jazo baliga ko'ra baholaymiz
       let bestSlot = emptySlots[0];
       let bestScore = Infinity;
 
@@ -189,26 +235,26 @@ export class CSPSolver {
         const currentOcc = teacherOccupancy.get(occKey) || 0;
 
         // A. O'qituvchi boshqa sinfda band bo'lsa (katta jazo)
-        if (currentOcc > 0) score += currentOcc * 2000;
+        if (currentOcc > 0) score += currentOcc * 3000;
 
-        // B. Metod kuni bo'lsa (jazo)
-        if (t && t.methodDayOfWeek === slot.day) score += 1500;
+        // B. Metod kuni bo'lsa
+        if (t && t.methodDayOfWeek === slot.day) score += 2000;
 
-        // C. Bir kunda bir xil fan takrorlanishi (agar 1 dan ortiq bo'lsa)
+        // C. Bir kunda bir xil fandan ko'p dars bo'lsa
         const sameSubjectCount = slots.filter(
           (s) => s.day === slot.day && s.subjectId === req.subjectId
         ).length;
-        if (sameSubjectCount > 0) score += sameSubjectCount * 80;
+        if (sameSubjectCount > 0) score += sameSubjectCount * 120;
 
-        // D. SanPiN qiyinlik grafigi (Qiyin fanlar 2-3-4 darslarga tushsin)
-        if (req.difficulty >= 7) {
-          score += Math.abs(slot.period - 3) * 15;
+        // D. SanPiN qiyinlik grafigi
+        if (req.difficulty >= 8) {
+          score += Math.abs(slot.period - 3) * 20;
         }
 
-        // E. O'qituvchi oynasini (window) kamaytirish
+        // E. O'qituvchi oynasini kamaytirish
         const adj1 = teacherOccupancy.get(`${req.teacherId}_${slot.day}_${slot.period - 1}`) || 0;
         const adj2 = teacherOccupancy.get(`${req.teacherId}_${slot.day}_${slot.period + 1}`) || 0;
-        if (adj1 > 0 || adj2 > 0) score -= 25; // qo'shni darsga bonus
+        if (adj1 > 0 || adj2 > 0) score -= 40;
 
         if (score < bestScore) {
           bestScore = score;
@@ -222,6 +268,28 @@ export class CSPSolver {
 
       const occKey = `${req.teacherId}_${bestSlot.day}_${bestSlot.period}`;
       teacherOccupancy.set(occKey, (teacherOccupancy.get(occKey) || 0) + 1);
+    }
+
+    // ── 4.1. BO'SH QOLGAN SLOTLARNI AVTO-TO'LDIRISH (To'liq Grid Kafolati) ───────
+    for (const cls of this.input.classes) {
+      if (cls.isClosed) continue;
+      const slots = classSlots.get(cls.id) || [];
+      const subjects = effectiveClassSubjects.get(cls.id) || [];
+      const emptySlots = slots.filter((s) => !s.isLocked && s.teacherId === null);
+
+      if (emptySlots.length > 0 && subjects.length > 0) {
+        let subIdx = 0;
+        for (const slot of emptySlots) {
+          const fallbackSub = subjects[subIdx % subjects.length];
+          slot.subjectId = fallbackSub.subjectId;
+          slot.teacherId = fallbackSub.teacherId;
+          slot.groupType = fallbackSub.groupType;
+
+          const occKey = `${fallbackSub.teacherId}_${slot.day}_${slot.period}`;
+          teacherOccupancy.set(occKey, (teacherOccupancy.get(occKey) || 0) + 1);
+          subIdx++;
+        }
+      }
     }
 
     // ── 5. ITERATIVE MIN-CONFLICTS LOCAL SEARCH (0 TO'QNASHUV KAFOLATI) ─────────
@@ -239,114 +307,80 @@ export class CSPSolver {
     };
 
     let globalClashes = countGlobalClashes();
-    const maxIterations = 250;
+    const maxIterations = 300;
 
     for (let iter = 0; iter < maxIterations && globalClashes > 0; iter++) {
       let improved = false;
 
-      // Barcha to'qnashuvli slotlarni aniqlaymiz
       const clashingSlots = allSlots.filter(
         (s) =>
           s.teacherId &&
           !s.isLocked &&
-          (teacherOccupancy.get(`${s.teacherId}_${s.day}_${s.period}`) || 0) > 1
+          countClashesForTeacher(s.teacherId, s.day, s.period) > 0
       );
 
-      if (clashingSlots.length === 0) break;
-
       for (const slotA of clashingSlots) {
+        if (globalClashes === 0) break;
         const clsSlots = classSlots.get(slotA.classId) || [];
-        const tA = slotA.teacherId!;
-        const sA = slotA.subjectId!;
-        const gA = slotA.groupType;
+        const candidateSlots = clsSlots.filter((s) => !s.isLocked && s !== slotA);
 
-        let bestTargetSlot: Slot | null = null;
+        let bestTarget: Slot | null = null;
         let bestDelta = 0;
 
-        for (const slotB of clsSlots) {
-          if (slotB === slotA || slotB.isLocked) continue;
-
+        for (const slotB of candidateSlots) {
+          const tA = slotA.teacherId!;
           const tB = slotB.teacherId;
-          const sB = slotB.subjectId;
 
-          // Ayni o'qituvchining metod kunini tekshiramiz
-          const tA_obj = this.teacherMap.get(tA);
-          if (tA_obj?.methodDayOfWeek === slotB.day) continue;
+          const clashesA_now = countClashesForTeacher(tA, slotA.day, slotA.period);
+          const clashesB_now = tB ? countClashesForTeacher(tB, slotB.day, slotB.period) : 0;
 
-          let delta = 0;
+          const keyA_new = `${tA}_${slotB.day}_${slotB.period}`;
+          const keyB_new = tB ? `${tB}_${slotA.day}_${slotA.period}` : null;
 
-          if (tB === null) {
-            // slotA dagi darsni bo'sh slotB ga ko'chirish
-            const currentA_Clashes = countClashesForTeacher(tA, slotA.day, slotA.period);
-            const targetB_Occ = teacherOccupancy.get(`${tA}_${slotB.day}_${slotB.period}`) || 0;
+          const occA_new = (teacherOccupancy.get(keyA_new) || 0) + 1;
+          const occB_new = keyB_new ? (teacherOccupancy.get(keyB_new) || 0) + 1 : 0;
 
-            const newA_Clashes = Math.max(0, currentA_Clashes - 1);
-            const newB_Clashes = targetB_Occ; // 0 bo'lsa 0 yangi clash
+          const clashesA_new = Math.max(0, occA_new - 1);
+          const clashesB_new = keyB_new ? Math.max(0, occB_new - 1) : 0;
 
-            delta = (newA_Clashes + newB_Clashes) - (currentA_Clashes + 0);
-          } else {
-            // slotA va slotB ni o'zaro almashtirish (Swap)
-            if (tA === tB) continue;
-            const tB_obj = this.teacherMap.get(tB);
-            if (tB_obj?.methodDayOfWeek === slotA.day) continue;
+          const delta = clashesA_now + clashesB_now - (clashesA_new + clashesB_new);
 
-            const curA_Clash = countClashesForTeacher(tA, slotA.day, slotA.period);
-            const curB_Clash = countClashesForTeacher(tB, slotB.day, slotB.period);
-
-            const occ_tA_at_B = teacherOccupancy.get(`${tA}_${slotB.day}_${slotB.period}`) || 0;
-            const occ_tB_at_A = teacherOccupancy.get(`${tB}_${slotA.day}_${slotA.period}`) || 0;
-
-            const new_curA_Clash = Math.max(0, curA_Clash - 1);
-            const new_curB_Clash = Math.max(0, curB_Clash - 1);
-            const new_tA_at_B = occ_tA_at_B;
-            const new_tB_at_A = occ_tB_at_A;
-
-            const beforeSum = curA_Clash + curB_Clash;
-            const afterSum = new_curA_Clash + new_curB_Clash + new_tA_at_B + new_tB_at_A;
-            delta = afterSum - beforeSum;
-          }
-
-          if (delta < bestDelta) {
+          if (delta > bestDelta) {
             bestDelta = delta;
-            bestTargetSlot = slotB;
+            bestTarget = slotB;
           }
         }
 
-        if (bestTargetSlot && bestDelta < 0) {
-          // Eng yaxshi almashtirishni qo'llaymiz
+        if (bestTarget && bestDelta > 0) {
+          const tA = slotA.teacherId!;
+          const sA = slotA.subjectId!;
+          const gA = slotA.groupType;
+
+          const tB = bestTarget.teacherId;
+          const sB = bestTarget.subjectId;
+          const gB = bestTarget.groupType;
+
           const keyA_old = `${tA}_${slotA.day}_${slotA.period}`;
           teacherOccupancy.set(keyA_old, (teacherOccupancy.get(keyA_old) || 1) - 1);
 
-          if (bestTargetSlot.teacherId === null) {
-            slotA.teacherId = null;
-            slotA.subjectId = null;
-
-            bestTargetSlot.teacherId = tA;
-            bestTargetSlot.subjectId = sA;
-            bestTargetSlot.groupType = gA;
-
-            const keyB_new = `${tA}_${bestTargetSlot.day}_${bestTargetSlot.period}`;
-            teacherOccupancy.set(keyB_new, (teacherOccupancy.get(keyB_new) || 0) + 1);
-          } else {
-            const tB = bestTargetSlot.teacherId;
-            const sB = bestTargetSlot.subjectId;
-            const gB = bestTargetSlot.groupType;
-
-            const keyB_old = `${tB}_${bestTargetSlot.day}_${bestTargetSlot.period}`;
+          if (tB) {
+            const keyB_old = `${tB}_${bestTarget.day}_${bestTarget.period}`;
             teacherOccupancy.set(keyB_old, (teacherOccupancy.get(keyB_old) || 1) - 1);
+          }
 
-            slotA.teacherId = tB;
-            slotA.subjectId = sB;
-            slotA.groupType = gB;
+          slotA.teacherId = tB;
+          slotA.subjectId = sB;
+          slotA.groupType = gB;
 
-            bestTargetSlot.teacherId = tA;
-            bestTargetSlot.subjectId = sA;
-            bestTargetSlot.groupType = gA;
+          bestTarget.teacherId = tA;
+          bestTarget.subjectId = sA;
+          bestTarget.groupType = gA;
 
-            const keyA_new = `${tB}_${slotA.day}_${slotA.period}`;
-            teacherOccupancy.set(keyA_new, (teacherOccupancy.get(keyA_new) || 0) + 1);
+          const keyA_new = `${tA}_${bestTarget.day}_${bestTarget.period}`;
+          teacherOccupancy.set(keyA_new, (teacherOccupancy.get(keyA_new) || 0) + 1);
 
-            const keyB_new = `${tA}_${bestTargetSlot.day}_${bestTargetSlot.period}`;
+          if (tB) {
+            const keyB_new = `${tB}_${slotA.day}_${slotA.period}`;
             teacherOccupancy.set(keyB_new, (teacherOccupancy.get(keyB_new) || 0) + 1);
           }
 
@@ -357,29 +391,46 @@ export class CSPSolver {
       }
 
       if (!improved && globalClashes > 0) {
-        // Agar lokal minimumga tushsa, tasodifiy to'qnashuvli darsni bo'sh slotga siljitamiz
         const bad = clashingSlots[Math.floor(Math.random() * clashingSlots.length)];
-        const clsSlots = classSlots.get(bad.classId) || [];
-        const empties = clsSlots.filter((s) => !s.isLocked && s.teacherId === null);
-        if (empties.length > 0) {
-          const randEmpty = empties[Math.floor(Math.random() * empties.length)];
-          const tBad = bad.teacherId!;
-          const sBad = bad.subjectId!;
-          const gBad = bad.groupType;
+        if (bad) {
+          const clsSlots = classSlots.get(bad.classId) || [];
+          const candidateSlots = clsSlots.filter((s) => !s.isLocked && s !== bad);
+          if (candidateSlots.length > 0) {
+            const randTarget = candidateSlots[Math.floor(Math.random() * candidateSlots.length)];
+            const tBad = bad.teacherId!;
+            const sBad = bad.subjectId!;
+            const gBad = bad.groupType;
 
-          const kOld = `${tBad}_${bad.day}_${bad.period}`;
-          teacherOccupancy.set(kOld, (teacherOccupancy.get(kOld) || 1) - 1);
+            const tTarget = randTarget.teacherId;
+            const sTarget = randTarget.subjectId;
+            const gTarget = randTarget.groupType;
 
-          bad.teacherId = null;
-          bad.subjectId = null;
+            const kOld = `${tBad}_${bad.day}_${bad.period}`;
+            teacherOccupancy.set(kOld, (teacherOccupancy.get(kOld) || 1) - 1);
 
-          randEmpty.teacherId = tBad;
-          randEmpty.subjectId = sBad;
-          randEmpty.groupType = gBad;
+            if (tTarget) {
+              const kTargetOld = `${tTarget}_${randTarget.day}_${randTarget.period}`;
+              teacherOccupancy.set(kTargetOld, (teacherOccupancy.get(kTargetOld) || 1) - 1);
+            }
 
-          const kNew = `${tBad}_${randEmpty.day}_${randEmpty.period}`;
-          teacherOccupancy.set(kNew, (teacherOccupancy.get(kNew) || 0) + 1);
-          globalClashes = countGlobalClashes();
+            bad.teacherId = tTarget;
+            bad.subjectId = sTarget;
+            bad.groupType = gTarget;
+
+            randTarget.teacherId = tBad;
+            randTarget.subjectId = sBad;
+            randTarget.groupType = gBad;
+
+            const kNew = `${tBad}_${randTarget.day}_${randTarget.period}`;
+            teacherOccupancy.set(kNew, (teacherOccupancy.get(kNew) || 0) + 1);
+
+            if (tTarget) {
+              const kTargetNew = `${tTarget}_${bad.day}_${bad.period}`;
+              teacherOccupancy.set(kTargetNew, (teacherOccupancy.get(kTargetNew) || 0) + 1);
+            }
+
+            globalClashes = countGlobalClashes();
+          }
         }
       }
     }
@@ -419,9 +470,8 @@ export class CSPSolver {
       },
       explanation:
         finalClashes === 0
-          ? "✅ 100% Ziddiyatsiz (0 Kolliziyali) Dars Jadvali Muvaffaqiyatli Shakllantirildi"
+          ? `✅ 100% Ziddiyatsiz (0 Kolliziyali) Dars Jadvali Muvaffaqiyatli Shakllantirildi (${lessons.length} ta dars)`
           : `${finalClashes} ta dars bo'yicha ziddiyat aniqlandi`,
     };
   }
 }
-
