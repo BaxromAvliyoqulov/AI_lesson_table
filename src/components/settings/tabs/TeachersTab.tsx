@@ -22,6 +22,7 @@ import {
   CheckCircle2,
   Activity,
   Layers,
+  Upload,
 } from "lucide-react";
 
 interface TeachersTabProps {
@@ -34,6 +35,7 @@ interface TeachersTabProps {
   onDeleteTeacher: (teacherId: string) => void;
   onSetTeacherHomeroomClass?: (teacherId: string, classId: string | null) => void;
   onOpenTeacherWorkload?: (teacher: Teacher) => void;
+  onOpenEMaktabImport?: () => void;
 }
 
 const WEEKDAYS = ["Dushanba", "Seshanba", "Chorshanba", "Payshanba", "Juma", "Shanba"];
@@ -51,6 +53,7 @@ export const TeachersTab: React.FC<TeachersTabProps> = ({
   onDeleteTeacher,
   onSetTeacherHomeroomClass,
   onOpenTeacherWorkload,
+  onOpenEMaktabImport,
 }) => {
   const [search, setSearch] = useState("");
   const [subjectFilter, setSubjectFilter] = useState<string>("ALL");
@@ -450,6 +453,20 @@ export const TeachersTab: React.FC<TeachersTabProps> = ({
                 </>
               )}
             </button>
+
+            {/* eMaktab Import Tugmasi */}
+            {onOpenEMaktabImport && (
+              <button
+                type="button"
+                onClick={onOpenEMaktabImport}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold border border-blue-500/30 bg-blue-500/10 text-blue-600 dark:text-blue-400 hover:bg-blue-500/20 transition-all cursor-pointer shrink-0"
+                title="eMaktab (Kundalik) Excel faylidan o'qituvchilarni yuklash"
+              >
+                <Upload className="w-3.5 h-3.5 shrink-0" />
+                <span>eMaktab Import</span>
+              </button>
+            )}
+
             <button
               onClick={onAddTeacher}
               className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold bg-primary text-primary-foreground hover:bg-primary/90 shadow-md shadow-primary/20 transition-all cursor-pointer shrink-0"

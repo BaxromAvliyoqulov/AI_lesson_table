@@ -119,6 +119,8 @@ const OfficialTableCell: React.FC<{
   teachers: Teacher[];
   subjects: Subject[];
   rooms: Room[];
+  cellLessons?: Lesson[];
+  teacherNumberMap?: Map<string, number>;
   onHoverTeacher: (teacherId: string | null) => void;
   onCellClick: (cls: SchoolClass, day: number, period: number, lesson?: Lesson) => void;
 }> = ({
@@ -138,6 +140,8 @@ const OfficialTableCell: React.FC<{
   teachers,
   subjects,
   rooms,
+  cellLessons,
+  teacherNumberMap,
   onHoverTeacher,
   onCellClick,
 }) => {
@@ -232,6 +236,14 @@ const OfficialTableCell: React.FC<{
     }
   }
 
+  const isSplitGroup = cellLessons && cellLessons.length > 1;
+  const l1 = isSplitGroup ? cellLessons[0] : lesson;
+  const l2 = isSplitGroup ? cellLessons[1] : undefined;
+  const s1 = l1 ? subjects.find((s) => s.id === l1.subjectId) : subject;
+  const s2 = l2 ? subjects.find((s) => s.id === l2.subjectId) : undefined;
+  const num1 = l1 && teacherNumberMap ? teacherNumberMap.get(l1.teacherId) : teacherNumber;
+  const num2 = l2 && teacherNumberMap ? teacherNumberMap.get(l2.teacherId) : undefined;
+
   return (
     <>
       {/* Fan Nomi Ustuni */}
@@ -245,7 +257,7 @@ const OfficialTableCell: React.FC<{
         onClick={() => onCellClick(cls, day, period, lesson)}
         onMouseEnter={() => lesson && onHoverTeacher(lesson.teacherId)}
         onMouseLeave={() => onHoverTeacher(null)}
-        className={`border border-black px-1.5 py-1 text-left font-semibold text-[10px] truncate max-w-[76px] cursor-pointer transition-all relative select-none ${bottomBorderClass} ${bgClass} ${
+        className={`border border-black px-1 py-1 text-left font-semibold text-[10px] truncate max-w-[76px] cursor-pointer transition-all relative select-none ${bottomBorderClass} ${bgClass} ${
           isDragging ? "opacity-30" : ""
         }`}
         title={
@@ -258,20 +270,33 @@ const OfficialTableCell: React.FC<{
             : "Bo'sh katakcha (Dars qo'shish uchun bosing)"
         }
       >
-        <div className="flex items-center justify-between gap-0.5">
-          <span className={`truncate ${lesson ? "text-slate-900 font-semibold" : "text-slate-300"}`}>
-            {subject?.shortName || subject?.name || (lesson ? "Fan" : "—")}
-          </span>
-          {validation?.status === "conflict" && isOver && (
-            <AlertTriangle className="w-2.5 h-2.5 text-rose-600 shrink-0 inline no-print animate-bounce" />
-          )}
-          {hasConflict && !activeDragLesson && (
-            <AlertTriangle className="w-2.5 h-2.5 text-rose-600 shrink-0 inline no-print animate-bounce" />
-          )}
-          {lesson?.isLocked && (
-            <Lock className="w-2.5 h-2.5 text-indigo-600 shrink-0 inline no-print" />
-          )}
-        </div>
+        {isSplitGroup ? (
+          <div className="flex flex-col text-[8px] leading-tight">
+            <div className="flex items-center justify-between border-b border-black/30 pb-0.5 truncate">
+              <span className="font-bold truncate text-blue-950">{s1?.shortName || s1?.name || "1-gr"}</span>
+              <span className="text-[7px] text-blue-700 font-extrabold ml-0.5">1-g</span>
+            </div>
+            <div className="flex items-center justify-between pt-0.5 truncate">
+              <span className="font-bold truncate text-indigo-950">{s2?.shortName || s2?.name || "2-gr"}</span>
+              <span className="text-[7px] text-indigo-700 font-extrabold ml-0.5">2-g</span>
+            </div>
+          </div>
+        ) : (
+          <div className="flex items-center justify-between gap-0.5">
+            <span className={`truncate ${lesson ? "text-slate-900 font-semibold" : "text-slate-300"}`}>
+              {subject?.shortName || subject?.name || (lesson ? "Fan" : "—")}
+            </span>
+            {validation?.status === "conflict" && isOver && (
+              <AlertTriangle className="w-2.5 h-2.5 text-rose-600 shrink-0 inline no-print animate-bounce" />
+            )}
+            {hasConflict && !activeDragLesson && (
+              <AlertTriangle className="w-2.5 h-2.5 text-rose-600 shrink-0 inline no-print animate-bounce" />
+            )}
+            {lesson?.isLocked && (
+              <Lock className="w-2.5 h-2.5 text-indigo-600 shrink-0 inline no-print" />
+            )}
+          </div>
+        )}
       </td>
 
       {/* O'qituvchi Tartib Raqami Ustuni */}
@@ -298,7 +323,14 @@ const OfficialTableCell: React.FC<{
             : ""
         }
       >
-        {teacherNumber || ""}
+        {isSplitGroup ? (
+          <div className="flex flex-col text-[8.5px] leading-tight font-mono font-black">
+            <div className="border-b border-black/30 pb-0.5 text-blue-950">{num1 || "—"}</div>
+            <div className="pt-0.5 text-indigo-950">{num2 || "—"}</div>
+          </div>
+        ) : (
+          teacherNumber || ""
+        )}
       </td>
     </>
   );
@@ -513,6 +545,18 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
     const map = new Map<string, Lesson>();
     for (const l of lessons) {
       map.set(`${l.classId}_${l.dayOfWeek}_${l.periodNumber}`, l);
+    }
+    return map;
+  }, [lessons]);
+
+  // Cell lessons map (Split groups: 1-guruh / 2-guruh): `${classId}_${day}_${period}` -> Lesson[]
+  const cellLessonMap = useMemo(() => {
+    const map = new Map<string, Lesson[]>();
+    for (const l of lessons) {
+      const k = `${l.classId}_${l.dayOfWeek}_${l.periodNumber}`;
+      const list = map.get(k) || [];
+      list.push(l);
+      map.set(k, list);
     }
     return map;
   }, [lessons]);
@@ -1292,7 +1336,8 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
 
                           {/* Sinf Katakchalari: Fan (chap) + O'qituvchi raqami (o'ng) */}
                           {displayClasses.map((cls) => {
-                            const lesson = lessonMap.get(`${cls.id}_${day.id}_${periodInfo.period}`);
+                            const cellLessons = cellLessonMap.get(`${cls.id}_${day.id}_${periodInfo.period}`) || [];
+                            const lesson = cellLessons[0];
                             const subject = lesson ? subjectMap.get(lesson.subjectId) : undefined;
                             const teacher = lesson ? teacherMap.get(lesson.teacherId) : undefined;
                             const teacherNum = lesson ? teacherNumberMap.get(lesson.teacherId) : undefined;
@@ -1317,6 +1362,8 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
                                 teachers={teachers}
                                 subjects={subjects}
                                 rooms={rooms}
+                                cellLessons={cellLessons}
+                                teacherNumberMap={teacherNumberMap}
                                 onHoverTeacher={setHoveredTeacherId}
                                 hasConflict={lesson ? teacherConflictsSet.has(lesson.id) : false}
                                 onCellClick={handleCellClick}

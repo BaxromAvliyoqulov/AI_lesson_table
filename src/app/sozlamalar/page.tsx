@@ -17,6 +17,7 @@ import { SubjectModal } from "@/components/settings/modals/SubjectModal";
 import { RoomModal } from "@/components/settings/modals/RoomModal";
 import { CurriculumModal } from "@/components/settings/modals/CurriculumModal";
 import { TeacherWorkloadModal } from "@/components/settings/modals/TeacherWorkloadModal";
+import { EMaktabImportModal } from "@/components/settings/modals/EMaktabImportModal";
 import {
   GraduationCap,
   Users,
@@ -63,6 +64,7 @@ export default function SettingsPage() {
 
   const [isWorkloadModalOpen, setIsWorkloadModalOpen] = useState(false);
   const [workloadTeacher, setWorkloadTeacher] = useState<Teacher | null>(null);
+  const [isEMaktabModalOpen, setIsEMaktabModalOpen] = useState(false);
 
   // Toast state
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
@@ -282,6 +284,7 @@ export default function SettingsPage() {
               setWorkloadTeacher(t);
               setIsWorkloadModalOpen(true);
             }}
+            onOpenEMaktabImport={() => setIsEMaktabModalOpen(true)}
           />
         )}
 
@@ -478,6 +481,23 @@ export default function SettingsPage() {
         onSave={(teacherId, assignments) => {
           store.saveTeacherWorkload(teacherId, assignments);
           showToast("O'qituvchi dars yuklamasi muvaffaqiyatli saqlandi", "success");
+        }}
+      />
+
+      <EMaktabImportModal
+        isOpen={isEMaktabModalOpen}
+        onClose={() => setIsEMaktabModalOpen(false)}
+        existingTeachers={schoolTeachers}
+        existingClasses={schoolClasses}
+        existingSubjects={schoolSubjects}
+        schoolId={store.currentSchoolId}
+        onImportTeachers={(imported) => {
+          imported.forEach((t) => store.addTeacher(t));
+          showToast(`✅ ${imported.length} nafar o'qituvchi muvaffaqiyatli yuklandi!`, "success");
+        }}
+        onImportClasses={(imported) => {
+          imported.forEach((c) => store.addClass(c));
+          showToast(`✅ ${imported.length} ta sinf muvaffaqiyatli yuklandi!`, "success");
         }}
       />
     </div>

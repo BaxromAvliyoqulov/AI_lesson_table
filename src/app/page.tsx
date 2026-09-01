@@ -27,7 +27,11 @@ import {
   Users,
   CheckCircle2,
   AlertCircle,
+  Printer,
+  FileText,
 } from "lucide-react";
+import { OfficialSchedulePrintModal } from "@/components/print/OfficialSchedulePrintModal";
+import { TeacherTimetableCardsModal } from "@/components/print/TeacherTimetableCardsModal";
 
 export default function HomePage() {
   const store = useSchoolStore();
@@ -40,6 +44,8 @@ export default function HomePage() {
   const [newSchoolName, setNewSchoolName] = useState("");
   const [selectedZamenaLesson, setSelectedZamenaLesson] = useState<Lesson | null>(null);
   const [generationResult, setGenerationResult] = useState<SolverResult | null>(null);
+  const [isA3PrintOpen, setIsA3PrintOpen] = useState(false);
+  const [isTeacherCardsPrintOpen, setIsTeacherCardsPrintOpen] = useState(false);
 
   // Toast state
   const [toastMessage, setToastMessage] = useState<{
@@ -261,6 +267,26 @@ export default function HomePage() {
           >
             <Building2 className="h-4 w-4 text-blue-600" />
             <span>Tarifikatsiya &amp; Yuklama</span>
+          </button>
+
+          {/* 🖨️ A3 Chop Etish (Print) Tugmasi */}
+          <button
+            onClick={() => setIsA3PrintOpen(true)}
+            className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-all bg-slate-900 text-white hover:bg-slate-800 shadow-sm cursor-pointer ml-1"
+            title="39-Maktab rasmiy A3 albom formatida chop etish"
+          >
+            <Printer className="h-3.5 w-3.5 text-amber-400" />
+            <span>🖨️ A3 Chop Etish</span>
+          </button>
+
+          {/* 📄 O'qituvchilar Shaxsiy Varaqalari (Print) Tugmasi */}
+          <button
+            onClick={() => setIsTeacherCardsPrintOpen(true)}
+            className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-all bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 shadow-sm cursor-pointer ml-1"
+            title="Har bir o'qituvchining haftalik dars jadvalini alohida chop etish"
+          >
+            <FileText className="h-3.5 w-3.5 text-indigo-600" />
+            <span>📄 Ustozlar Varaqalari</span>
           </button>
         </div>
 
@@ -529,6 +555,37 @@ export default function HomePage() {
         allTeachers={schoolTeachers}
         allLessons={schoolLessons}
         onAssignReplacement={handleAssignReplacement}
+      />
+
+      {/* 🖨️ Rasmiy A3 Print Modali */}
+      <OfficialSchedulePrintModal
+        isOpen={isA3PrintOpen}
+        onClose={() => setIsA3PrintOpen(false)}
+        classes={schoolClasses}
+        subjects={schoolSubjects}
+        teachers={schoolTeachers}
+        rooms={schoolRooms}
+        lessons={schoolLessons}
+        schoolName={currentSchool?.name}
+        region={currentSchool?.region}
+        directorName={currentSchool?.directorName}
+        vicePrincipalName={currentSchool?.vicePrincipalName}
+        psychologistName={currentSchool?.psychologistName}
+        academicYear={currentSchool?.academicYear}
+        approvalDate={currentSchool?.approvalDate}
+      />
+
+      {/* 📄 O'qituvchilar Shaxsiy Jadval Varaqalari Modali */}
+      <TeacherTimetableCardsModal
+        isOpen={isTeacherCardsPrintOpen}
+        onClose={() => setIsTeacherCardsPrintOpen(false)}
+        teachers={schoolTeachers}
+        classes={schoolClasses}
+        subjects={schoolSubjects}
+        rooms={schoolRooms}
+        lessons={schoolLessons}
+        schoolName={currentSchool?.name}
+        academicYear={currentSchool?.academicYear}
       />
 
       {/* Modern Toast Notification */}

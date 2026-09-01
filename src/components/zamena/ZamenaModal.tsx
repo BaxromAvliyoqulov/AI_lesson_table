@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { Lesson, Subject, Teacher, SchoolClass } from "@/types";
-import { UserCheck, X, Calendar, Clock, BookOpen, AlertCircle, Check } from "lucide-react";
+import { UserCheck, X, Calendar, Clock, BookOpen, AlertCircle, CheckCircle2, Sparkles, Star } from "lucide-react";
 
 interface ZamenaModalProps {
   isOpen: boolean;
@@ -44,7 +44,7 @@ export const ZamenaModal: React.FC<ZamenaModalProps> = ({
       .map((l) => l.teacherId)
   );
 
-  // Shu fanni o'qita oladigan va bo'sh bo'lgan o'qituvchilar
+  // 1. Shu fan mutaxassisi va ayni paytda bo'sh turgan o'qituvchilar (Eng optimal)
   const qualifiedAndFree = allTeachers.filter(
     (t) =>
       t.id !== originalTeacher?.id &&
@@ -52,7 +52,7 @@ export const ZamenaModal: React.FC<ZamenaModalProps> = ({
       !busyTeacherIds.has(t.id)
   );
 
-  // Boshqa barcha bo'sh o'qituvchilar
+  // 2. Boshqa bo'sh o'qituvchilar
   const otherFreeTeachers = allTeachers.filter(
     (t) =>
       t.id !== originalTeacher?.id &&
@@ -69,7 +69,7 @@ export const ZamenaModal: React.FC<ZamenaModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in">
-      <div className="w-full max-w-lg rounded-2xl border border-border bg-card p-6 shadow-2xl">
+      <div className="w-full max-w-lg rounded-2xl border border-border bg-card p-6 shadow-2xl text-foreground">
         {/* Header */}
         <div className="flex items-center justify-between pb-4 border-b border-border">
           <div className="flex items-center gap-2.5">
@@ -77,8 +77,11 @@ export const ZamenaModal: React.FC<ZamenaModalProps> = ({
               <UserCheck className="h-5 w-5" />
             </div>
             <div>
-              <h3 className="font-bold text-base text-foreground">
-                O&apos;rinbosar tayinlash (Zamena)
+              <h3 className="font-bold text-base text-foreground flex items-center gap-2">
+                <span>Aqlli O&apos;rinbosar Tayinlash (Zamena)</span>
+                <span className="text-[10px] bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300 font-bold px-2 py-0.5 rounded-full">
+                  AI Tavsiya
+                </span>
               </h3>
               <p className="text-xs text-muted-foreground">
                 {classObj?.name} sinfi &bull; {lesson.dayOfWeek}-kun, {lesson.periodNumber}-dars
@@ -87,7 +90,7 @@ export const ZamenaModal: React.FC<ZamenaModalProps> = ({
           </div>
           <button
             onClick={onClose}
-            className="p-1 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+            className="p-1 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
           >
             <X className="h-5 w-5" />
           </button>
@@ -113,6 +116,34 @@ export const ZamenaModal: React.FC<ZamenaModalProps> = ({
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* AI Recommended Fast Chips */}
+          {qualifiedAndFree.length > 0 && (
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-700 dark:text-emerald-400">
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>AI Tavsiya etadigan eng maqbul ustozlar:</span>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {qualifiedAndFree.slice(0, 3).map((t) => (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => setSelectedTeacherId(t.id)}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                      selectedTeacherId === t.id
+                        ? "bg-emerald-600 text-white shadow-md ring-2 ring-emerald-500/40"
+                        : "bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200 hover:bg-emerald-100"
+                    }`}
+                  >
+                    <Star className="w-3 h-3 text-amber-500 fill-amber-500" />
+                    <span>{t.fullName}</span>
+                    <span className="text-[10px] opacity-80">(Bo'sh)</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div>
             <label className="block text-xs font-semibold text-foreground mb-1.5">
               O&apos;rinbosar o&apos;qituvchini tanlang:
@@ -121,7 +152,7 @@ export const ZamenaModal: React.FC<ZamenaModalProps> = ({
               value={selectedTeacherId}
               onChange={(e) => setSelectedTeacherId(e.target.value)}
               required
-              className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-xs text-foreground focus:ring-2 focus:ring-blue-500 focus:outline-none"
+              className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-xs text-foreground focus:ring-2 focus:ring-blue-500 focus:outline-none font-medium"
             >
               <option value="">-- O&apos;qituvchini tanlang --</option>
 
@@ -129,7 +160,7 @@ export const ZamenaModal: React.FC<ZamenaModalProps> = ({
                 <optgroup label="⭐ Shu fan mutaxassisi (Bo'sh o'qituvchilar)">
                   {qualifiedAndFree.map((t) => (
                     <option key={t.id} value={t.id}>
-                      {t.fullName} (Mutaxassis)
+                      🟢 {t.fullName} (Fan mutaxassisi • Bo'sh)
                     </option>
                   ))}
                 </optgroup>
@@ -139,7 +170,7 @@ export const ZamenaModal: React.FC<ZamenaModalProps> = ({
                 <optgroup label="Boshqa bo'sh o'qituvchilar">
                   {otherFreeTeachers.map((t) => (
                     <option key={t.id} value={t.id}>
-                      {t.fullName}
+                      🟡 {t.fullName} (Bo'sh)
                     </option>
                   ))}
                 </optgroup>
@@ -155,27 +186,26 @@ export const ZamenaModal: React.FC<ZamenaModalProps> = ({
               type="text"
               value={reason}
               onChange={(e) => setReason(e.target.value)}
+              placeholder="Masalan: Kasallik, Xizmat safari, Malaka oshirish"
               className="w-full rounded-xl border border-border bg-background px-3 py-2 text-xs text-foreground focus:ring-2 focus:ring-blue-500 focus:outline-none"
-              placeholder="Masalan: Malaka oshirish kursi, kasallik varaqasi"
             />
           </div>
 
-          {/* Footer Actions */}
-          <div className="flex items-center justify-end gap-2 pt-4 border-t border-border">
+          <div className="flex items-center justify-end gap-2 pt-2 border-t border-border">
             <button
               type="button"
               onClick={onClose}
-              className="rounded-xl border border-border px-4 py-2 text-xs font-semibold hover:bg-muted transition-colors"
+              className="px-4 py-2 rounded-xl text-xs font-semibold text-muted-foreground hover:bg-muted transition-colors cursor-pointer"
             >
               Bekor qilish
             </button>
             <button
               type="submit"
               disabled={!selectedTeacherId}
-              className="rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white px-4 py-2 text-xs font-semibold shadow-md transition-colors flex items-center gap-1.5"
+              className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-xs font-bold shadow-lg shadow-blue-500/20 transition-all cursor-pointer active:scale-95"
             >
-              <Check className="h-3.5 w-3.5" />
-              <span>O&apos;rinbosarni tasdiqlash</span>
+              <CheckCircle2 className="w-4 h-4" />
+              <span>O&apos;rinbosar Tayinlash</span>
             </button>
           </div>
         </form>
