@@ -63,7 +63,7 @@ export default function HomePage() {
   const schoolClasses = store.classes.filter((c) => c.schoolId === store.currentSchoolId);
   const schoolLessons = store.lessons.filter((l) => l.schoolId === store.currentSchoolId);
 
-  // AI & CSP Generator
+  // AI & CSP Generator (Chaqmoqdek tez va qotmaydigan rejim)
   const handleGenerate = () => {
     if (schoolClasses.length === 0 || schoolTeachers.length === 0) {
       showToast("Avval maktab o'qituvchilari va sinflarini sozlang!", "error");
@@ -74,22 +74,31 @@ export default function HomePage() {
     store.setIsGenerating(true);
     setGenerationResult(null);
 
-    setTimeout(() => {
-      const solver = new CSPSolver({
-        classes: schoolClasses,
-        teachers: schoolTeachers,
-        subjects: schoolSubjects,
-        rooms: schoolRooms,
-        shifts: schoolShifts,
-        branches: schoolBranches,
-      });
+    // Brauzer UI freymini bloklamasdan animatsiyani chizishga ruxsat berish
+    requestAnimationFrame(() => {
+      setTimeout(() => {
+        try {
+          const solver = new CSPSolver({
+            classes: schoolClasses,
+            teachers: schoolTeachers,
+            subjects: schoolSubjects,
+            rooms: schoolRooms,
+            shifts: schoolShifts,
+            branches: schoolBranches,
+          });
 
-      const result = solver.solve();
-      store.setLessons(result.lessons);
-      setGenerationResult(result);
-      store.setIsGenerating(false);
-      showToast(`✅ Dars jadvali muvaffaqiyatli generatsiya qilindi! (${result.lessons.length} ta dars)`);
-    }, 400);
+          const result = solver.solve();
+          store.setLessons(result.lessons);
+          setGenerationResult(result);
+          showToast(`✅ Dars jadvali muvaffaqiyatli generatsiya qilindi! (${result.lessons.length} ta dars)`);
+        } catch (err: any) {
+          console.error("Generatsiya xatosi:", err);
+          showToast("Generatsiya jarayonida xatolik yuz berdi", "error");
+        } finally {
+          store.setIsGenerating(false);
+        }
+      }, 50);
+    });
   };
 
   // Excel Export (39-maktab rasmiy andozasi)

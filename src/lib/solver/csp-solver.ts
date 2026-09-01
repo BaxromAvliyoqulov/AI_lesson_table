@@ -51,7 +51,6 @@ export class CSPSolver {
 
       let subjects = cls.subjects && cls.subjects.length > 0 ? [...cls.subjects] : [];
 
-      // Agar sinfda fanlar belgilanmagan bo'lsa yoki 10 soatdan kam bo'lsa, Davlat standarti bo'yicha to'ldirish
       const currentHours = subjects.reduce((sum, s) => sum + (Number(s.weeklyHours) || 0), 0);
       if (currentHours < 15) {
         const standard = generateStandardCurriculumForClass(
@@ -62,18 +61,15 @@ export class CSPSolver {
           this.input.teachers
         );
         if (standard.length > 0) {
-          // Mavjud fanlarni saqlab, yetishmayotganlarini qo'shish
           const existingSubIds = new Set(subjects.map((s) => s.subjectId));
           const missing = standard.filter((st) => !existingSubIds.has(st.subjectId));
           subjects = [...subjects, ...missing];
         }
       }
 
-      // Har bir fanga o'qituvchi tayinlanganligini tekshirish
       const validatedSubjects: ClassSubject[] = subjects.map((cs) => {
         let tid = cs.teacherId;
         if (!tid || !this.teacherMap.has(tid)) {
-          // Mos o'qituvchini avto-topish
           const matchingTeacher = this.input.teachers.find((t) => t.subjectIds?.includes(cs.subjectId));
           tid = matchingTeacher ? matchingTeacher.id : this.input.teachers[0]?.id || "t_default";
         }
@@ -87,7 +83,7 @@ export class CSPSolver {
       effectiveClassSubjects.set(cls.id, validatedSubjects);
     }
 
-    // ── 1. SLOTLARNI QURISH (Boshlang'ich 1-4: 5 kun, 4-5 dars; Yuqori 5-11: 6 kun, 5-6 dars) ──────
+    // ── 1. SLOTLARNI QURISH (Boshlang'ich: 5 kun, 4-5 dars; Yuqori: 6 kun, 5-6 dars) ────────────
     for (const cls of this.input.classes) {
       if (cls.isClosed) continue;
       const isPrimary = cls.isPrimary || cls.grade <= 4;
@@ -97,7 +93,6 @@ export class CSPSolver {
       const subjects = effectiveClassSubjects.get(cls.id) || [];
       let totalWeeklyHours = subjects.reduce((sum, s) => sum + s.weeklyHours, 0);
 
-      // Agar soat kam bo'lsa, me'yoriy sig'im yaratish
       const minHours = isPrimary ? 22 : 30;
       totalWeeklyHours = Math.max(minHours, totalWeeklyHours);
 
@@ -129,12 +124,13 @@ export class CSPSolver {
     }
 
     // ── 2. QAT'IY BELGILANGAN DARSLAR (Kelajak soati / Sinf soati -> Dushanba 1-dars) ───
+    const teacherOccupancy = new Map<string, number>(); // key: `${teacherId}_${day}_${period}` -> count
+
     for (const cls of this.input.classes) {
       if (cls.isClosed) continue;
       const slots = classSlots.get(cls.id) || [];
       const subjects = effectiveClassSubjects.get(cls.id) || [];
 
-      // Kelajak soati / Sinf soati / Tarbiyaviy soat -> QAT'IYAN Dushanba 1-dars
       const ss = subjects.find(
         (s) =>
           s.subjectId === "sub_kelajak" ||
@@ -150,6 +146,9 @@ export class CSPSolver {
         monSlot.isLocked = true;
         monSlot.subjectId = ss?.subjectId || "sub_sinf_soati";
         monSlot.teacherId = homeroomId;
+
+        const k = `${homeroomId}_1_1`;
+        teacherOccupancy.set(k, (teacherOccupancy.get(k) || 0) + 1);
       }
     }
 
@@ -196,7 +195,6 @@ export class CSPSolver {
       }
     }
 
-    // O'qituvchi yuklamasi bo'yicha saralash
     const teacherHourCount = new Map<string, number>();
     remaining.forEach((r) =>
       teacherHourCount.set(r.teacherId, (teacherHourCount.get(r.teacherId) || 0) + 1)
@@ -210,15 +208,6 @@ export class CSPSolver {
     });
 
     // ── 4. CHAQMOQDEK TEZ HEURISTIC BIRINCHI JOYLASHTIRISH ─────────────────────
-    const teacherOccupancy = new Map<string, number>(); // key: `${teacherId}_${day}_${period}` -> count
-
-    for (const slot of allSlots) {
-      if (slot.teacherId) {
-        const k = `${slot.teacherId}_${slot.day}_${slot.period}`;
-        teacherOccupancy.set(k, (teacherOccupancy.get(k) || 0) + 1);
-      }
-    }
-
     for (const req of remaining) {
       const slots = classSlots.get(req.classId) || [];
       const emptySlots = slots.filter((s) => !s.isLocked && s.teacherId === null);
@@ -234,27 +223,21 @@ export class CSPSolver {
         const occKey = `${req.teacherId}_${slot.day}_${slot.period}`;
         const currentOcc = teacherOccupancy.get(occKey) || 0;
 
-        // A. O'qituvchi boshqa sinfda band bo'lsa (katta jazo)
-        if (currentOcc > 0) score += currentOcc * 3000;
-
-        // B. Metod kuni bo'lsa
+        if (currentOcc > 0) score += currentOcc * 5000;
         if (t && t.methodDayOfWeek === slot.day) score += 2000;
 
-        // C. Bir kunda bir xil fandan ko'p dars bo'lsa
         const sameSubjectCount = slots.filter(
           (s) => s.day === slot.day && s.subjectId === req.subjectId
         ).length;
         if (sameSubjectCount > 0) score += sameSubjectCount * 120;
 
-        // D. SanPiN qiyinlik grafigi
         if (req.difficulty >= 8) {
-          score += Math.abs(slot.period - 3) * 20;
+          score += Math.abs(slot.period - 3) * 15;
         }
 
-        // E. O'qituvchi oynasini kamaytirish
         const adj1 = teacherOccupancy.get(`${req.teacherId}_${slot.day}_${slot.period - 1}`) || 0;
         const adj2 = teacherOccupancy.get(`${req.teacherId}_${slot.day}_${slot.period + 1}`) || 0;
-        if (adj1 > 0 || adj2 > 0) score -= 40;
+        if (adj1 > 0 || adj2 > 0) score -= 30;
 
         if (score < bestScore) {
           bestScore = score;
@@ -270,7 +253,7 @@ export class CSPSolver {
       teacherOccupancy.set(occKey, (teacherOccupancy.get(occKey) || 0) + 1);
     }
 
-    // ── 4.1. BO'SH QOLGAN SLOTLARNI AVTO-TO'LDIRISH (To'liq Grid Kafolati) ───────
+    // ── 4.1. BO'SH QOLGAN SLOTLARNI BO'SH O'QITUVCHI BILAN AVTO-TO'LDIRISH ──────
     for (const cls of this.input.classes) {
       if (cls.isClosed) continue;
       const slots = classSlots.get(cls.id) || [];
@@ -278,36 +261,42 @@ export class CSPSolver {
       const emptySlots = slots.filter((s) => !s.isLocked && s.teacherId === null);
 
       if (emptySlots.length > 0 && subjects.length > 0) {
-        let subIdx = 0;
         for (const slot of emptySlots) {
-          const fallbackSub = subjects[subIdx % subjects.length];
-          slot.subjectId = fallbackSub.subjectId;
-          slot.teacherId = fallbackSub.teacherId;
-          slot.groupType = fallbackSub.groupType;
+          // Birinchi navbatda shu paytda bo'sh bo'lgan fan o'qituvchisini topamiz
+          let chosenSub = subjects[0];
+          let chosenTid = chosenSub.teacherId;
 
-          const occKey = `${fallbackSub.teacherId}_${slot.day}_${slot.period}`;
+          for (const sub of subjects) {
+            const occ = teacherOccupancy.get(`${sub.teacherId}_${slot.day}_${slot.period}`) || 0;
+            if (occ === 0) {
+              chosenSub = sub;
+              chosenTid = sub.teacherId;
+              break;
+            }
+          }
+
+          slot.subjectId = chosenSub.subjectId;
+          slot.teacherId = chosenTid;
+          slot.groupType = chosenSub.groupType;
+
+          const occKey = `${chosenTid}_${slot.day}_${slot.period}`;
           teacherOccupancy.set(occKey, (teacherOccupancy.get(occKey) || 0) + 1);
-          subIdx++;
         }
       }
     }
 
-    // ── 5. ITERATIVE MIN-CONFLICTS LOCAL SEARCH (0 TO'QNASHUV KAFOLATI) ─────────
+    // ── 5. TEZ VA YENGIL MIN-CONFLICTS LOCAL SEARCH (Max 30 iteration) ─────────
     const countClashesForTeacher = (teacherId: string, day: number, period: number): number => {
       const k = `${teacherId}_${day}_${period}`;
       return Math.max(0, (teacherOccupancy.get(k) || 0) - 1);
     };
 
-    const countGlobalClashes = (): number => {
-      let total = 0;
-      for (const count of teacherOccupancy.values()) {
-        if (count > 1) total += count - 1;
-      }
-      return total;
-    };
+    let globalClashes = 0;
+    for (const count of teacherOccupancy.values()) {
+      if (count > 1) globalClashes += count - 1;
+    }
 
-    let globalClashes = countGlobalClashes();
-    const maxIterations = 300;
+    const maxIterations = 35;
 
     for (let iter = 0; iter < maxIterations && globalClashes > 0; iter++) {
       let improved = false;
@@ -334,14 +323,11 @@ export class CSPSolver {
           const clashesA_now = countClashesForTeacher(tA, slotA.day, slotA.period);
           const clashesB_now = tB ? countClashesForTeacher(tB, slotB.day, slotB.period) : 0;
 
-          const keyA_new = `${tA}_${slotB.day}_${slotB.period}`;
-          const keyB_new = tB ? `${tB}_${slotA.day}_${slotA.period}` : null;
-
-          const occA_new = (teacherOccupancy.get(keyA_new) || 0) + 1;
-          const occB_new = keyB_new ? (teacherOccupancy.get(keyB_new) || 0) + 1 : 0;
+          const occA_new = (teacherOccupancy.get(`${tA}_${slotB.day}_${slotB.period}`) || 0) + 1;
+          const occB_new = tB ? (teacherOccupancy.get(`${tB}_${slotA.day}_${slotA.period}`) || 0) + 1 : 0;
 
           const clashesA_new = Math.max(0, occA_new - 1);
-          const clashesB_new = keyB_new ? Math.max(0, occB_new - 1) : 0;
+          const clashesB_new = tB ? Math.max(0, occB_new - 1) : 0;
 
           const delta = clashesA_now + clashesB_now - (clashesA_new + clashesB_new);
 
@@ -384,55 +370,13 @@ export class CSPSolver {
             teacherOccupancy.set(keyB_new, (teacherOccupancy.get(keyB_new) || 0) + 1);
           }
 
+          globalClashes -= bestDelta;
           improved = true;
-          globalClashes = countGlobalClashes();
           if (globalClashes === 0) break;
         }
       }
 
-      if (!improved && globalClashes > 0) {
-        const bad = clashingSlots[Math.floor(Math.random() * clashingSlots.length)];
-        if (bad) {
-          const clsSlots = classSlots.get(bad.classId) || [];
-          const candidateSlots = clsSlots.filter((s) => !s.isLocked && s !== bad);
-          if (candidateSlots.length > 0) {
-            const randTarget = candidateSlots[Math.floor(Math.random() * candidateSlots.length)];
-            const tBad = bad.teacherId!;
-            const sBad = bad.subjectId!;
-            const gBad = bad.groupType;
-
-            const tTarget = randTarget.teacherId;
-            const sTarget = randTarget.subjectId;
-            const gTarget = randTarget.groupType;
-
-            const kOld = `${tBad}_${bad.day}_${bad.period}`;
-            teacherOccupancy.set(kOld, (teacherOccupancy.get(kOld) || 1) - 1);
-
-            if (tTarget) {
-              const kTargetOld = `${tTarget}_${randTarget.day}_${randTarget.period}`;
-              teacherOccupancy.set(kTargetOld, (teacherOccupancy.get(kTargetOld) || 1) - 1);
-            }
-
-            bad.teacherId = tTarget;
-            bad.subjectId = sTarget;
-            bad.groupType = gTarget;
-
-            randTarget.teacherId = tBad;
-            randTarget.subjectId = sBad;
-            randTarget.groupType = gBad;
-
-            const kNew = `${tBad}_${randTarget.day}_${randTarget.period}`;
-            teacherOccupancy.set(kNew, (teacherOccupancy.get(kNew) || 0) + 1);
-
-            if (tTarget) {
-              const kTargetNew = `${tTarget}_${bad.day}_${bad.period}`;
-              teacherOccupancy.set(kTargetNew, (teacherOccupancy.get(kTargetNew) || 0) + 1);
-            }
-
-            globalClashes = countGlobalClashes();
-          }
-        }
-      }
+      if (!improved) break;
     }
 
     // ── 6. FINAL LESSON OBYEKTLARINI HOSIL QILISH ─────────────────────────────
@@ -456,22 +400,20 @@ export class CSPSolver {
       });
     }
 
-    const finalClashes = countGlobalClashes();
-
     return {
-      success: finalClashes === 0,
+      success: globalClashes === 0,
       lessons,
       unassignedLessons: [],
       stats: {
         totalRequiredHours: lessons.length,
         placedHours: lessons.length,
-        score: Math.max(0, 100 - finalClashes * 5),
-        conflictsCount: finalClashes,
+        score: Math.max(0, 100 - globalClashes * 5),
+        conflictsCount: globalClashes,
       },
       explanation:
-        finalClashes === 0
+        globalClashes === 0
           ? `✅ 100% Ziddiyatsiz (0 Kolliziyali) Dars Jadvali Muvaffaqiyatli Shakllantirildi (${lessons.length} ta dars)`
-          : `${finalClashes} ta dars bo'yicha ziddiyat aniqlandi`,
+          : `${globalClashes} ta dars bo'yicha ziddiyat aniqlandi`,
     };
   }
 }
