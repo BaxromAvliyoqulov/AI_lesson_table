@@ -19,19 +19,19 @@ import {
   ShieldAlert,
 } from "lucide-react";
 
-// O'zR MMTV Davlat Standart Haftalik Dars Soati Me'yorlari (SanPiN)
+// O'zR MMTV 2026-2027 Davlat Standart Haftalik Dars Soati Me'yorlari (MMTV 2026-2027 tayanch reja + Kelajak soati)
 export const GRADE_STANDARD_LIMITS: Record<number, number> = {
-  1: 21,
-  2: 23,
-  3: 24,
+  1: 22,
+  2: 25,
+  3: 25,
   4: 25,
-  5: 29,
-  6: 30,
-  7: 31,
-  8: 32,
-  9: 33,
-  10: 34,
-  11: 34,
+  5: 30,
+  6: 31,
+  7: 36,
+  8: 34,
+  9: 35,
+  10: 32,
+  11: 32,
 };
 
 interface TarifficationByClassViewProps {
