@@ -169,7 +169,7 @@ export const TarifficationByClassView: React.FC<TarifficationByClassViewProps> =
         {/* Fanlar Ro'yxati Kartochkalari */}
         <div className="space-y-2">
           {subjects
-            .filter((sub) => isSubjectSuitableForGrade(sub.name, activeClass.grade))
+            .filter((sub) => isSubjectSuitableForGrade(sub, activeClass.grade))
             .map((sub) => {
               const currentAssignment = activeClass.subjects.find((cs) => cs.subjectId === sub.id);
               const currentHours = currentAssignment?.weeklyHours || 0;

@@ -9,11 +9,7 @@ import {
   Branch,
   ClassSubject,
 } from "@/types";
-import {
-  STANDARD_PRIMARY_CURRICULUM,
-  STANDARD_HIGH_CURRICULUM,
-} from "@/lib/curriculum-templates";
-import { CheckCircle2, AlertCircle } from "lucide-react";
+import { generateStandardCurriculumForClass } from "@/lib/curriculum-templates";
 import { TarifficationHeader, ViewMode } from "./TarifficationHeader";
 import { TarifficationByClassView } from "./TarifficationByClassView";
 import { TarifficationByTeacherView } from "./TarifficationByTeacherView";
@@ -70,7 +66,7 @@ export const TarifficationWorkspace: React.FC<TarifficationWorkspaceProps> = ({
     const map = new Map<string, number>();
     for (const cls of classesData) {
       if (cls.isClosed) continue;
-      for (const cs of cls.subjects) {
+      for (const cs of cls.subjects || []) {
         if (cs.teacherId) {
           map.set(cs.teacherId, (map.get(cs.teacherId) || 0) + cs.weeklyHours);
         }
@@ -138,37 +134,12 @@ export const TarifficationWorkspace: React.FC<TarifficationWorkspaceProps> = ({
   };
 
   const handleLoadStandardForClass = (targetClass: SchoolClass) => {
-    const isPrim = targetClass.isPrimary || targetClass.grade <= 4;
-    const template = isPrim ? STANDARD_PRIMARY_CURRICULUM : STANDARD_HIGH_CURRICULUM;
-    const teacherLookup = new Map((targetClass.subjects || []).map((s) => [s.subjectId, s.teacherId]));
-
-    const newSubjects: ClassSubject[] = template
-      .map((item) => {
-        const subObj = subjects.find(
-          (s) =>
-            s.name.toLowerCase() === item.subjectName.toLowerCase() ||
-            (s.shortName && s.shortName.toLowerCase() === item.subjectName.toLowerCase())
-        );
-        if (!subObj) return null;
-
-        let teacherId = teacherLookup.get(subObj.id) || "";
-        if (!teacherId) {
-          const eligible = teachers.filter((t) => (t.subjectIds || []).includes(subObj.id));
-          if (eligible.length > 0) {
-            eligible.sort((a, b) => (teacherAssignedHours.get(a.id) || 0) - (teacherAssignedHours.get(b.id) || 0));
-            teacherId = eligible[0].id;
-          }
-        }
-
-        return {
-          classId: targetClass.id,
-          subjectId: subObj.id,
-          teacherId: teacherId || "",
-          weeklyHours: item.weeklyHours,
-          groupType: "WHOLE" as const,
-        };
-      })
-      .filter(Boolean) as ClassSubject[];
+    const newSubjects = generateStandardCurriculumForClass(
+      targetClass.id,
+      targetClass.grade,
+      subjects,
+      teachers
+    );
 
     setClassesData((prev) =>
       prev.map((cls) => (cls.id === targetClass.id ? { ...cls, subjects: newSubjects } : cls))
@@ -186,37 +157,12 @@ export const TarifficationWorkspace: React.FC<TarifficationWorkspaceProps> = ({
         if (stageFilter === "PRIMARY" && !cls.isPrimary && cls.grade > 4) return cls;
         if (stageFilter === "HIGH" && (cls.isPrimary || cls.grade <= 4)) return cls;
 
-        const isPrim = cls.isPrimary || cls.grade <= 4;
-        const template = isPrim ? STANDARD_PRIMARY_CURRICULUM : STANDARD_HIGH_CURRICULUM;
-        const teacherLookup = new Map((cls.subjects || []).map((s) => [s.subjectId, s.teacherId]));
-
-        const newSubjects: ClassSubject[] = template
-          .map((item) => {
-            const subObj = subjects.find(
-              (s) =>
-                s.name.toLowerCase() === item.subjectName.toLowerCase() ||
-                (s.shortName && s.shortName.toLowerCase() === item.subjectName.toLowerCase())
-            );
-            if (!subObj) return null;
-
-            let teacherId = teacherLookup.get(subObj.id) || "";
-            if (!teacherId) {
-              const eligible = teachers.filter((t) => (t.subjectIds || []).includes(subObj.id));
-              if (eligible.length > 0) {
-                eligible.sort((a, b) => (teacherAssignedHours.get(a.id) || 0) - (teacherAssignedHours.get(b.id) || 0));
-                teacherId = eligible[0].id;
-              }
-            }
-
-            return {
-              classId: cls.id,
-              subjectId: subObj.id,
-              teacherId: teacherId || "",
-              weeklyHours: item.weeklyHours,
-              groupType: "WHOLE" as const,
-            };
-          })
-          .filter(Boolean) as ClassSubject[];
+        const newSubjects = generateStandardCurriculumForClass(
+          cls.id,
+          cls.grade,
+          subjects,
+          teachers
+        );
 
         return { ...cls, subjects: newSubjects };
       })
@@ -241,10 +187,13 @@ export const TarifficationWorkspace: React.FC<TarifficationWorkspaceProps> = ({
   return (
     <div className="min-h-screen bg-slate-100 flex flex-col font-sans text-slate-900">
       {toast && (
-        <div className={`fixed top-4 right-4 z-50 px-4 py-3 rounded-2xl shadow-xl flex items-center gap-2.5 text-xs font-bold transition-all animate-in slide-in-from-top-2 ${
-          toast.type === "success" ? "bg-emerald-600 text-white shadow-emerald-600/30" : "bg-rose-600 text-white shadow-rose-600/30"
-        }`}>
-          {toast.type === "success" ? <CheckCircle2 className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
+        <div
+          className={`fixed top-4 right-4 z-50 px-4 py-3 rounded-2xl shadow-xl flex items-center gap-2.5 text-xs font-bold transition-all animate-in slide-in-from-top-2 ${
+            toast.type === "success"
+              ? "bg-emerald-600 text-white shadow-emerald-600/30"
+              : "bg-rose-600 text-white shadow-rose-600/30"
+          }`}
+        >
           <span>{toast.message}</span>
         </div>
       )}
