@@ -125,10 +125,32 @@ export function useTeacherActions() {
     addAuditLog("O'qituvchi bo'sh vaqti yangilandi", `O'qituvchi ID: ${teacherId} matrisasi saqlandi`);
   }, []);
 
+  const setTeacherMethodDay = useCallback((teacherId: string, methodDayOfWeek: number | null) => {
+    const target = storeState.teachers.find((t) => t.id === teacherId);
+    if (!target) return;
+    const updated: Teacher = {
+      ...target,
+      methodDayOfWeek: methodDayOfWeek === null ? undefined : methodDayOfWeek,
+    };
+    updateStore((prev) => ({
+      ...prev,
+      teachers: prev.teachers.map((t) => (t.id === teacherId ? updated : t)),
+      syncStatus: "syncing",
+    }));
+    addAuditLog(
+      "O'qituvchi metod kuni yangilandi",
+      `${target.fullName} uchun metod kuni: ${methodDayOfWeek ? `${methodDayOfWeek}-kun` : "Bekor qilindi"}`
+    );
+    upsertTeacherAction(target.schoolId || storeState.currentSchoolId, updated).then((res) => {
+      updateStore((prev) => ({ ...prev, syncStatus: res.success ? "synced" : "error" }));
+    });
+  }, []);
+
   return {
     addTeacher,
     updateTeacher,
     deleteTeacher,
     updateTeacherAvailability,
+    setTeacherMethodDay,
   };
 }

@@ -1,8 +1,7 @@
-"use client";
-
 import React, { useState, useEffect } from "react";
 import { Teacher, TeacherAvailability } from "@/types";
 import { TeacherSelectCombobox } from "../shared/TeacherSelectCombobox";
+import { useSchoolStore } from "@/lib/store/useSchoolStore";
 import {
   Calendar,
   Check,
@@ -13,6 +12,7 @@ import {
   Sparkles,
   Zap,
   RotateCcw,
+  Star,
 } from "lucide-react";
 
 interface AvailabilityTabProps {
@@ -35,6 +35,7 @@ export const AvailabilityTab: React.FC<AvailabilityTabProps> = ({
   teachers,
   onSaveAvailability,
 }) => {
+  const { setTeacherMethodDay } = useSchoolStore();
   const [selectedTeacherId, setSelectedTeacherId] = useState<string>(
     teachers[0]?.id || ""
   );
@@ -49,6 +50,11 @@ export const AvailabilityTab: React.FC<AvailabilityTabProps> = ({
       setHasUnsavedChanges(false);
     }
   }, [selectedTeacherId, selectedTeacher]);
+
+  const handleSelectMethodDay = (dayId: number | null) => {
+    if (!selectedTeacherId) return;
+    setTeacherMethodDay(selectedTeacherId, dayId);
+  };
 
   const isCellAvailable = (day: number, period: number): boolean => {
     // If it's teacher's method day, automatically unavailable
@@ -162,13 +168,15 @@ export const AvailabilityTab: React.FC<AvailabilityTabProps> = ({
       {/* Availability Matrix */}
       {selectedTeacher ? (
         <div className="p-6 rounded-3xl bg-card border border-border shadow-sm">
+          {/* O'qituvchi nomi va ko'rsatkichlar */}
           <div className="flex items-center justify-between mb-4 pb-4 border-b border-border/80">
             <div>
               <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
                 <span>{selectedTeacher.fullName}</span>
                 {selectedTeacher.methodDayOfWeek && (
-                  <span className="text-xs px-2.5 py-0.5 rounded-full font-bold bg-amber-500/15 text-amber-600 border border-amber-500/20">
-                    Metod kuni: {DAYS[selectedTeacher.methodDayOfWeek - 1]?.name}
+                  <span className="text-xs px-2.5 py-0.5 rounded-full font-extrabold bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30 flex items-center gap-1">
+                    <Star className="w-3 h-3 fill-amber-500 text-amber-500" />
+                    <span>Metod kuni: {DAYS[selectedTeacher.methodDayOfWeek - 1]?.name}</span>
                   </span>
                 )}
               </h3>
@@ -193,6 +201,58 @@ export const AvailabilityTab: React.FC<AvailabilityTabProps> = ({
             </div>
           </div>
 
+          {/* ⭐ METOD KUNI TEZKOR TANLASH VA BOSHQARUV PANELI */}
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/25 mb-4">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-600 flex items-center justify-center shrink-0">
+                <Star className="w-4 h-4 fill-amber-500" />
+              </div>
+              <div>
+                <div className="text-xs font-bold text-amber-900 dark:text-amber-200">
+                  {selectedTeacher.methodDayOfWeek
+                    ? `Haftalik Metod kuni: ${DAYS[selectedTeacher.methodDayOfWeek - 1]?.name}`
+                    : "Metod kuni belgilanmagan"}
+                </div>
+                <div className="text-[11px] text-amber-700/80 dark:text-amber-400">
+                  Metod kunida o'qituvchiga dars qo'yilmaydi va barcha soatlar avtomatik bloklanadi
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-1.5 flex-wrap">
+              {DAYS.map((d) => {
+                const isSelected = selectedTeacher.methodDayOfWeek === d.id;
+                return (
+                  <button
+                    key={`method_select_${d.id}`}
+                    type="button"
+                    onClick={() => handleSelectMethodDay(isSelected ? null : d.id)}
+                    className={`px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                      isSelected
+                        ? "bg-amber-500 text-slate-950 font-extrabold shadow-sm scale-105"
+                        : "bg-white/80 dark:bg-card hover:bg-white text-foreground/80 border border-border"
+                    }`}
+                    title={isSelected ? "Metod kunini bekor qilish" : `${d.name}ni metod kuni qilish`}
+                  >
+                    <span>{d.name.slice(0, 3)}</span>
+                    {isSelected && <span className="ml-1 text-[10px]">⭐</span>}
+                  </button>
+                );
+              })}
+
+              {selectedTeacher.methodDayOfWeek && (
+                <button
+                  type="button"
+                  onClick={() => handleSelectMethodDay(null)}
+                  className="px-2 py-1.5 rounded-xl text-xs font-bold text-rose-600 hover:bg-rose-100/60 dark:hover:bg-rose-950/30 transition-colors cursor-pointer"
+                  title="Metod kunini bekor qilish"
+                >
+                  ✕ Bekor qilish
+                </button>
+              )}
+            </div>
+          </div>
+
           <div className="overflow-x-auto">
             <table className="w-full border-collapse">
               <thead>
@@ -205,12 +265,27 @@ export const AvailabilityTab: React.FC<AvailabilityTabProps> = ({
                     return (
                       <th
                         key={d.id}
-                        className={`p-2.5 text-xs font-bold text-center border-b border-border ${
-                          isMethodDay ? "bg-amber-500/10 text-amber-600 font-extrabold" : "text-foreground"
+                        className={`p-2.5 text-xs font-bold text-center border-b border-border transition-colors ${
+                          isMethodDay
+                            ? "bg-amber-500/20 text-amber-800 dark:text-amber-200 font-black"
+                            : "text-foreground"
                         }`}
                       >
-                        <div>{d.name}</div>
-                        {isMethodDay && <div className="text-[10px] font-medium text-amber-500">Metod kuni</div>}
+                        <div className="flex flex-col items-center gap-1">
+                          <span className="font-extrabold">{d.name}</span>
+                          <button
+                            type="button"
+                            onClick={() => handleSelectMethodDay(isMethodDay ? null : d.id)}
+                            className={`px-2 py-0.5 rounded-lg text-[10px] font-bold transition-all cursor-pointer ${
+                              isMethodDay
+                                ? "bg-amber-500 text-slate-950 shadow-xs"
+                                : "text-muted-foreground/70 hover:text-amber-600 hover:bg-amber-500/10 border border-border/60"
+                            }`}
+                            title={isMethodDay ? "Metod kunini bekor qilish" : `${d.name}ni metod kuni deb belgilash`}
+                          >
+                            {isMethodDay ? "⭐ Metod kuni" : "+ Metod kuni"}
+                          </button>
+                        </div>
                       </th>
                     );
                   })}
@@ -229,8 +304,9 @@ export const AvailabilityTab: React.FC<AvailabilityTabProps> = ({
                       return (
                         <td key={day.id} className="p-1.5 text-center">
                           {isMethodDay ? (
-                            <div className="py-2.5 px-2 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-600 text-xs font-semibold cursor-not-allowed">
-                              Bloklangan
+                            <div className="py-2.5 px-2 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-700 dark:text-amber-300 text-xs font-bold select-none cursor-not-allowed flex items-center justify-center gap-1">
+                              <Star className="w-3 h-3 fill-amber-500 text-amber-500" />
+                              <span>Metod kuni</span>
                             </div>
                           ) : (
                             <button
