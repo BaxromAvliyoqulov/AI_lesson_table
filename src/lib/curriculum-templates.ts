@@ -220,12 +220,14 @@ export function generateStandardCurriculumForClass(
   classId: string,
   homeroomTeacherId: string | null | undefined,
   allSubjects: Subject[],
-  allTeachers: Teacher[]
+  allTeachers: Teacher[],
+  workloadTracker?: Map<string, number>
 ): ClassSubject[] {
   const normalizedGrade = Math.max(1, Math.min(11, grade || 5));
   const template = UZBEKISTAN_STANDARD_CURRICULUM[normalizedGrade] || UZBEKISTAN_STANDARD_CURRICULUM[5];
 
   const result: ClassSubject[] = [];
+  const localTracker = workloadTracker || new Map<string, number>();
 
   for (const item of template) {
     // 1. Fanni topish
@@ -287,16 +289,39 @@ export function generateStandardCurriculumForClass(
       }
     }
 
-    // Mos fanni o'tadigan o'qituvchini topish
-    if (!assignedTeacherId) {
-      const suitableTeacher = allTeachers.find((t) =>
+    // Mos fanni o'tadigan o'qituvchini dinamik (Least-Loaded Dynamic Balancing) usulida topish
+    if (!assignedTeacherId && allTeachers.length > 0) {
+      // 1-navbatda: fanni o'tadigan mutaxassis ustozlar
+      const suitableTeachers = allTeachers.filter((t) =>
         t.subjectIds?.includes(matchedSubject!.id)
       );
-      if (suitableTeacher) {
-        assignedTeacherId = suitableTeacher.id;
-      } else if (allTeachers.length > 0) {
-        assignedTeacherId = allTeachers[0].id;
+
+      const candidatePool = suitableTeachers.length > 0 ? suitableTeachers : allTeachers;
+
+      // Eng kam yuklama olgan va stavkasidan (20 soat) oshmagan ustozni tanlash
+      let bestTeacher = candidatePool[0];
+      let minLoad = Infinity;
+
+      for (const teacher of candidatePool) {
+        const currentLoad = localTracker.get(teacher.id) || 0;
+        const capacity = teacher.weeklyHourCapacity || 20;
+
+        // Agar stavkadan oshmagan bo'lsa ustunlik beriladi
+        const effectiveScore = currentLoad + (currentLoad >= capacity ? 1000 : 0);
+
+        if (effectiveScore < minLoad) {
+          minLoad = effectiveScore;
+          bestTeacher = teacher;
+        }
       }
+
+      assignedTeacherId = bestTeacher.id;
+    }
+
+    // Tracker yuklamasini yangilash
+    if (assignedTeacherId) {
+      const cur = localTracker.get(assignedTeacherId) || 0;
+      localTracker.set(assignedTeacherId, cur + item.defaultHours);
     }
 
     result.push({

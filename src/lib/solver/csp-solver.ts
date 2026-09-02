@@ -93,6 +93,8 @@ export class CSPSolver {
 
     // ── 0. SINFLARNING O'QUV REJALARINI TAYYORLASH (Auto-Standard Fallback) ──────
     const effectiveClassSubjects = new Map<string, ClassSubject[]>();
+    const dynamicWorkloadTracker = new Map<string, number>();
+    this.input.teachers.forEach((t) => dynamicWorkloadTracker.set(t.id, 0));
 
     for (const cls of this.input.classes) {
       if (cls.isClosed) continue;
@@ -106,7 +108,8 @@ export class CSPSolver {
           cls.id,
           cls.homeroomTeacherId,
           this.input.subjects,
-          this.input.teachers
+          this.input.teachers,
+          dynamicWorkloadTracker
         );
         if (standard.length > 0) {
           const existingSubIds = new Set(subjects.map((s) => s.subjectId));
@@ -118,8 +121,26 @@ export class CSPSolver {
       const validatedSubjects: ClassSubject[] = subjects.map((cs) => {
         let tid = cs.teacherId;
         if (!tid || !this.teacherMap.has(tid)) {
-          const matchingTeacher = this.input.teachers.find((t) => t.subjectIds?.includes(cs.subjectId));
-          tid = matchingTeacher ? matchingTeacher.id : this.input.teachers[0]?.id || "t_default";
+          const matchingTeachers = this.input.teachers.filter((t) => t.subjectIds?.includes(cs.subjectId));
+          const pool = matchingTeachers.length > 0 ? matchingTeachers : this.input.teachers;
+
+          let bestTeacher = pool[0];
+          let minScore = Infinity;
+
+          for (const teacher of pool) {
+            const currentLoad = dynamicWorkloadTracker.get(teacher.id) || 0;
+            const capacity = teacher.weeklyHourCapacity || 20;
+            const score = currentLoad + (currentLoad >= capacity ? 1000 : 0);
+
+            if (score < minScore) {
+              minScore = score;
+              bestTeacher = teacher;
+            }
+          }
+
+          tid = bestTeacher ? bestTeacher.id : "t_default";
+          const addedHours = Math.max(1, Number(cs.weeklyHours) || 1);
+          dynamicWorkloadTracker.set(tid, (dynamicWorkloadTracker.get(tid) || 0) + addedHours);
         }
         return {
           ...cs,

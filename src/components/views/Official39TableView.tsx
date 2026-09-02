@@ -410,7 +410,7 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
   const handleAutoFixConflicts = () => {
     if (!onLessonsChange) return;
     setIsFixingConflicts(true);
-    showToast("⚡ AI algoritm dars jadvalidagi barcha ziddiyatlarni tahlil qilmoqda...", "info");
+    showToast("⚡ AI algoritm dars jadvalidagi barcha ziddiyatlarni dinamik tahlil qilmoqda...", "info");
 
     setTimeout(() => {
       try {
@@ -426,14 +426,14 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
         onLessonsChange(result.lessons);
         setIsFixingConflicts(false);
         showToast(
-          `✅ AI barcha ziddiyatlarni muvaffaqiyatli bartaraf qildi! (${result.lessons.length} ta dars qayta tartiblandi)`,
+          `✅ AI barcha ziddiyatlarni bartaraf qildi! (${result.lessons.length} ta dars dinamik tartiblandi)`,
           "success"
         );
       } catch (err) {
         setIsFixingConflicts(false);
         showToast("Ziddiyatlarni to'g'rilashda xatolik yuz berdi", "error");
       }
-    }, 500);
+    }, 400);
   };
 
   const handleCellClick = (cls: SchoolClass, day: number, period: number, lesson?: Lesson) => {
