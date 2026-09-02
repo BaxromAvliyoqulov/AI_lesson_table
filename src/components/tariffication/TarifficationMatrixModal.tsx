@@ -227,7 +227,7 @@ export const TarifficationMatrixModal: React.FC<TarifficationMatrixModalProps> =
                 <option value="ALL">Barcha Binolar ({classesData.length} ta sinf)</option>
                 {branches.map((b) => (
                   <option key={b.id} value={b.id}>
-                    {b.name} ({classesData.filter((c) => c.branchId === b.id).length} ta sinf)
+                    {b.name.replace(/\s*\(?boshlang['`ʻ]?ich\)?/gi, "").trim()} ({classesData.filter((c) => c.branchId === b.id).length} ta sinf)
                   </option>
                 ))}
               </select>

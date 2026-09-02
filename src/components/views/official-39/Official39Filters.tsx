@@ -105,7 +105,7 @@ export const Official39Filters: React.FC<Official39FiltersProps> = ({
             <span>4. 🏠 Filial Hammasi</span>
           </button>
 
-          {/* 5. Filial Boshlang'ich */}
+          {/* 5. Filial 1-4 sinf */}
           <button
             type="button"
             onClick={() => onFilterScopeChange("BRANCH_PRIMARY")}
@@ -114,12 +114,12 @@ export const Official39Filters: React.FC<Official39FiltersProps> = ({
                 ? "bg-teal-600 text-white shadow-sm"
                 : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
             }`}
-            title="5. Filial boshlang'ich sinflari (1-D .. 4-D)"
+            title="5. Filial 1-4 sinflari (1-D .. 4-D)"
           >
-            <span>5. 👦 Filial Boshlang'ich</span>
+            <span>5. 👦 Filial (1-4 sinf)</span>
           </button>
 
-          {/* 6. Filial Kattalar */}
+          {/* 6. Filial 5-7 sinf */}
           <button
             type="button"
             onClick={() => onFilterScopeChange("BRANCH_HIGH")}
@@ -130,7 +130,7 @@ export const Official39Filters: React.FC<Official39FiltersProps> = ({
             }`}
             title="6. Filial yuqori sinflari (5-D .. 7-D)"
           >
-            <span>6. 🧑 Filial Kattalar</span>
+            <span>6. 🧑 Filial (5-7 sinf)</span>
           </button>
 
           {/* 7. Hammasi */}

@@ -157,7 +157,7 @@ export const TarifficationHeader: React.FC<TarifficationHeaderProps> = ({
                 <option value="ALL">🏛️ Barcha Binolar ({totalClassesCount} ta sinf)</option>
                 {branches.map((b) => (
                   <option key={b.id} value={b.id}>
-                    {b.name}
+                    {b.name.replace(/\s*\(?boshlang['`ʻ]?ich\)?/gi, "").trim()}
                   </option>
                 ))}
               </select>
