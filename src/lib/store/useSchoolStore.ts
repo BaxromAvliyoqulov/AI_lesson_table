@@ -75,7 +75,7 @@ interface SchoolStoreState {
   syncStatus: SyncStatus;
 }
 
-const STORAGE_KEY = "dars_jadval_ai_store_v12";
+const STORAGE_KEY = "dars_jadval_ai_store_v13";
 
 // Initial state generator
 function createInitialState(): SchoolStoreState {
@@ -174,6 +174,14 @@ function getLocalStorageState(): SchoolStoreState | null {
         parsed.lessons = solved.lessons;
         saveLocalStorageState(parsed);
       }
+    }
+
+    if (parsed.branches) {
+      parsed.branches = parsed.branches.map((b: Branch) => {
+        if (b.id === "b39_1") return { ...b, name: "Asosiy Maktab" };
+        if (b.id === "b39_2") return { ...b, name: "Filial" };
+        return b;
+      });
     }
 
     return parsed;

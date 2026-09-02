@@ -35,15 +35,15 @@ export const initialBranches: Branch[] = [
   {
     "id": "b39_1",
     "schoolId": "school_39",
-    "name": "39-Maktab Asosiy Bino",
+    "name": "Asosiy Maktab",
     "address": "Muzrabot tumani",
     "isMain": true
   },
   {
     "id": "b39_2",
     "schoolId": "school_39",
-    "name": "39-Maktab 1-Filial (Boshlang'ich)",
-    "address": "Muzrabot tumani, 2-mavze",
+    "name": "Filial",
+    "address": "Muzrabot tumani",
     "isMain": false
   },
   {
