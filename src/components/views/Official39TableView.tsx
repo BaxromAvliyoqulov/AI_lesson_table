@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState, useCallback } from "react";
+import React, { useMemo, useState, useEffect, useCallback } from "react";
 import {
   DndContext,
   DragOverlay,
@@ -74,6 +74,27 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
     academicYear: academicYear,
     approvalDate: approvalDate,
   });
+
+  // Sync requisites form when props update from store or database
+  useEffect(() => {
+    setRequisitesForm({
+      name: schoolName,
+      region: region,
+      directorName: directorName,
+      vicePrincipalName: vicePrincipalName,
+      psychologistName: psychologistName,
+      academicYear: academicYear,
+      approvalDate: approvalDate,
+    });
+  }, [
+    schoolName,
+    region,
+    directorName,
+    vicePrincipalName,
+    psychologistName,
+    academicYear,
+    approvalDate,
+  ]);
 
   // Sinf rahbarini almashtirish modali
   const [homeroomModal, setHomeroomModal] = useState<{
@@ -427,7 +448,10 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
 
   const handleSaveRequisites = (e: React.FormEvent) => {
     e.preventDefault();
-    if (onUpdateSchoolInfo) onUpdateSchoolInfo(requisitesForm);
+    if (onUpdateSchoolInfo) {
+      onUpdateSchoolInfo(requisitesForm);
+      showToast("Maktab rekvizitlari muvaffaqiyatli saqlandi!", "success");
+    }
     setIsRequisitesModalOpen(false);
   };
 

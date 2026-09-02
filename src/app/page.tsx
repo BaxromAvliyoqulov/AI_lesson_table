@@ -399,18 +399,19 @@ export default function HomePage() {
               zoomLevel={store.zoomLevel}
               onZoomChange={store.setZoomLevel}
               onUpdateSchoolInfo={(updates) => {
-                if (currentSchool?.id) {
-                  store.updateSchoolInfo(currentSchool.id, updates);
+                const targetId = currentSchool?.id || store.currentSchoolId;
+                if (targetId) {
+                  store.updateSchoolInfo(targetId, updates);
                 }
               }}
               onSetHomeroomTeacher={store.setHomeroomTeacher}
               schoolName={currentSchool?.name || "39 - umumiy o'rta ta'lim maktabi"}
-              region={currentSchool?.region || "Muzrabot tumani"}
-              directorName={currentSchool?.directorName || "M. Ramazonov"}
-              vicePrincipalName={currentSchool?.vicePrincipalName || "N. Narziqulov"}
-              psychologistName={currentSchool?.psychologistName || "F.I.Sh"}
-              academicYear={currentSchool?.academicYear || "2025 - 2026"}
-              approvalDate={currentSchool?.approvalDate || "2026-yil 28-mart"}
+              region={currentSchool?.region !== undefined ? currentSchool.region : "Muzrabot tumani"}
+              directorName={currentSchool?.directorName !== undefined ? currentSchool.directorName : "M. Ramazonov"}
+              vicePrincipalName={currentSchool?.vicePrincipalName !== undefined ? currentSchool.vicePrincipalName : "N. Narziqulov"}
+              psychologistName={currentSchool?.psychologistName !== undefined ? currentSchool.psychologistName : "F.I.Sh"}
+              academicYear={currentSchool?.academicYear !== undefined ? currentSchool.academicYear : "2025 - 2026"}
+              approvalDate={currentSchool?.approvalDate !== undefined ? currentSchool.approvalDate : "2026-yil 28-mart"}
             />
           ) : store.viewMode === "CLASS" ? (
             <SingleClassView

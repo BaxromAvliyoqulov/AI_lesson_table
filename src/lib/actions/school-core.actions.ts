@@ -133,10 +133,11 @@ export async function getSchoolFullData(schoolId?: string) {
       slug: school.slug,
       name: school.name,
       region: school.region || "Muzrabot tumani",
-      academicYear: "2025 - 2026",
-      directorName: school.directorFullName || "M. Ramazonov",
-      vicePrincipalName: school.academicVicePrincipalName || "N. Narziqulov",
-      psychologistName: school.psychologistName || "G. Boymurodova",
+      academicYear: school.academicYear || "2025 - 2026",
+      approvalDate: school.approvalDate || "2026-yil 28-mart",
+      directorName: school.directorFullName || "",
+      vicePrincipalName: school.academicVicePrincipalName || "",
+      psychologistName: school.psychologistName || "",
     };
 
     const branches: Branch[] = school.branches.map((b) => ({
@@ -571,17 +572,18 @@ export async function updateSchoolDetailsAction(
     const school = await resolveSchool(schoolId);
     if (!school) return { success: false, error: "Maktab topilmadi" };
 
+    const updatePayload: any = {};
+    if (data.name !== undefined) updatePayload.name = data.name.trim();
+    if (data.region !== undefined) updatePayload.region = data.region.trim();
+    if (data.directorName !== undefined) updatePayload.directorFullName = data.directorName;
+    if (data.vicePrincipalName !== undefined) updatePayload.academicVicePrincipalName = data.vicePrincipalName;
+    if (data.psychologistName !== undefined) updatePayload.psychologistName = data.psychologistName;
+    if (data.academicYear !== undefined) updatePayload.academicYear = data.academicYear;
+    if (data.approvalDate !== undefined) updatePayload.approvalDate = data.approvalDate;
+
     await prisma.school.update({
       where: { id: school.id },
-      data: {
-        ...(data.name ? { name: data.name.trim() } : {}),
-        ...(data.region ? { region: data.region.trim() } : {}),
-        ...(data.directorName !== undefined ? { directorFullName: data.directorName } : {}),
-        ...(data.vicePrincipalName !== undefined
-          ? { academicVicePrincipalName: data.vicePrincipalName }
-          : {}),
-        ...(data.psychologistName !== undefined ? { psychologistName: data.psychologistName } : {}),
-      },
+      data: updatePayload,
     });
 
     return { success: true };
