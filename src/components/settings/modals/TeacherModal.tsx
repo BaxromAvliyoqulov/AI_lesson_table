@@ -65,42 +65,53 @@ export const TeacherModal: React.FC<TeacherModalProps> = ({
   const [selectedShifts, setSelectedShifts] = useState<string[]>([]);
   const [teachingStages, setTeachingStages] = useState<"PRIMARY" | "HIGH" | "BOTH">("BOTH");
   const [travelPolicy, setTravelPolicy] = useState<"BY_SHIFT" | "BY_DAY" | "FLEXIBLE_BUFFER">("BY_SHIFT");
+  const lastInitializedIdRef = React.useRef<string | null>(null);
 
   useEffect(() => {
-    if (editingTeacher) {
-      setFullName(editingTeacher.fullName);
-      setPhone(editingTeacher.phone || "");
-      setWeeklyCapacity(editingTeacher.weeklyHourCapacity);
-      setMaxConsecutive(editingTeacher.maxConsecutiveHours);
-      setMethodDay(editingTeacher.methodDayOfWeek || "");
-      setHomeroomClassId(editingTeacher.homeroomClassId || "");
-      setSelectedSubjects(editingTeacher.subjectIds || []);
-      setSelectedBranches(
-        editingTeacher.branchIds && editingTeacher.branchIds.length > 0
-          ? editingTeacher.branchIds
-          : branches.map((b) => b.id)
-      );
-      setSelectedShifts(
-        editingTeacher.shiftIds && editingTeacher.shiftIds.length > 0
-          ? editingTeacher.shiftIds
-          : shifts.map((s) => s.id)
-      );
-      setTeachingStages(editingTeacher.teachingStages || "BOTH");
-      setTravelPolicy(editingTeacher.travelPolicy || "BY_SHIFT");
-    } else {
-      setFullName("");
-      setPhone("");
-      setWeeklyCapacity(20);
-      setMaxConsecutive(4);
-      setMethodDay("");
-      setHomeroomClassId("");
-      setSelectedSubjects([]);
-      setSelectedBranches(branches.map((b) => b.id));
-      setSelectedShifts(shifts.map((s) => s.id));
-      setTeachingStages("BOTH");
-      setTravelPolicy("BY_SHIFT");
+    if (!isOpen) {
+      lastInitializedIdRef.current = null;
+      return;
     }
-  }, [editingTeacher, branches, shifts, isOpen]);
+
+    const currentTeacherId = editingTeacher ? editingTeacher.id : "__NEW_TEACHER__";
+    if (lastInitializedIdRef.current !== currentTeacherId) {
+      lastInitializedIdRef.current = currentTeacherId;
+
+      if (editingTeacher) {
+        setFullName(editingTeacher.fullName);
+        setPhone(editingTeacher.phone || "");
+        setWeeklyCapacity(editingTeacher.weeklyHourCapacity);
+        setMaxConsecutive(editingTeacher.maxConsecutiveHours);
+        setMethodDay(editingTeacher.methodDayOfWeek || "");
+        setHomeroomClassId(editingTeacher.homeroomClassId || "");
+        setSelectedSubjects(editingTeacher.subjectIds || []);
+        setSelectedBranches(
+          editingTeacher.branchIds && editingTeacher.branchIds.length > 0
+            ? editingTeacher.branchIds
+            : branches.map((b) => b.id)
+        );
+        setSelectedShifts(
+          editingTeacher.shiftIds && editingTeacher.shiftIds.length > 0
+            ? editingTeacher.shiftIds
+            : shifts.map((s) => s.id)
+        );
+        setTeachingStages(editingTeacher.teachingStages || "BOTH");
+        setTravelPolicy(editingTeacher.travelPolicy || "BY_SHIFT");
+      } else {
+        setFullName("");
+        setPhone("");
+        setWeeklyCapacity(20);
+        setMaxConsecutive(4);
+        setMethodDay("");
+        setHomeroomClassId("");
+        setSelectedSubjects([]);
+        setSelectedBranches(branches.map((b) => b.id));
+        setSelectedShifts(shifts.map((s) => s.id));
+        setTeachingStages("BOTH");
+        setTravelPolicy("BY_SHIFT");
+      }
+    }
+  }, [isOpen, editingTeacher?.id, editingTeacher, branches, shifts]);
 
   if (!isOpen) return null;
 

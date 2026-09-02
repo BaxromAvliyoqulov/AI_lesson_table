@@ -51,28 +51,39 @@ export const SubjectModal: React.FC<SubjectModalProps> = ({
   const [requiresRoomType, setRequiresRoomType] = useState<RoomType | "">("");
   const [methodDayOfWeek, setMethodDayOfWeek] = useState<number | "">("");
   const [isActive, setIsActive] = useState(true);
+  const lastInitializedIdRef = React.useRef<string | null>(null);
 
   useEffect(() => {
-    if (editingSubject) {
-      setName(editingSubject.name);
-      setShortName(editingSubject.shortName || "");
-      setColorTag(editingSubject.colorTag);
-      setDifficultyScore(editingSubject.difficultyScore);
-      setAllowDoubleLesson(editingSubject.allowDoubleLesson);
-      setRequiresRoomType(editingSubject.requiresRoomType || "");
-      setMethodDayOfWeek(editingSubject.methodDayOfWeek || "");
-      setIsActive(editingSubject.isActive !== false);
-    } else {
-      setName("");
-      setShortName("");
-      setColorTag(PRESET_COLORS[Math.floor(Math.random() * PRESET_COLORS.length)]);
-      setDifficultyScore(5);
-      setAllowDoubleLesson(false);
-      setRequiresRoomType("");
-      setMethodDayOfWeek("");
-      setIsActive(true);
+    if (!isOpen) {
+      lastInitializedIdRef.current = null;
+      return;
     }
-  }, [editingSubject, isOpen]);
+
+    const currentSubjectId = editingSubject ? editingSubject.id : "__NEW_SUBJECT__";
+    if (lastInitializedIdRef.current !== currentSubjectId) {
+      lastInitializedIdRef.current = currentSubjectId;
+
+      if (editingSubject) {
+        setName(editingSubject.name);
+        setShortName(editingSubject.shortName || "");
+        setColorTag(editingSubject.colorTag);
+        setDifficultyScore(editingSubject.difficultyScore);
+        setAllowDoubleLesson(editingSubject.allowDoubleLesson);
+        setRequiresRoomType(editingSubject.requiresRoomType || "");
+        setMethodDayOfWeek(editingSubject.methodDayOfWeek || "");
+        setIsActive(editingSubject.isActive !== false);
+      } else {
+        setName("");
+        setShortName("");
+        setColorTag(PRESET_COLORS[Math.floor(Math.random() * PRESET_COLORS.length)]);
+        setDifficultyScore(5);
+        setAllowDoubleLesson(false);
+        setRequiresRoomType("");
+        setMethodDayOfWeek("");
+        setIsActive(true);
+      }
+    }
+  }, [isOpen, editingSubject?.id, editingSubject]);
 
   if (!isOpen) return null;
 

@@ -191,6 +191,65 @@ function updateStore(updater: (prev: SchoolStoreState) => SchoolStoreState, broa
   }
 }
 
+let backgroundSchedulerTimer: NodeJS.Timeout | null = null;
+
+/**
+ * Smart Reactive Background Auto-Scheduler
+ * Tarifikatsiya qilinganda, AI fonda darslarni optimal taxlab boradi.
+ * Agar 100% ziddiyatsiz (0 kolliziya) chiqsa, avtomatik jadvalga joylashtiradi.
+ */
+export function triggerBackgroundAutoScheduler() {
+  if (typeof window === "undefined") return;
+  if (backgroundSchedulerTimer) clearTimeout(backgroundSchedulerTimer);
+
+  backgroundSchedulerTimer = setTimeout(() => {
+    try {
+      const currentSchoolId = storeState.currentSchoolId;
+      const schoolClasses = storeState.classes.filter((c) => c.schoolId === currentSchoolId);
+      const schoolTeachers = storeState.teachers.filter((t) => t.schoolId === currentSchoolId);
+      const schoolSubjects = storeState.subjects.filter((s) => s.schoolId === currentSchoolId);
+      const schoolRooms = storeState.rooms.filter((r) => r.schoolId === currentSchoolId);
+      const schoolBranches = storeState.branches.filter((b) => b.schoolId === currentSchoolId);
+      const schoolShifts = storeState.shifts.filter((s) => s.schoolId === currentSchoolId);
+
+      if (schoolClasses.length === 0 || schoolTeachers.length === 0) return;
+
+      const solver = new CSPSolver({
+        classes: schoolClasses,
+        teachers: schoolTeachers,
+        subjects: schoolSubjects,
+        rooms: schoolRooms,
+        branches: schoolBranches,
+        shifts: schoolShifts,
+      });
+
+      const result = solver.solve();
+      if (result.success && result.stats.conflictsCount === 0 && result.lessons.length > 0) {
+        updateStore((prev) => {
+          const lockedMap = new Map(
+            prev.lessons.filter((l) => l.isLocked).map((l) => [`${l.classId}_${l.dayOfWeek}_${l.periodNumber}`, l])
+          );
+
+          const mergedLessons = result.lessons.map((l) => {
+            const locked = lockedMap.get(`${l.classId}_${l.dayOfWeek}_${l.periodNumber}`);
+            return locked || l;
+          });
+
+          return {
+            ...prev,
+            lessons: [
+              ...prev.lessons.filter((l) => l.schoolId !== currentSchoolId),
+              ...mergedLessons,
+            ],
+          };
+        }, false);
+      }
+    } catch {
+      // Safe background handler
+    }
+  }, 500);
+}
+
 export function useSchoolStore() {
   const fetchServerData = useCallback(async (schoolIdToFetch?: string, silent = false) => {
     const targetId = schoolIdToFetch || storeState.currentSchoolId;
@@ -280,12 +339,12 @@ export function useSchoolStore() {
     window.addEventListener("focus", handleWindowFocus);
     document.addEventListener("visibilitychange", handleVisibilityChange);
 
-    // 3. Har 6 soniyada Zauch/Admin kiritgan yangi o'zgarishlarni jimjit sinxronlash (Background Heartbeat)
+    // 3. Har 30 soniyada Zauch/Admin kiritgan yangi o'zgarishlarni jimjit sinxronlash (Background Heartbeat)
     const heartbeatInterval = setInterval(() => {
       if (document.visibilityState === "visible" && !storeState.isGenerating) {
         fetchServerData(undefined, true);
       }
-    }, 6000);
+    }, 30000);
 
     return () => {
       window.removeEventListener("focus", handleWindowFocus);
@@ -568,6 +627,9 @@ export function useSchoolStore() {
     ).then((res) => {
       updateStore((prev) => ({ ...prev, syncStatus: res.success ? "synced" : "error" }));
     });
+
+    // Smart Background AI reactive auto-schedule
+    triggerBackgroundAutoScheduler();
   }, [addAudit]);
 
   const saveTeacherWorkload = useCallback(
@@ -614,6 +676,9 @@ export function useSchoolStore() {
       saveTeacherWorkloadAction(storeState.currentSchoolId, teacherId, assignments).then((res) => {
         updateStore((prev) => ({ ...prev, syncStatus: res.success ? "synced" : "error" }));
       });
+
+      // Smart Background AI reactive auto-schedule
+      triggerBackgroundAutoScheduler();
     },
     [addAudit]
   );
@@ -633,6 +698,9 @@ export function useSchoolStore() {
     }).then((res) => {
       updateStore((prev) => ({ ...prev, syncStatus: res.success ? "synced" : "error" }));
     });
+
+    // Smart Background AI reactive auto-schedule
+    triggerBackgroundAutoScheduler();
   }, [addAudit]);
 
   // Teacher actions

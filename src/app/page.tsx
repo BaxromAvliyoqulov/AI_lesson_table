@@ -32,6 +32,7 @@ import {
 } from "lucide-react";
 import { OfficialSchedulePrintModal } from "@/components/print/OfficialSchedulePrintModal";
 import { TeacherTimetableCardsModal } from "@/components/print/TeacherTimetableCardsModal";
+import { AIGenerationProgressModal } from "@/components/generator/AIGenerationProgressModal";
 
 export default function HomePage() {
   const store = useSchoolStore();
@@ -44,6 +45,7 @@ export default function HomePage() {
   const [newSchoolName, setNewSchoolName] = useState("");
   const [selectedZamenaLesson, setSelectedZamenaLesson] = useState<Lesson | null>(null);
   const [generationResult, setGenerationResult] = useState<SolverResult | null>(null);
+  const [isGenModalOpen, setIsGenModalOpen] = useState(false);
   const [isA3PrintOpen, setIsA3PrintOpen] = useState(false);
   const [isTeacherCardsPrintOpen, setIsTeacherCardsPrintOpen] = useState(false);
 
@@ -69,7 +71,7 @@ export default function HomePage() {
   const schoolClasses = store.classes.filter((c) => c.schoolId === store.currentSchoolId);
   const schoolLessons = store.lessons.filter((l) => l.schoolId === store.currentSchoolId);
 
-  // AI & CSP Generator (Chaqmoqdek tez va qotmaydigan rejim)
+  // AI & CSP Generator (Interaktiv Progress Modal bilan)
   const handleGenerate = () => {
     if (schoolClasses.length === 0 || schoolTeachers.length === 0) {
       showToast("Avval maktab o'qituvchilari va sinflarini sozlang!", "error");
@@ -77,34 +79,33 @@ export default function HomePage() {
       return;
     }
 
+    setIsGenModalOpen(true);
     store.setIsGenerating(true);
     setGenerationResult(null);
 
-    // Brauzer UI freymini bloklamasdan animatsiyani chizishga ruxsat berish
-    requestAnimationFrame(() => {
-      setTimeout(() => {
-        try {
-          const solver = new CSPSolver({
-            classes: schoolClasses,
-            teachers: schoolTeachers,
-            subjects: schoolSubjects,
-            rooms: schoolRooms,
-            shifts: schoolShifts,
-            branches: schoolBranches,
-          });
+    // Katta maktablar uchun bosqichma-bosqich progress va non-blocking hisoblash
+    setTimeout(() => {
+      try {
+        const solver = new CSPSolver({
+          classes: schoolClasses,
+          teachers: schoolTeachers,
+          subjects: schoolSubjects,
+          rooms: schoolRooms,
+          shifts: schoolShifts,
+          branches: schoolBranches,
+        });
 
-          const result = solver.solve();
-          store.setLessons(result.lessons);
-          setGenerationResult(result);
-          showToast(`✅ Dars jadvali muvaffaqiyatli generatsiya qilindi! (${result.lessons.length} ta dars)`);
-        } catch (err: any) {
-          console.error("Generatsiya xatosi:", err);
-          showToast("Generatsiya jarayonida xatolik yuz berdi", "error");
-        } finally {
-          store.setIsGenerating(false);
-        }
-      }, 50);
-    });
+        const result = solver.solve();
+        store.setLessons(result.lessons);
+        setGenerationResult(result);
+        showToast(`✅ Dars jadvali muvaffaqiyatli generatsiya qilindi! (${result.lessons.length} ta dars)`);
+      } catch (err: any) {
+        console.error("Generatsiya xatosi:", err);
+        showToast("Generatsiya jarayonida xatolik yuz berdi", "error");
+      } finally {
+        store.setIsGenerating(false);
+      }
+    }, 1200);
   };
 
   // Excel Export (39-maktab rasmiy andozasi)
@@ -586,6 +587,22 @@ export default function HomePage() {
         lessons={schoolLessons}
         schoolName={currentSchool?.name}
         academicYear={currentSchool?.academicYear}
+      />
+
+      {/* 🤖 AI Generatsiya Bosqichlari va Progress Modali */}
+      <AIGenerationProgressModal
+        isOpen={isGenModalOpen}
+        isGenerating={store.isGenerating}
+        result={generationResult}
+        onClose={() => setIsGenModalOpen(false)}
+        onViewSchedule={() => {
+          setIsGenModalOpen(false);
+          store.setViewMode("OFFICIAL_39");
+        }}
+        onPrintA3={() => {
+          setIsGenModalOpen(false);
+          setIsA3PrintOpen(true);
+        }}
       />
 
       {/* Modern Toast Notification */}

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { Teacher, Subject, SchoolClass, ClassSubject } from "@/types";
 import { isSubjectSuitableForGrade } from "@/lib/curriculum-templates";
 import {
@@ -41,29 +41,35 @@ export const TeacherWorkloadModal: React.FC<TeacherWorkloadModalProps> = ({
   onSave,
 }) => {
   const [assignments, setAssignments] = useState<TeacherClassAssignment[]>([]);
+  const lastInitializedTeacherIdRef = useRef<string | null>(null);
 
-  // Collect all existing assignments for this teacher across all classes
+  // Collect all existing assignments for this teacher across all classes ONLY on open or teacher change
   useEffect(() => {
-    if (!teacher || !isOpen) {
+    if (!isOpen || !teacher) {
+      lastInitializedTeacherIdRef.current = null;
       setAssignments([]);
       return;
     }
 
-    const currentList: TeacherClassAssignment[] = [];
-    classes.forEach((cls) => {
-      (cls.subjects || []).forEach((s) => {
-        if (s.teacherId === teacher.id) {
-          currentList.push({
-            classId: cls.id,
-            subjectId: s.subjectId,
-            weeklyHours: Number(s.weeklyHours) || 2,
-          });
-        }
-      });
-    });
+    if (lastInitializedTeacherIdRef.current !== teacher.id) {
+      lastInitializedTeacherIdRef.current = teacher.id;
 
-    setAssignments(currentList);
-  }, [teacher, classes, isOpen]);
+      const currentList: TeacherClassAssignment[] = [];
+      classes.forEach((cls) => {
+        (cls.subjects || []).forEach((s) => {
+          if (s.teacherId === teacher.id) {
+            currentList.push({
+              classId: cls.id,
+              subjectId: s.subjectId,
+              weeklyHours: Number(s.weeklyHours) || 2,
+            });
+          }
+        });
+      });
+
+      setAssignments(currentList);
+    }
+  }, [isOpen, teacher?.id, teacher, classes]);
 
   const subjectMap = useMemo(() => new Map(subjects.map((s) => [s.id, s])), [subjects]);
   const classMap = useMemo(() => new Map(classes.map((c) => [c.id, c])), [classes]);

@@ -68,18 +68,24 @@ export const CurriculumModal: React.FC<CurriculumModalProps> = ({
   const [catalogSearch, setCatalogSearch] = useState("");
   const [catalogCategory, setCatalogCategory] = useState<SubjectCategory>("RECOMMENDED");
   const [selectedCatalogSubjectIds, setSelectedCatalogSubjectIds] = useState<Record<string, number>>({});
+  const lastInitializedClassIdRef = React.useRef<string | null>(null);
 
   useEffect(() => {
-    if (targetClass) {
+    if (!isOpen || !targetClass) {
+      lastInitializedClassIdRef.current = null;
+      setSubjectsList([]);
+      return;
+    }
+
+    if (lastInitializedClassIdRef.current !== targetClass.id) {
+      lastInitializedClassIdRef.current = targetClass.id;
       setSubjectsList(targetClass.subjects || []);
       setSelectedCopyClassId("");
       setIsCatalogOpen(false);
       setCatalogSearch("");
       setSelectedCatalogSubjectIds({});
-    } else {
-      setSubjectsList([]);
     }
-  }, [targetClass, isOpen]);
+  }, [isOpen, targetClass?.id, targetClass]);
 
   const subjectMap = useMemo(() => new Map(allSubjects.map((s) => [s.id, s])), [allSubjects]);
   const teacherMap = useMemo(() => new Map(allTeachers.map((t) => [t.id, t])), [allTeachers]);

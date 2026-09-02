@@ -25,20 +25,31 @@ export const RoomModal: React.FC<RoomModalProps> = ({
   const [roomType, setRoomType] = useState<RoomType>("GENERAL");
   const [capacity, setCapacity] = useState(35);
   const [branchId, setBranchId] = useState("");
+  const lastInitializedIdRef = React.useRef<string | null>(null);
 
   useEffect(() => {
-    if (editingRoom) {
-      setName(editingRoom.name);
-      setRoomType(editingRoom.roomType);
-      setCapacity(editingRoom.capacity);
-      setBranchId(editingRoom.branchId);
-    } else {
-      setName("");
-      setRoomType("GENERAL");
-      setCapacity(35);
-      setBranchId(branches[0]?.id || "");
+    if (!isOpen) {
+      lastInitializedIdRef.current = null;
+      return;
     }
-  }, [editingRoom, branches, isOpen]);
+
+    const currentRoomId = editingRoom ? editingRoom.id : "__NEW_ROOM__";
+    if (lastInitializedIdRef.current !== currentRoomId) {
+      lastInitializedIdRef.current = currentRoomId;
+
+      if (editingRoom) {
+        setName(editingRoom.name);
+        setRoomType(editingRoom.roomType);
+        setCapacity(editingRoom.capacity);
+        setBranchId(editingRoom.branchId);
+      } else {
+        setName("");
+        setRoomType("GENERAL");
+        setCapacity(35);
+        setBranchId(branches[0]?.id || "");
+      }
+    }
+  }, [isOpen, editingRoom?.id, editingRoom, branches]);
 
   if (!isOpen) return null;
 

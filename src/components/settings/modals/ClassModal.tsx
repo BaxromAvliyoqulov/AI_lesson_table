@@ -33,26 +33,37 @@ export const ClassModal: React.FC<ClassModalProps> = ({
   const [isPrimary, setIsPrimary] = useState(true);
   const [homeroomTeacherId, setHomeroomTeacherId] = useState("");
   const [isClosed, setIsClosed] = useState(false);
+  const lastInitializedIdRef = React.useRef<string | null>(null);
 
   useEffect(() => {
-    if (editingClass) {
-      setName(editingClass.name);
-      setGrade(editingClass.grade);
-      setBranchId(editingClass.branchId);
-      setShiftId(editingClass.shiftId);
-      setIsPrimary(editingClass.isPrimary);
-      setHomeroomTeacherId(editingClass.homeroomTeacherId || "");
-      setIsClosed(editingClass.isClosed || false);
-    } else {
-      setName("");
-      setGrade(1);
-      setBranchId(branches[0]?.id || "");
-      setShiftId(shifts[0]?.id || "");
-      setIsPrimary(true);
-      setHomeroomTeacherId("");
-      setIsClosed(false);
+    if (!isOpen) {
+      lastInitializedIdRef.current = null;
+      return;
     }
-  }, [editingClass, branches, shifts, isOpen]);
+
+    const currentClassId = editingClass ? editingClass.id : "__NEW_CLASS__";
+    if (lastInitializedIdRef.current !== currentClassId) {
+      lastInitializedIdRef.current = currentClassId;
+
+      if (editingClass) {
+        setName(editingClass.name);
+        setGrade(editingClass.grade);
+        setBranchId(editingClass.branchId);
+        setShiftId(editingClass.shiftId);
+        setIsPrimary(editingClass.isPrimary);
+        setHomeroomTeacherId(editingClass.homeroomTeacherId || "");
+        setIsClosed(editingClass.isClosed || false);
+      } else {
+        setName("");
+        setGrade(1);
+        setBranchId(branches[0]?.id || "");
+        setShiftId(shifts[0]?.id || "");
+        setIsPrimary(true);
+        setHomeroomTeacherId("");
+        setIsClosed(false);
+      }
+    }
+  }, [isOpen, editingClass?.id, editingClass, branches, shifts]);
 
   if (!isOpen) return null;
 

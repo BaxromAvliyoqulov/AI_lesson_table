@@ -29,6 +29,7 @@ export function formatUzPhone(phone: string): string {
  */
 export function sanitizeFullName(val: string): string {
   return val
+    .trim()
     .replace(/[^a-zA-Zа-яА-ЯёЁoʻOʻgʻGʻshShchCh\s'-]/g, "")
     .replace(/\s+/g, " ")
     .split(" ")
