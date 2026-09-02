@@ -135,8 +135,9 @@ export const TarifficationWorkspace: React.FC<TarifficationWorkspaceProps> = ({
 
   const handleLoadStandardForClass = (targetClass: SchoolClass) => {
     const newSubjects = generateStandardCurriculumForClass(
-      targetClass.id,
       targetClass.grade,
+      targetClass.id,
+      targetClass.homeroomTeacherId,
       subjects,
       teachers
     );
@@ -158,8 +159,9 @@ export const TarifficationWorkspace: React.FC<TarifficationWorkspaceProps> = ({
         if (stageFilter === "HIGH" && (cls.isPrimary || cls.grade <= 4)) return cls;
 
         const newSubjects = generateStandardCurriculumForClass(
-          cls.id,
           cls.grade,
+          cls.id,
+          cls.homeroomTeacherId,
           subjects,
           teachers
         );
