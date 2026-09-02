@@ -337,6 +337,29 @@ export const HIGH_SCHOOL_ONLY_KEYWORDS = [
 /**
  * Fanning berilgan sinfga (1-4 boshlang'ich yoki 5-11 yuqori) mosligini tekshirish
  */
+export function isPrimarySubject(subject: Subject): boolean {
+  if (subject.isActive === false) return false;
+  const name = subject.name.toLowerCase();
+  const id = subject.id.toLowerCase();
+  const isHighOnly = HIGH_SCHOOL_ONLY_KEYWORDS.some(
+    (kw) => name.includes(kw) || id.includes(kw)
+  );
+  return !isHighOnly;
+}
+
+export function isHighSchoolSubject(subject: Subject): boolean {
+  if (subject.isActive === false) return false;
+  const name = subject.name.toLowerCase();
+  if (
+    name.includes("o'qish savodxonligi") ||
+    name.includes("savodxonlik") ||
+    name.includes("atrofimizdagi olam")
+  ) {
+    return false;
+  }
+  return true;
+}
+
 export function isSubjectSuitableForGrade(subject: Subject, grade: number): boolean {
   if (subject.isActive === false) return false;
   const name = subject.name.toLowerCase();
