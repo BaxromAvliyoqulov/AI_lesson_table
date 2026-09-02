@@ -33,6 +33,7 @@ import {
 import { OfficialSchedulePrintModal } from "@/components/print/OfficialSchedulePrintModal";
 import { TeacherTimetableCardsModal } from "@/components/print/TeacherTimetableCardsModal";
 import { AIGenerationProgressModal } from "@/components/generator/AIGenerationProgressModal";
+import { AITeacherWorkloadAdvisorModal } from "@/components/generator/AITeacherWorkloadAdvisorModal";
 
 export default function HomePage() {
   const store = useSchoolStore();
@@ -41,6 +42,7 @@ export default function HomePage() {
   const [isWizardOpen, setIsWizardOpen] = useState(false);
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [isTarifficationOpen, setIsTarifficationOpen] = useState(false);
+  const [isTeacherAdvisorOpen, setIsTeacherAdvisorOpen] = useState(false);
   const [isAddSchoolOpen, setIsAddSchoolOpen] = useState(false);
   const [newSchoolName, setNewSchoolName] = useState("");
   const [selectedZamenaLesson, setSelectedZamenaLesson] = useState<Lesson | null>(null);
@@ -193,6 +195,7 @@ export default function HomePage() {
         onOpenWizard={() => setIsWizardOpen(true)}
         onOpenImport={() => setIsImportOpen(true)}
         onOpenTariffication={() => setIsTarifficationOpen(true)}
+        onOpenTeacherAdvisor={() => setIsTeacherAdvisorOpen(true)}
         onUndo={store.undo}
         canUndo={store.history.length > 0}
         isGenerating={store.isGenerating}
@@ -603,6 +606,22 @@ export default function HomePage() {
         onPrintA3={() => {
           setIsGenModalOpen(false);
           setIsA3PrintOpen(true);
+        }}
+      />
+
+      {/* ✨ AI Ustozlar Yuklamasi, Smena va Bino Maslahatchisi Modali */}
+      <AITeacherWorkloadAdvisorModal
+        isOpen={isTeacherAdvisorOpen}
+        onClose={() => setIsTeacherAdvisorOpen(false)}
+        teachers={schoolTeachers}
+        classes={schoolClasses}
+        subjects={schoolSubjects}
+        branches={schoolBranches}
+        shifts={schoolShifts}
+        lessons={schoolLessons}
+        onApplyAIConstraints={() => {
+          handleGenerate();
+          showToast("✨ AI Ustoz me'yorlari va smena/bino logistikasi dars jadvaliga muvaffaqiyatli qo'llandi!");
         }}
       />
 

@@ -35,6 +35,7 @@ interface NavbarProps {
   onOpenWizard: () => void;
   onOpenImport: () => void;
   onOpenTariffication?: () => void;
+  onOpenTeacherAdvisor?: () => void;
   onUndo: () => void;
   canUndo: boolean;
   isGenerating: boolean;
@@ -57,6 +58,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenWizard,
   onOpenImport,
   onOpenTariffication,
+  onOpenTeacherAdvisor,
   onUndo,
   canUndo = false,
   isGenerating = false,
@@ -307,6 +309,18 @@ export const Navbar: React.FC<NavbarProps> = ({
             >
               <Building2 className="h-3.5 w-3.5 text-blue-600" />
               <span>Tarifikatsiya</span>
+            </button>
+          )}
+
+          {/* AI Ustoz, Smena & Bino Maslahatchisi */}
+          {onOpenTeacherAdvisor && (
+            <button
+              onClick={onOpenTeacherAdvisor}
+              className="flex items-center gap-1.5 rounded-lg border border-indigo-500/40 bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-blue-500/10 hover:border-indigo-500/70 px-3 py-1.5 text-xs font-bold transition-all shadow-sm text-indigo-600 dark:text-indigo-400 cursor-pointer animate-pulse hover:animate-none"
+              title="AI Ustozlar yuklamasi, smenasi va bino taqsimoti tahlili"
+            >
+              <Sparkles className="h-3.5 w-3.5 text-indigo-500" />
+              <span>AI Ustoz & Smena</span>
             </button>
           )}
 
