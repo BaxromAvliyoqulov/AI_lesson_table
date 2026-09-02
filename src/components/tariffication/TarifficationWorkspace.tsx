@@ -116,6 +116,15 @@ export const TarifficationWorkspace: React.FC<TarifficationWorkspaceProps> = ({
         const exists = (cls.subjects || []).some((cs) => cs.subjectId === subjectId);
         let updated: ClassSubject[];
 
+        let homeroomId = cls.homeroomTeacherId;
+        // Agar Sinf soati faniga o'qituvchi biriktirilsa, avtomatik sinf rahbari sifatida ham belgilanadi
+        if (
+          (subjectId === "sub_sinf_soati" || subjectId.toLowerCase().includes("sinf_soati")) &&
+          teacherId
+        ) {
+          homeroomId = teacherId;
+        }
+
         if (weeklyHours <= 0) {
           updated = (cls.subjects || []).filter((cs) => cs.subjectId !== subjectId);
         } else if (exists) {
@@ -128,9 +137,29 @@ export const TarifficationWorkspace: React.FC<TarifficationWorkspaceProps> = ({
             { classId: cls.id, subjectId, teacherId, weeklyHours, groupType: "WHOLE" },
           ];
         }
-        return { ...cls, subjects: updated };
+        return { ...cls, homeroomTeacherId: homeroomId, subjects: updated };
       })
     );
+  };
+
+  const handleSetHomeroomTeacher = (classId: string, teacherId: string) => {
+    setClassesData((prev) =>
+      prev.map((cls) => {
+        if (cls.id !== classId) return cls;
+        // Sinf soati faniga ham avtomatik shu ustozni biriktirish
+        const updatedSubjects = (cls.subjects || []).map((cs) => {
+          if (
+            cs.subjectId === "sub_sinf_soati" ||
+            cs.subjectId?.toLowerCase().includes("sinf_soati")
+          ) {
+            return { ...cs, teacherId };
+          }
+          return cs;
+        });
+        return { ...cls, homeroomTeacherId: teacherId, subjects: updatedSubjects };
+      })
+    );
+    showToast("👤 Sinf rahbari muvaffaqiyatli belgilandi!");
   };
 
   const handleRemoveSubject = (classId: string, subjectId: string) => {
@@ -274,6 +303,7 @@ export const TarifficationWorkspace: React.FC<TarifficationWorkspaceProps> = ({
             onRemoveSubject={handleRemoveSubject}
             onClearClassSubjects={handleClearClassSubjects}
             onLoadStandardForClass={handleLoadStandardForClass}
+            onSetHomeroomTeacher={handleSetHomeroomTeacher}
           />
         )}
 
