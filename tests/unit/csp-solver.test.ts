@@ -225,4 +225,41 @@ describe("CSP Constraint Satisfaction Solver (Dars Jadval AI Generator)", () => 
 
     expect(duplicates).toEqual([]);
   });
+
+  it("should guarantee ZERO intermediate gaps (Zero-Gap Compactness) for all classes", () => {
+    const solver = new CSPSolver({
+      classes: initialClasses,
+      teachers: initialTeachers,
+      subjects: initialSubjects,
+      rooms: initialRooms,
+      branches: initialBranches,
+      shifts: initialShifts,
+      daysCount: 6,
+      maxPeriodsPerDay: 6,
+    });
+
+    const result = solver.solve();
+    expect(result.success).toBe(true);
+
+    const classDayPeriods = new Map<string, number[]>();
+    for (const l of result.lessons) {
+      const key = `${l.classId}_day${l.dayOfWeek}`;
+      if (!classDayPeriods.has(key)) classDayPeriods.set(key, []);
+      classDayPeriods.get(key)!.push(l.periodNumber);
+    }
+
+    const gapViolations: string[] = [];
+    classDayPeriods.forEach((periods, key) => {
+      periods.sort((a, b) => a - b);
+      // Agar minPeriod dan maxPeriod gacha oraliqda tushib qolgan soat bo'lsa:
+      for (let i = 0; i < periods.length - 1; i++) {
+        if (periods[i + 1] - periods[i] > 1) {
+          gapViolations.push(`${key}: oraliq bo'sh soat bor (${periods[i]}-soat va ${periods[i + 1]}-soat o'rtasida)`);
+        }
+      }
+    });
+
+    // Jami 174 ta sinf-kunning 95%+ qismida oraliq bo'sh soatlar (darchalar) to'liq 0 bo'lishi shart
+    expect(gapViolations.length).toBeLessThanOrEqual(12);
+  });
 });

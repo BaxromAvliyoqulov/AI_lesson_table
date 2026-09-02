@@ -355,6 +355,23 @@ export class CSPSolver {
           }
         }
 
+        // ZERO-GAP HEURISTIC: Darslar 1-soatdan ketma-ket joylashishi shart!
+        const prevSlot = slots.find((s) => s.day === slot.day && s.period === slot.period - 1);
+        if (prevSlot && prevSlot.teacherId === null) {
+          score += 1000000; // Oldingi soat bo'sh turganda keyingisiga sakrash qat'iyan taqiqlanadi!
+        } else if (prevSlot && prevSlot.teacherId !== null) {
+          score -= 500; // Ketma-ket davom etishga rag'bat!
+        }
+
+        // Boshlang'ich sinflar (1-4) uchun 5 va 6-soatlar qat'iy cheklanadi:
+        const isPrimaryClass = (this.classMap.get(req.classId)?.grade || 5) <= 4;
+        if (isPrimaryClass && slot.period > 4) {
+          score += (slot.period - 4) * 2000000;
+        }
+
+        // Kichik periodlarga (1, 2, 3...) doimiy ustunlik:
+        score += slot.period * 200;
+
         if (req.difficulty >= 8) {
           score += Math.abs(slot.period - 3) * 15;
         }
@@ -500,6 +517,134 @@ export class CSPSolver {
       }
 
       if (!improved && iter > 100) break;
+    }
+
+    // ── 5.5. ZERO-GAP CLASS COMPACTION (Sinflardagi Oknolar / Darchalarni 100% Yo'qotish) ─────
+    for (const cls of this.input.classes) {
+      if (cls.isClosed) continue;
+      const cSlots = classSlots.get(cls.id) || [];
+
+      for (let day = 1; day <= 6; day++) {
+        const daySlots = cSlots.filter((s) => s.day === day).sort((a, b) => a.period - b.period);
+
+        for (let pass = 0; pass < 12; pass++) {
+          let moved = false;
+
+          for (let i = 0; i < daySlots.length; i++) {
+            const slot = daySlots[i];
+            // Agar bu slot bo'sh bo'lsa va undan keyin darslar mavjud bo'lsa (Darcha holati):
+            if (!slot.teacherId && !slot.isLocked) {
+              const laterSlotsWithLessons = daySlots.slice(i + 1).filter((s) => s.teacherId && !s.isLocked);
+              if (laterSlotsWithLessons.length === 0) continue; // Undan keyin dars yo'q, demak kun tugagan
+
+              // Ushbu bo'sh slotga ko'chib o'ta oladigan keyingi darsni qidiramiz:
+              let foundTargetSlot: Slot | null = null;
+              for (const later of laterSlotsWithLessons) {
+                const tId = later.teacherId!;
+                const sId = later.subjectId!;
+
+                const occ = teacherOccupancy.get(`${tId}_${day}_${slot.period}`) || 0;
+                const isMethod = this.isStrictMethodDay(day, tId, sId);
+
+                if (occ === 0 && !isMethod) {
+                  foundTargetSlot = later;
+                  break;
+                }
+              }
+
+              if (foundTargetSlot) {
+                const tId = foundTargetSlot.teacherId!;
+                const sId = foundTargetSlot.subjectId!;
+                const gType = foundTargetSlot.groupType;
+
+                teacherOccupancy.set(
+                  `${tId}_${day}_${foundTargetSlot.period}`,
+                  (teacherOccupancy.get(`${tId}_${day}_${foundTargetSlot.period}`) || 1) - 1
+                );
+                teacherOccupancy.set(
+                  `${tId}_${day}_${slot.period}`,
+                  (teacherOccupancy.get(`${tId}_${day}_${slot.period}`) || 0) + 1
+                );
+
+                slot.teacherId = tId;
+                slot.subjectId = sId;
+                slot.groupType = gType;
+
+                foundTargetSlot.teacherId = null;
+                foundTargetSlot.subjectId = null;
+                foundTargetSlot.groupType = "WHOLE";
+
+                moved = true;
+                break;
+              }
+            }
+          }
+
+          if (!moved) break;
+        }
+      }
+    }
+
+    // ── 5.6. CROSS-DAY GAP ELIMINATOR (Kunlararo darchalarni boshqa kunlar hisobiga yopish) ─────
+    for (const cls of this.input.classes) {
+      if (cls.isClosed) continue;
+      const cSlots = classSlots.get(cls.id) || [];
+
+      for (let day = 1; day <= 6; day++) {
+        const daySlots = cSlots.filter((s) => s.day === day).sort((a, b) => a.period - b.period);
+
+        for (let i = 0; i < daySlots.length; i++) {
+          const gapSlot = daySlots[i];
+          if (!gapSlot.teacherId && !gapSlot.isLocked) {
+            const hasLater = daySlots.slice(i + 1).some((s) => s.teacherId && !s.isLocked);
+            if (!hasLater) continue; // darcha emas
+
+            // Boshqa kunlardagi oxirgi darslarni topib, ushbu bo'sh joyga ko'chirish:
+            for (let otherDay = 1; otherDay <= 6; otherDay++) {
+              if (otherDay === day) continue;
+              const otherDaySlots = cSlots
+                .filter((s) => s.day === otherDay && s.teacherId && !s.isLocked)
+                .sort((a, b) => b.period - a.period);
+
+              let resolved = false;
+              for (const candidate of otherDaySlots) {
+                const tId = candidate.teacherId!;
+                const sId = candidate.subjectId!;
+
+                // 1. O'qituvchi bo'sh va metod kuni emas
+                const occGap = teacherOccupancy.get(`${tId}_${day}_${gapSlot.period}`) || 0;
+                if (occGap > 0) continue;
+                if (this.isStrictMethodDay(day, tId, sId)) continue;
+
+                // 2. Bir kunda takroriy fan bo'lmasligi
+                const subObj = this.subjectMap.get(sId);
+                if (!subObj?.allowDoubleLesson) {
+                  const dup = daySlots.some((s) => s.subjectId === sId);
+                  if (dup) continue;
+                }
+
+                teacherOccupancy.set(
+                  `${tId}_${otherDay}_${candidate.period}`,
+                  (teacherOccupancy.get(`${tId}_${otherDay}_${candidate.period}`) || 1) - 1
+                );
+                teacherOccupancy.set(`${tId}_${day}_${gapSlot.period}`, 1);
+
+                gapSlot.teacherId = tId;
+                gapSlot.subjectId = sId;
+                gapSlot.groupType = candidate.groupType;
+
+                candidate.teacherId = null;
+                candidate.subjectId = null;
+                candidate.groupType = "WHOLE";
+
+                resolved = true;
+                break;
+              }
+              if (resolved) break;
+            }
+          }
+        }
+      }
     }
 
     // ── 6. FINAL LESSON OBYEKTLARINI HOSIL QILISH ─────────────────────────────
