@@ -24,7 +24,7 @@ describe("CSP Constraint Satisfaction Solver (Dars Jadval AI Generator)", () => 
 
     const result = solver.solve();
 
-    // 1. Solver must succeed
+    // 1. Solver must succeed with 0 conflicts
     expect(result.success).toBe(true);
     expect(result.lessons.length).toBeGreaterThan(600);
     expect(result.stats.conflictsCount).toBe(0);
@@ -115,5 +115,42 @@ describe("CSP Constraint Satisfaction Solver (Dars Jadval AI Generator)", () => 
     const result = solver.solve();
     expect(result.success).toBe(true);
     expect(result.lessons.length).toBeGreaterThanOrEqual(25);
+  });
+
+  it("should STRICTLY guarantee ZERO lessons on method days (e.g. Friday for English / Foreign languages)", () => {
+    const solver = new CSPSolver({
+      classes: initialClasses,
+      teachers: initialTeachers,
+      subjects: initialSubjects,
+      rooms: initialRooms,
+      branches: initialBranches,
+      shifts: initialShifts,
+      daysCount: 6,
+      maxPeriodsPerDay: 6,
+    });
+
+    const result = solver.solve();
+    expect(result.success).toBe(true);
+
+    // 1. English (sub_ing) and Foreign Languages should have 0 lessons on Friday (day 5)
+    const englishOnFriday = result.lessons.filter(
+      (l) =>
+        (l.subjectId === "sub_ing" ||
+          l.subjectId === "sub_rus" ||
+          l.subjectId === "sub_nemis" ||
+          l.subjectId === "sub_fransuz") &&
+        l.dayOfWeek === 5
+    );
+    expect(englishOnFriday.length).toBe(0);
+
+    // 2. No teacher with a methodDayOfWeek should have ANY lesson on that day
+    for (const teacher of initialTeachers) {
+      if (teacher.methodDayOfWeek !== undefined) {
+        const teacherMethodLessons = result.lessons.filter(
+          (l) => l.teacherId === teacher.id && l.dayOfWeek === teacher.methodDayOfWeek
+        );
+        expect(teacherMethodLessons.length).toBe(0);
+      }
+    }
   });
 });

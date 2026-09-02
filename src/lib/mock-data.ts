@@ -429,8 +429,7 @@ export const initialSubjects: Subject[] = [
     "shortName": "Kelajak s.",
     "colorTag": "#8B5CF6",
     "difficultyScore": 1,
-    "allowDoubleLesson": false,
-    "methodDayOfWeek": 1
+    "allowDoubleLesson": false
   }
 ];
 

@@ -65,10 +65,24 @@ export function validateDropSlot({
     );
   }
 
-  // 1.2. O'qituvchining Metod Kuni (Method Day)
-  if (teacher?.methodDayOfWeek !== undefined && teacher.methodDayOfWeek === targetDay) {
+  // 1.2. O'qituvchi yoki Fanning Rasmiy Metod Kuni (Method Day)
+  const isTeacherMethodDay =
+    teacher?.methodDayOfWeek !== undefined &&
+    teacher.methodDayOfWeek !== null &&
+    teacher.methodDayOfWeek === targetDay;
+
+  const isSubjectMethodDay =
+    subject?.methodDayOfWeek !== undefined &&
+    subject.methodDayOfWeek !== null &&
+    subject.methodDayOfWeek === targetDay;
+
+  if (isTeacherMethodDay || isSubjectMethodDay) {
+    const dayName = WEEKDAY_NAMES[targetDay] || `${targetDay}-kun`;
+    const targetEntity = isTeacherMethodDay
+      ? `${teacher?.fullName || "O'qituvchi"}`
+      : `${subject?.name || "Fan"}`;
     conflicts.push(
-      `🛑 ${teacher.fullName} uchun ${WEEKDAY_NAMES[targetDay] || "bu kun"} rasmiy Metod kuni!`
+      `🛑 ${targetEntity} uchun ${dayName} rasmiy Metod kuni! Dars qo'yish qat'iyan taqiqlanadi!`
     );
   }
 
