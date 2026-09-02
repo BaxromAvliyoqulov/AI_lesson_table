@@ -411,7 +411,7 @@ export const MMTV_133_UZBEK_MEDIUM: MMTV133Row[] = [
   { direction: "Amaliy fanlar", subjectName: "Musiqa madaniyati", hoursByGrade: [1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0], canSplit: false },
   { direction: "Amaliy fanlar", subjectName: "Tasviriy san'at", hoursByGrade: [1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0], canSplit: false },
   { direction: "Amaliy fanlar", subjectName: "Texnologiya (Mehnat)", hoursByGrade: [1, 1, 1, 1, 2, 2, 2, 1, 1, 0, 0], canSplit: true, splitMinGrade: 5, splitMaxGrade: 9 },
-  { direction: "Amaliy fanlar", subjectName: "Jismoniy tarbiya", hoursByGrade: [1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2], canSplit: true, splitMinGrade: 8, splitMaxGrade: 11 },
+  { direction: "Amaliy fanlar", subjectName: "Jismoniy tarbiya", hoursByGrade: [1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2], canSplit: false },
   { direction: "Amaliy fanlar", subjectName: "CHQBT", hoursByGrade: [0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 2], canSplit: true, splitMinGrade: 10, splitMaxGrade: 11 },
   { direction: "Majburiy", subjectName: "Sinf soati (Kelajak soati)", hoursByGrade: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1], canSplit: false },
 ];
@@ -437,7 +437,7 @@ export const MMTV_133_RUSSIAN_MEDIUM: MMTV133Row[] = [
   { direction: "Amaliy fanlar", subjectName: "Musiqa madaniyati", hoursByGrade: [1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0], canSplit: false },
   { direction: "Amaliy fanlar", subjectName: "Tasviriy san'at", hoursByGrade: [1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0], canSplit: false },
   { direction: "Amaliy fanlar", subjectName: "Texnologiya (Mehnat)", hoursByGrade: [1, 1, 1, 1, 2, 2, 2, 1, 1, 0, 0], canSplit: true, splitMinGrade: 5, splitMaxGrade: 9 },
-  { direction: "Amaliy fanlar", subjectName: "Jismoniy tarbiya", hoursByGrade: [1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2], canSplit: true, splitMinGrade: 8, splitMaxGrade: 11 },
+  { direction: "Amaliy fanlar", subjectName: "Jismoniy tarbiya", hoursByGrade: [1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2], canSplit: false },
   { direction: "Amaliy fanlar", subjectName: "CHQBT", hoursByGrade: [0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 2], canSplit: true, splitMinGrade: 10, splitMaxGrade: 11 },
   { direction: "Majburiy", subjectName: "Sinf soati (Kelajak soati)", hoursByGrade: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1], canSplit: false },
 ];
@@ -462,9 +462,6 @@ export function checkMMTV133SplitEligibility(
   }
   if (sLower.includes("informatika") && grade >= 5) {
     return { eligible: true, reason: "133-sonli MMTV: Informatika 5-11 sinflarda 25+ o'quvchida 2 guruhga bo'linadi" };
-  }
-  if ((sLower.includes("jismoniy") || sLower.includes("sport")) && grade >= 8) {
-    return { eligible: true, reason: "133-sonli MMTV: Jismoniy tarbiya 8-11 sinflarda o'g'il/qiz guruhlariga bo'linadi" };
   }
   if ((sLower.includes("texnologiya") || sLower.includes("mehnat")) && grade >= 5 && grade <= 9) {
     return { eligible: true, reason: "133-sonli MMTV: Texnologiya 5-9 sinflarda 25+ o'quvchida guruhlarga bo'linadi" };
