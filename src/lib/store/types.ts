@@ -40,4 +40,6 @@ export interface SchoolStoreState {
   selectedClassId: string;
   isGenerating: boolean;
   syncStatus: SyncStatus;
+  lockedClassIds: string[];
+  lockedTeacherIds: string[];
 }

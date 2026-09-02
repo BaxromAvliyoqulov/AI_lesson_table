@@ -189,6 +189,9 @@ export interface SolverInput {
   rooms: Room[];
   shifts: Shift[];
   branches: Branch[];
+  existingLessons?: Lesson[];
+  lockedClassIds?: string[];
+  lockedTeacherIds?: string[];
   daysCount?: number;
   maxPeriodsPerDay?: number;
 }

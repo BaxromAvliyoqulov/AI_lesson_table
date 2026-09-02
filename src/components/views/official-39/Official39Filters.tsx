@@ -23,6 +23,9 @@ interface Official39FiltersProps {
   onOpenRequisites: () => void;
   onExportExcel?: () => void;
   onPrint: () => void;
+  lockedClassesCount?: number;
+  onLockPrimaryClasses?: () => void;
+  onLockAllClasses?: () => void;
 }
 
 export const Official39Filters: React.FC<Official39FiltersProps> = ({
@@ -36,6 +39,9 @@ export const Official39Filters: React.FC<Official39FiltersProps> = ({
   onOpenRequisites,
   onExportExcel,
   onPrint,
+  lockedClassesCount = 0,
+  onLockPrimaryClasses,
+  onLockAllClasses,
 }) => {
   return (
     <div className="no-print mb-6 p-3.5 rounded-2xl bg-slate-50 border border-slate-200 text-slate-900 shadow-sm flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3.5">
@@ -139,6 +145,30 @@ export const Official39Filters: React.FC<Official39FiltersProps> = ({
             title="7. Butun maktab: barcha bino va filiallardagi barcha sinflar"
           >
             <span>7. 🏛️ Hammasi</span>
+          </button>
+        </div>
+
+        {/* 🔒 Qulflash / Pin Boshqaruvi */}
+        <div className="flex items-center gap-1 bg-white p-1 rounded-xl border border-slate-200 shadow-sm">
+          <button
+            type="button"
+            onClick={onLockPrimaryClasses}
+            className="px-2.5 py-1.5 rounded-lg text-[11px] font-extrabold text-slate-700 hover:bg-slate-100 transition-all flex items-center gap-1 cursor-pointer"
+            title="1-4 Boshlang'ich sinflarning dars jadvalini qulflash / ochish (Generatsiyada darslari saqlanadi)"
+          >
+            <span>🔒 1-4 Boshlang'ich</span>
+          </button>
+          <button
+            type="button"
+            onClick={onLockAllClasses}
+            className={`px-2.5 py-1.5 rounded-lg text-[11px] font-extrabold transition-all flex items-center gap-1 cursor-pointer ${
+              lockedClassesCount > 0
+                ? "bg-rose-50 text-rose-700 hover:bg-rose-100"
+                : "text-slate-700 hover:bg-slate-100"
+            }`}
+            title="Barcha sinflar dars jadvalini qulflash yoki ochish"
+          >
+            <span>{lockedClassesCount > 0 ? `🔒 ${lockedClassesCount} Qulflangan` : "🔓 Barchasi ochiq"}</span>
           </button>
         </div>
       </div>

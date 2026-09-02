@@ -6,6 +6,8 @@ interface Official39TeacherSidebarProps {
   teacherNumberMap: Map<string, number>;
   teacherSubjectsMap: Map<string, string>;
   hoveredTeacherId: string | null;
+  lockedTeacherIds?: string[];
+  onToggleLockTeacher?: (teacherId: string) => void;
   onHoverTeacher: (teacherId: string | null) => void;
 }
 
@@ -14,6 +16,8 @@ export const Official39TeacherSidebar: React.FC<Official39TeacherSidebarProps> =
   teacherNumberMap,
   teacherSubjectsMap,
   hoveredTeacherId,
+  lockedTeacherIds,
+  onToggleLockTeacher,
   onHoverTeacher,
 }) => {
   return (
@@ -33,6 +37,7 @@ export const Official39TeacherSidebar: React.FC<Official39TeacherSidebarProps> =
           {teachers.map((teacher, tIdx) => {
             const num = teacherNumberMap.get(teacher.id) || 1;
             const isHovered = hoveredTeacherId === teacher.id;
+            const isLocked = lockedTeacherIds?.includes(teacher.id);
             const subjectsStr = teacherSubjectsMap.get(teacher.id) || "—";
             const isEven = tIdx % 2 !== 0;
 
@@ -44,17 +49,42 @@ export const Official39TeacherSidebar: React.FC<Official39TeacherSidebarProps> =
                 className={`border-b border-black transition-colors cursor-pointer ${
                   isHovered
                     ? "bg-amber-200 font-bold"
+                    : isLocked
+                    ? "bg-rose-50"
                     : isEven
                     ? "bg-slate-50"
                     : "bg-white"
                 }`}
-                title={`${teacher.fullName} (${subjectsStr}) — darslarini jadvalda ko'rish`}
+                title={`${teacher.fullName} (${subjectsStr}) — ${
+                  isLocked ? "🔒 Darslari qulflangan" : "Darslarini jadvalda ko'rish"
+                }`}
               >
                 <td className="border border-black p-1 text-center font-mono font-black text-slate-900 bg-slate-100">
                   {num}
                 </td>
-                <td className="border border-black p-1 font-bold text-slate-900 truncate max-w-[130px]">
-                  {teacher.fullName}
+                <td className="border border-black p-1 font-bold text-slate-900">
+                  <div className="flex items-center justify-between gap-1">
+                    <span className="truncate max-w-[110px]">{teacher.fullName}</span>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onToggleLockTeacher?.(teacher.id);
+                      }}
+                      className={`p-0.5 rounded text-[10px] cursor-pointer transition-transform active:scale-90 hover:scale-110 ${
+                        isLocked
+                          ? "text-rose-600 font-bold"
+                          : "text-slate-300 hover:text-slate-600 opacity-60 hover:opacity-100"
+                      }`}
+                      title={
+                        isLocked
+                          ? "🔒 O'qituvchi darslari qulflangan (Ochish uchun bosing)"
+                          : "🔓 O'qituvchi darslarini qulflash (Generatsiyada darslari saqlanadi)"
+                      }
+                    >
+                      {isLocked ? "🔒" : "🔓"}
+                    </button>
+                  </div>
                 </td>
                 <td className="border border-black p-1 text-[9.5px] text-slate-700 font-semibold truncate max-w-[140px]">
                   {subjectsStr}

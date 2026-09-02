@@ -169,9 +169,36 @@ export class CSPSolver {
       classSlots.set(cls.id, slots);
     }
 
-    // ── 2. QAT'IY BELGILANGAN DARSLAR (Kelajak soati / Sinf soati -> Dushanba 1-dars) ───
+    // ── 2. QAT'IY BELGILANGAN VA QULFLANGAN DARSLAR (Lock / Pin) ───
     const teacherOccupancy = new Map<string, number>(); // key: `${teacherId}_${day}_${period}` -> count
+    const lockedClassSet = new Set(this.input.lockedClassIds || []);
+    const lockedTeacherSet = new Set(this.input.lockedTeacherIds || []);
 
+    // 2.1. Mavjud qulflangan darslarni joy-joyiga qulflab qo'yish
+    if (this.input.existingLessons && this.input.existingLessons.length > 0) {
+      for (const el of this.input.existingLessons) {
+        const isClassLocked = lockedClassSet.has(el.classId);
+        const isTeacherLocked = lockedTeacherSet.has(el.teacherId);
+        const isExplicitlyLocked = el.isLocked === true;
+
+        if (isClassLocked || isTeacherLocked || isExplicitlyLocked) {
+          const slots = classSlots.get(el.classId) || [];
+          const slot = slots.find((s) => s.day === el.dayOfWeek && s.period === el.periodNumber);
+          if (slot && !slot.isLocked) {
+            slot.subjectId = el.subjectId;
+            slot.teacherId = el.teacherId;
+            slot.roomId = el.roomId || null;
+            slot.groupType = el.groupType || "WHOLE";
+            slot.isLocked = true;
+
+            const k = `${el.teacherId}_${el.dayOfWeek}_${el.periodNumber}`;
+            teacherOccupancy.set(k, (teacherOccupancy.get(k) || 0) + 1);
+          }
+        }
+      }
+    }
+
+    // 2.2. Kelajak soati / Sinf soati -> Dushanba 1-dars
     for (const cls of this.input.classes) {
       if (cls.isClosed) continue;
       const slots = classSlots.get(cls.id) || [];
@@ -188,7 +215,7 @@ export class CSPSolver {
       const homeroomId = cls.homeroomTeacherId || (ss ? ss.teacherId : null);
       const slotD1P1 = slots.find((s) => s.day === 1 && s.period === 1);
 
-      if (slotD1P1 && homeroomId) {
+      if (slotD1P1 && homeroomId && !slotD1P1.isLocked) {
         slotD1P1.subjectId = ss ? ss.subjectId : "sub_kelajak";
         slotD1P1.teacherId = homeroomId;
         slotD1P1.isLocked = true;
@@ -212,12 +239,21 @@ export class CSPSolver {
     const remaining: ReqLesson[] = [];
     for (const cls of this.input.classes) {
       if (cls.isClosed) continue;
+      // Agar sinf to'liq qulflangan bo'lsa, uning darslari qayta generatsiya qilinmaydi
+      if (lockedClassSet.has(cls.id)) continue;
+
       const subjects = effectiveClassSubjects.get(cls.id) || [];
       const slots = classSlots.get(cls.id) || [];
 
       for (const cs of subjects) {
         const sub = this.subjectMap.get(cs.subjectId);
         let hours = cs.weeklyHours;
+
+        // Allaqachon qulflangan slotlardagi soatlarni ayirib tashlash
+        const alreadyLockedHours = slots.filter(
+          (s) => s.isLocked && s.subjectId === cs.subjectId && s.teacherId === cs.teacherId
+        ).length;
+        hours = Math.max(0, hours - alreadyLockedHours);
 
         const isSinfSoati =
           cs.subjectId === "sub_sinf_soati" ||

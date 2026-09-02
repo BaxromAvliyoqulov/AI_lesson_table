@@ -27,6 +27,10 @@ interface Official39GridProps {
   teacherConflictsSet: Set<string>;
   hoveredTeacherId: string | null;
   activeDragLesson: Lesson | null;
+  lockedClassIds?: string[];
+  lockedTeacherIds?: string[];
+  onToggleLockClass?: (classId: string) => void;
+  onToggleLockTeacher?: (teacherId: string) => void;
   onHoverTeacher: (teacherId: string | null) => void;
   onCellClick: (cls: SchoolClass, day: number, period: number, lesson?: Lesson) => void;
   getHomeroomTeacher: (cls: SchoolClass) => Teacher | undefined;
@@ -51,6 +55,10 @@ export const Official39Grid: React.FC<Official39GridProps> = ({
   teacherConflictsSet,
   hoveredTeacherId,
   activeDragLesson,
+  lockedClassIds,
+  lockedTeacherIds,
+  onToggleLockClass,
+  onToggleLockTeacher,
   onHoverTeacher,
   onCellClick,
   getHomeroomTeacher,
@@ -76,6 +84,7 @@ export const Official39Grid: React.FC<Official39GridProps> = ({
 
               {displayClasses.map((cls) => {
                 const homeroomTeacher = getHomeroomTeacher(cls);
+                const isClassLocked = lockedClassIds?.includes(cls.id);
 
                 return (
                   <th
@@ -83,14 +92,37 @@ export const Official39Grid: React.FC<Official39GridProps> = ({
                     colSpan={2}
                     onClick={() => onOpenHomeroomModal(cls, homeroomTeacher?.id)}
                     className={`border border-black px-1.5 py-1 text-center font-black text-xs min-w-[92px] cursor-pointer hover:opacity-90 transition-opacity select-none ${
-                      cls.branchId === "b39_2"
+                      isClassLocked
+                        ? "bg-rose-50 text-rose-950 border-rose-600"
+                        : cls.branchId === "b39_2"
                         ? "bg-amber-100 text-amber-950"
                         : "bg-slate-100 text-slate-900"
                     }`}
                     title={`${cls.name} sinfi — Sinf rahbari: ${homeroomTeacher?.fullName || "Tayinlanmagan"} (O'zgartirish uchun bosing)`}
                   >
                     <div className="flex flex-col items-center">
-                      <span className="tracking-wide font-black text-xs">{cls.name}</span>
+                      <div className="flex items-center justify-center gap-1 w-full">
+                        <span className="tracking-wide font-black text-xs">{cls.name}</span>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onToggleLockClass?.(cls.id);
+                          }}
+                          className={`p-0.5 rounded text-[11px] transition-transform active:scale-90 hover:scale-110 cursor-pointer ${
+                            isClassLocked
+                              ? "text-rose-600 font-bold"
+                              : "text-slate-400 hover:text-slate-700 opacity-60 hover:opacity-100"
+                          }`}
+                          title={
+                            isClassLocked
+                              ? "🔒 Sinf jadvali qulflangan (Generatsiyada darslar o'zgarmaydi). Ochish uchun bosing"
+                              : "🔓 Sinf jadvalini qulflash (Generatsiyada darslar saqlanadi)"
+                          }
+                        >
+                          {isClassLocked ? "🔒" : "🔓"}
+                        </button>
+                      </div>
                       {homeroomTeacher ? (
                         <span className="text-[8px] font-semibold text-slate-600 truncate max-w-[85px]">
                           {homeroomTeacher.fullName.split(" ")[0]}
@@ -260,6 +292,8 @@ export const Official39Grid: React.FC<Official39GridProps> = ({
           teacherNumberMap={teacherNumberMap}
           teacherSubjectsMap={teacherSubjectsMap}
           hoveredTeacherId={hoveredTeacherId}
+          lockedTeacherIds={lockedTeacherIds}
+          onToggleLockTeacher={onToggleLockTeacher}
           onHoverTeacher={onHoverTeacher}
         />
       </div>

@@ -38,6 +38,10 @@ export default function TarifficationPage() {
 
     store.setIsGenerating(true);
     try {
+      const schoolLessons = store.lessons.filter((l) => l.schoolId === store.currentSchoolId).length > 0
+        ? store.lessons.filter((l) => l.schoolId === store.currentSchoolId)
+        : store.lessons;
+
       const solver = new CSPSolver({
         classes: schoolClasses,
         teachers: schoolTeachers,
@@ -45,6 +49,9 @@ export default function TarifficationPage() {
         rooms: schoolRooms,
         branches: schoolBranches,
         shifts: schoolShifts,
+        existingLessons: schoolLessons,
+        lockedClassIds: store.lockedClassIds,
+        lockedTeacherIds: store.lockedTeacherIds,
       });
       const result = solver.solve();
       store.setLessons(result.lessons);

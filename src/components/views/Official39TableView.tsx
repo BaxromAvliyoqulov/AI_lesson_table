@@ -26,6 +26,7 @@ import { Official39Filters } from "./official-39/Official39Filters";
 import { Official39Grid } from "./official-39/Official39Grid";
 import { Official39CellModal } from "./official-39/Official39CellModal";
 import { Official39RequisitesModal, Official39HomeroomModal } from "./official-39/Official39ExtraModals";
+import { useSchoolStore } from "@/lib/store/useSchoolStore";
 
 export const Official39TableView: React.FC<Official39TableViewProps> = ({
   classes,
@@ -50,6 +51,15 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
   academicYear = "2025 - 2026",
   approvalDate = "2026-yil 28-mart",
 }) => {
+  const {
+    lockedClassIds,
+    lockedTeacherIds,
+    toggleLockClass,
+    toggleLockTeacher,
+    lockPrimaryClasses,
+    lockAllClasses,
+  } = useSchoolStore();
+
   const [filterScope, setFilterScope] = useState<FilterScope>("MAIN_HIGH");
   const [hoveredTeacherId, setHoveredTeacherId] = useState<string | null>(null);
   const [activeDragLesson, setActiveDragLesson] = useState<Lesson | null>(null);
@@ -583,6 +593,9 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
           onOpenRequisites={() => setIsRequisitesModalOpen(true)}
           onExportExcel={onExportExcel}
           onPrint={() => window.print()}
+          lockedClassesCount={lockedClassIds.length}
+          onLockPrimaryClasses={() => lockPrimaryClasses()}
+          onLockAllClasses={() => lockAllClasses()}
         />
 
         <div
@@ -618,6 +631,10 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
             teacherConflictsSet={teacherConflictsSet}
             hoveredTeacherId={hoveredTeacherId}
             activeDragLesson={activeDragLesson}
+            lockedClassIds={lockedClassIds}
+            lockedTeacherIds={lockedTeacherIds}
+            onToggleLockClass={toggleLockClass}
+            onToggleLockTeacher={toggleLockTeacher}
             onHoverTeacher={setHoveredTeacherId}
             onCellClick={handleCellClick}
             getHomeroomTeacher={getHomeroomTeacher}

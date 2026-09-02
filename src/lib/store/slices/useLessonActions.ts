@@ -151,6 +151,101 @@ export function useLessonActions() {
     }));
   }, []);
 
+  const toggleLockClass = useCallback((classId: string) => {
+    updateStore((prev) => {
+      const isLocked = prev.lockedClassIds.includes(classId);
+      const nextLockedIds = isLocked
+        ? prev.lockedClassIds.filter((id) => id !== classId)
+        : [...prev.lockedClassIds, classId];
+
+      const nextLessons = prev.lessons.map((l) => {
+        if (l.classId === classId) {
+          return { ...l, isLocked: !isLocked };
+        }
+        return l;
+      });
+
+      return {
+        ...prev,
+        lockedClassIds: nextLockedIds,
+        lessons: nextLessons,
+      };
+    });
+    const cls = storeState.classes.find((c) => c.id === classId);
+    addAuditLog("Sinf qulflanishi o'zgardi", `${cls?.name || classId} sinfi jadvali holati yangilandi`);
+  }, []);
+
+  const toggleLockTeacher = useCallback((teacherId: string) => {
+    updateStore((prev) => {
+      const isLocked = prev.lockedTeacherIds.includes(teacherId);
+      const nextLockedIds = isLocked
+        ? prev.lockedTeacherIds.filter((id) => id !== teacherId)
+        : [...prev.lockedTeacherIds, teacherId];
+
+      const nextLessons = prev.lessons.map((l) => {
+        if (l.teacherId === teacherId) {
+          return { ...l, isLocked: !isLocked };
+        }
+        return l;
+      });
+
+      return {
+        ...prev,
+        lockedTeacherIds: nextLockedIds,
+        lessons: nextLessons,
+      };
+    });
+    const tch = storeState.teachers.find((t) => t.id === teacherId);
+    addAuditLog("O'qituvchi qulflanishi o'zgardi", `${tch?.fullName || teacherId} darslari holati yangilandi`);
+  }, []);
+
+  const lockPrimaryClasses = useCallback((forceLock?: boolean) => {
+    updateStore((prev) => {
+      const primaryClassIds = prev.classes.filter((c) => c.grade <= 4).map((c) => c.id);
+      const shouldLock = forceLock !== undefined
+        ? forceLock
+        : !primaryClassIds.every((id) => prev.lockedClassIds.includes(id));
+
+      const nextLockedIds = shouldLock
+        ? Array.from(new Set([...prev.lockedClassIds, ...primaryClassIds]))
+        : prev.lockedClassIds.filter((id) => !primaryClassIds.includes(id));
+
+      const primarySet = new Set(primaryClassIds);
+      const nextLessons = prev.lessons.map((l) => {
+        if (primarySet.has(l.classId)) {
+          return { ...l, isLocked: shouldLock };
+        }
+        return l;
+      });
+
+      return {
+        ...prev,
+        lockedClassIds: nextLockedIds,
+        lessons: nextLessons,
+      };
+    });
+    addAuditLog("Boshlang'ich sinflar qulfi", "1-4 boshlang'ich sinflar jadvali qulflanishi yangilandi");
+  }, []);
+
+  const lockAllClasses = useCallback((forceLock?: boolean) => {
+    updateStore((prev) => {
+      const allClassIds = prev.classes.map((c) => c.id);
+      const shouldLock = forceLock !== undefined
+        ? forceLock
+        : prev.lockedClassIds.length !== allClassIds.length;
+
+      const nextLockedIds = shouldLock ? allClassIds : [];
+      const nextLessons = prev.lessons.map((l) => ({ ...l, isLocked: shouldLock }));
+
+      return {
+        ...prev,
+        lockedClassIds: nextLockedIds,
+        lessons: nextLessons,
+      };
+    });
+    addAuditLog("Barcha sinflar qulfi", "Barcha sinflar dars jadvali qulflanishi yangilandi");
+  }, []);
+
   const undo = useCallback(() => {
     if (storeState.history.length === 0) return;
     updateStore((prev) => {
@@ -172,6 +267,10 @@ export function useLessonActions() {
     moveLesson,
     swapLessons,
     toggleLessonLock,
+    toggleLockClass,
+    toggleLockTeacher,
+    lockPrimaryClasses,
+    lockAllClasses,
     undo,
   };
 }

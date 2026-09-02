@@ -373,3 +373,109 @@ export function getAvailableSubjectsForGrade(allSubjects: Subject[], grade: numb
   return allSubjects.filter((s) => s.isActive !== false && isSubjectSuitableForGrade(s, grade));
 }
 
+/**
+ * =====================================================================
+ * O'zbekiston Respublikasi MMTV 133-sonli Rasmiy Tayanch O'quv Rejasi
+ * (2026-2027 o'quv yili standarti)
+ * 1-Ilova: O'zbek tili ta'limi
+ * 2-Ilova: Rus tili ta'limi
+ * =====================================================================
+ */
+export interface MMTV133Row {
+  direction: string; // Yo'nalish
+  subjectName: string;
+  hoursByGrade: number[]; // [1-sinf, 2-sinf, ..., 11-sinf]
+  canSplit: boolean;
+  splitMinGrade?: number;
+  splitMaxGrade?: number;
+}
+
+export const MMTV_133_UZBEK_MEDIUM: MMTV133Row[] = [
+  { direction: "Filologiya", subjectName: "Ona tili", hoursByGrade: [4, 4, 4, 4, 4, 4, 3, 3, 3, 2, 2], canSplit: false },
+  { direction: "Filologiya", subjectName: "O'qish savodxonligi", hoursByGrade: [4, 3, 3, 3, 0, 0, 0, 0, 0, 0, 0], canSplit: false },
+  { direction: "Filologiya", subjectName: "Adabiyot", hoursByGrade: [0, 0, 0, 0, 2, 2, 2, 2, 2, 2, 2], canSplit: false },
+  { direction: "Filologiya", subjectName: "Rus tili", hoursByGrade: [0, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2], canSplit: true, splitMinGrade: 2, splitMaxGrade: 11 },
+  { direction: "Filologiya", subjectName: "Chet tili (Ingliz tili)", hoursByGrade: [1, 2, 2, 2, 4, 4, 4, 3, 3, 2, 2], canSplit: true, splitMinGrade: 1, splitMaxGrade: 11 },
+  { direction: "Ijtimoiy fanlar", subjectName: "Tarix", hoursByGrade: [0, 0, 0, 0, 2, 2, 2, 3, 3, 2, 2], canSplit: false },
+  { direction: "Ijtimoiy fanlar", subjectName: "Davlat va huquq asoslari", hoursByGrade: [0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1], canSplit: false },
+  { direction: "Ijtimoiy fanlar", subjectName: "Tarbiya", hoursByGrade: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1], canSplit: false },
+  { direction: "Aniq fanlar", subjectName: "Matematika", hoursByGrade: [5, 5, 5, 5, 5, 5, 5, 0, 0, 0, 0], canSplit: false },
+  { direction: "Aniq fanlar", subjectName: "Algebra", hoursByGrade: [0, 0, 0, 0, 0, 0, 0, 3, 3, 3, 3], canSplit: false },
+  { direction: "Aniq fanlar", subjectName: "Geometriya", hoursByGrade: [0, 0, 0, 0, 0, 0, 0, 2, 2, 2, 2], canSplit: false },
+  { direction: "Aniq fanlar", subjectName: "Informatika va AT", hoursByGrade: [1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2], canSplit: true, splitMinGrade: 5, splitMaxGrade: 11 },
+  { direction: "Tabiiy fanlar", subjectName: "Fizika", hoursByGrade: [0, 0, 0, 0, 0, 0, 2, 2, 2, 2, 2], canSplit: false },
+  { direction: "Tabiiy fanlar", subjectName: "Kimyo", hoursByGrade: [0, 0, 0, 0, 0, 0, 2, 2, 2, 2, 2], canSplit: false },
+  { direction: "Tabiiy fanlar", subjectName: "Biologiya", hoursByGrade: [0, 0, 0, 0, 0, 0, 2, 2, 2, 2, 2], canSplit: false },
+  { direction: "Tabiiy fanlar", subjectName: "Geografiya", hoursByGrade: [0, 0, 0, 0, 0, 0, 2, 1.5, 1.5, 2, 0], canSplit: false },
+  { direction: "Tabiiy fanlar", subjectName: "Tabiiy fan (Science)", hoursByGrade: [1, 1, 1, 1, 2, 3, 0, 0, 0, 0, 0], canSplit: false },
+  { direction: "Amaliy fanlar", subjectName: "Musiqa madaniyati", hoursByGrade: [1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0], canSplit: false },
+  { direction: "Amaliy fanlar", subjectName: "Tasviriy san'at", hoursByGrade: [1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0], canSplit: false },
+  { direction: "Amaliy fanlar", subjectName: "Texnologiya (Mehnat)", hoursByGrade: [1, 1, 1, 1, 2, 2, 2, 1, 1, 0, 0], canSplit: true, splitMinGrade: 5, splitMaxGrade: 9 },
+  { direction: "Amaliy fanlar", subjectName: "Jismoniy tarbiya", hoursByGrade: [1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2], canSplit: true, splitMinGrade: 8, splitMaxGrade: 11 },
+  { direction: "Amaliy fanlar", subjectName: "CHQBT", hoursByGrade: [0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 2], canSplit: true, splitMinGrade: 10, splitMaxGrade: 11 },
+  { direction: "Majburiy", subjectName: "Sinf soati (Kelajak soati)", hoursByGrade: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1], canSplit: false },
+];
+
+export const MMTV_133_RUSSIAN_MEDIUM: MMTV133Row[] = [
+  { direction: "Filologiya", subjectName: "Ona tili (Rus tili)", hoursByGrade: [4, 4, 4, 4, 3, 3, 2, 2, 2, 1, 1], canSplit: false },
+  { direction: "Filologiya", subjectName: "O'qish savodxonligi", hoursByGrade: [4, 3, 3, 3, 0, 0, 0, 0, 0, 0, 0], canSplit: false },
+  { direction: "Filologiya", subjectName: "Adabiyot", hoursByGrade: [0, 0, 0, 0, 2, 2, 2, 2, 2, 2, 2], canSplit: false },
+  { direction: "Filologiya", subjectName: "Davlat tili (O'zbek tili)", hoursByGrade: [0, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3], canSplit: true, splitMinGrade: 2, splitMaxGrade: 11 },
+  { direction: "Filologiya", subjectName: "Chet tili (Ingliz tili)", hoursByGrade: [1, 2, 2, 2, 4, 4, 4, 3, 3, 2, 2], canSplit: true, splitMinGrade: 1, splitMaxGrade: 11 },
+  { direction: "Ijtimoiy fanlar", subjectName: "Tarix", hoursByGrade: [0, 0, 0, 0, 2, 2, 2, 3, 3, 2, 2], canSplit: false },
+  { direction: "Ijtimoiy fanlar", subjectName: "Davlat va huquq asoslari", hoursByGrade: [0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1], canSplit: false },
+  { direction: "Ijtimoiy fanlar", subjectName: "Tarbiya", hoursByGrade: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1], canSplit: false },
+  { direction: "Aniq fanlar", subjectName: "Matematika", hoursByGrade: [5, 5, 5, 5, 5, 5, 5, 0, 0, 0, 0], canSplit: false },
+  { direction: "Aniq fanlar", subjectName: "Algebra", hoursByGrade: [0, 0, 0, 0, 0, 0, 0, 3, 3, 3, 3], canSplit: false },
+  { direction: "Aniq fanlar", subjectName: "Geometriya", hoursByGrade: [0, 0, 0, 0, 0, 0, 0, 2, 2, 2, 2], canSplit: false },
+  { direction: "Aniq fanlar", subjectName: "Informatika va AT", hoursByGrade: [1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2], canSplit: true, splitMinGrade: 5, splitMaxGrade: 11 },
+  { direction: "Tabiiy fanlar", subjectName: "Fizika", hoursByGrade: [0, 0, 0, 0, 0, 0, 2, 2, 2, 2, 2], canSplit: false },
+  { direction: "Tabiiy fanlar", subjectName: "Kimyo", hoursByGrade: [0, 0, 0, 0, 0, 0, 2, 2, 2, 2, 2], canSplit: false },
+  { direction: "Tabiiy fanlar", subjectName: "Biologiya", hoursByGrade: [0, 0, 0, 0, 0, 0, 2, 2, 2, 2, 2], canSplit: false },
+  { direction: "Tabiiy fanlar", subjectName: "Geografiya", hoursByGrade: [0, 0, 0, 0, 0, 0, 2, 1.5, 1.5, 2, 0], canSplit: false },
+  { direction: "Tabiiy fanlar", subjectName: "Tabiiy fan (Science)", hoursByGrade: [1, 1, 1, 1, 2, 3, 0, 0, 0, 0, 0], canSplit: false },
+  { direction: "Amaliy fanlar", subjectName: "Musiqa madaniyati", hoursByGrade: [1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0], canSplit: false },
+  { direction: "Amaliy fanlar", subjectName: "Tasviriy san'at", hoursByGrade: [1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0], canSplit: false },
+  { direction: "Amaliy fanlar", subjectName: "Texnologiya (Mehnat)", hoursByGrade: [1, 1, 1, 1, 2, 2, 2, 1, 1, 0, 0], canSplit: true, splitMinGrade: 5, splitMaxGrade: 9 },
+  { direction: "Amaliy fanlar", subjectName: "Jismoniy tarbiya", hoursByGrade: [1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2], canSplit: true, splitMinGrade: 8, splitMaxGrade: 11 },
+  { direction: "Amaliy fanlar", subjectName: "CHQBT", hoursByGrade: [0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 2], canSplit: true, splitMinGrade: 10, splitMaxGrade: 11 },
+  { direction: "Majburiy", subjectName: "Sinf soati (Kelajak soati)", hoursByGrade: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1], canSplit: false },
+];
+
+/**
+ * Sinfdagi o'quvchilar soni 25 va undan ortiq bo'lganda
+ * MMTV 133-sonli normativ bo'yicha guruhga bo'linish tavsiyasi
+ */
+export function checkMMTV133SplitEligibility(
+  subjectName: string,
+  grade: number,
+  studentCount: number = 25
+): { eligible: boolean; reason?: string } {
+  if (studentCount < 25) {
+    return { eligible: false, reason: "O'quvchilar soni 25 dan kam (Bo'linmaydi)" };
+  }
+
+  const sLower = subjectName.toLowerCase();
+
+  if (sLower.includes("ingliz") || sLower.includes("chet tili")) {
+    return { eligible: true, reason: "133-sonli MMTV: Chet tili 1-11 sinflarda 25+ o'quvchida 2 guruhga bo'linadi" };
+  }
+  if (sLower.includes("informatika") && grade >= 5) {
+    return { eligible: true, reason: "133-sonli MMTV: Informatika 5-11 sinflarda 25+ o'quvchida 2 guruhga bo'linadi" };
+  }
+  if ((sLower.includes("jismoniy") || sLower.includes("sport")) && grade >= 8) {
+    return { eligible: true, reason: "133-sonli MMTV: Jismoniy tarbiya 8-11 sinflarda o'g'il/qiz guruhlariga bo'linadi" };
+  }
+  if ((sLower.includes("texnologiya") || sLower.includes("mehnat")) && grade >= 5 && grade <= 9) {
+    return { eligible: true, reason: "133-sonli MMTV: Texnologiya 5-9 sinflarda 25+ o'quvchida guruhlarga bo'linadi" };
+  }
+  if (sLower.includes("rus tili") && grade >= 2) {
+    return { eligible: true, reason: "133-sonli MMTV: Rus tili 2-11 sinflarda 25+ o'quvchida guruhlarga bo'linadi" };
+  }
+  if (sLower.includes("chqbt") && grade >= 10) {
+    return { eligible: true, reason: "133-sonli MMTV: CHQBT 10-11 sinflarda harbiy va tibbiy guruhlarga bo'linadi" };
+  }
+
+  return { eligible: false };
+}
+

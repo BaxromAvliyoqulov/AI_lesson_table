@@ -104,6 +104,9 @@ export default function HomePage() {
           rooms: schoolRooms,
           shifts: schoolShifts,
           branches: schoolBranches,
+          existingLessons: schoolLessons,
+          lockedClassIds: store.lockedClassIds,
+          lockedTeacherIds: store.lockedTeacherIds,
         });
 
         const result = solver.solve();

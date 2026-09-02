@@ -65,6 +65,8 @@ export function createInitialState(): SchoolStoreState {
     selectedClassId: "",
     isGenerating: false,
     syncStatus: "synced",
+    lockedClassIds: [],
+    lockedTeacherIds: [],
   };
 }
 
