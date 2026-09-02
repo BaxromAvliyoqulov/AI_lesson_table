@@ -41,7 +41,8 @@ export class CSPSolver {
         if (t.methodDayOfWeek === day) return true;
       }
     }
-    // 2. Fanning rasmiy metod kuni
+
+    // 2. Ushbu dars fanning rasmiy metod kuni
     if (subjectId) {
       const s = this.subjectMap.get(subjectId);
       if (s?.methodDayOfWeek !== undefined && s.methodDayOfWeek !== null) {

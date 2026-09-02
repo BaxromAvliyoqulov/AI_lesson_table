@@ -3,6 +3,7 @@
 import React, { useState, useMemo } from "react";
 import { Subject } from "@/types";
 import { getSanPiNBadge } from "@/lib/utils";
+import { getOfficialMethodDayForSubject } from "@/lib/constants/method-days";
 import {
   BookOpen,
   Plus,
@@ -345,13 +346,21 @@ export const SubjectsTab: React.FC<SubjectsTabProps> = ({
                         <span>Metod kuni:</span>
                       </span>
                       <span className="font-semibold text-foreground shrink-0 text-right">
-                        {subject.methodDayOfWeek ? (
-                          <span className="px-1.5 py-0.5 rounded bg-primary/10 text-primary font-bold text-[10px]">
-                            {WEEKDAYS[subject.methodDayOfWeek - 1]}
-                          </span>
-                        ) : (
-                          <span className="text-[10px] text-muted-foreground">Belgilanmagan</span>
-                        )}
+                        {(() => {
+                          const eff = subject.methodDayOfWeek ?? getOfficialMethodDayForSubject(subject.name || subject.id);
+                          if (!eff) return <span className="text-[10px] text-muted-foreground">Yo'q</span>;
+                          const isCustom = subject.methodDayOfWeek !== undefined && subject.methodDayOfWeek !== null;
+                          return (
+                            <span className={`px-2 py-0.5 rounded font-bold text-[10px] border ${
+                              isCustom
+                                ? "bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30"
+                                : "bg-primary/10 text-primary border-primary/20"
+                            }`}>
+                              {WEEKDAYS[eff - 1]}
+                              {!isCustom && <span className="ml-1 text-[9px] opacity-75">(Standart)</span>}
+                            </span>
+                          );
+                        })()}
                       </span>
                     </div>
                   </div>

@@ -1,5 +1,5 @@
 import { Lesson, SchoolClass, Subject, Teacher, Room, Shift, Branch } from "@/types";
-import { getOfficialMethodDayForSubject } from "@/lib/constants/method-days";
+import { getOfficialMethodDayForSubject, getEffectiveTeacherMethodDay } from "@/lib/constants/method-days";
 
 export interface DropSlotValidation {
   status: "safe" | "warning" | "conflict";
@@ -67,10 +67,11 @@ export function validateDropSlot({
   }
 
   // 1.2. O'qituvchi yoki Fanning Rasmiy Metod Kuni (Method Day)
-  const isTeacherMethodDay =
-    teacher?.methodDayOfWeek !== undefined &&
-    teacher.methodDayOfWeek !== null &&
-    teacher.methodDayOfWeek === targetDay;
+  const teacherMethodInfo = teacher
+    ? getEffectiveTeacherMethodDay(teacher, subjects)
+    : { day: null, dayName: null, source: "NONE" };
+
+  const isTeacherMethodDay = teacherMethodInfo.day === targetDay;
 
   const subjectMethodDay =
     subject?.methodDayOfWeek !== undefined && subject.methodDayOfWeek !== null
@@ -82,7 +83,7 @@ export function validateDropSlot({
   if (isTeacherMethodDay || isSubjectMethodDay) {
     const dayName = WEEKDAY_NAMES[targetDay] || `${targetDay}-kun`;
     const targetEntity = isTeacherMethodDay
-      ? `${teacher?.fullName || "O'qituvchi"}`
+      ? `${teacher?.fullName || "O'qituvchi"} (${teacherMethodInfo.source === "SUBJECT_OFFICIAL" ? `${teacherMethodInfo.subjectName} fani` : "shaxsiy"} metod kuni)`
       : `${subject?.name || "Fan"}`;
     conflicts.push(
       `🛑 ${targetEntity} uchun ${dayName} rasmiy Metod kuni! Dars qo'yish qat'iyan taqiqlanadi!`

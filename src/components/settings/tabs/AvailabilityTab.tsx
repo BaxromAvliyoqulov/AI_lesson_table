@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Teacher, TeacherAvailability } from "@/types";
 import { TeacherSelectCombobox } from "../shared/TeacherSelectCombobox";
 import { useSchoolStore } from "@/lib/store/useSchoolStore";
+import { getEffectiveTeacherMethodDay } from "@/lib/constants/method-days";
 import {
   Calendar,
   Check,
@@ -35,7 +36,7 @@ export const AvailabilityTab: React.FC<AvailabilityTabProps> = ({
   teachers,
   onSaveAvailability,
 }) => {
-  const { setTeacherMethodDay } = useSchoolStore();
+  const { setTeacherMethodDay, subjects = [] } = useSchoolStore();
   const [selectedTeacherId, setSelectedTeacherId] = useState<string>(
     teachers[0]?.id || ""
   );
@@ -51,21 +52,27 @@ export const AvailabilityTab: React.FC<AvailabilityTabProps> = ({
     }
   }, [selectedTeacherId, selectedTeacher]);
 
+  // O'qituvchining shaxsiy yoki uning fani standarti bo'yicha haqiqiy metod kuni
+  const methodDayInfo = useMemo(() => {
+    if (!selectedTeacher) return { day: null, dayName: null, source: "NONE" as const };
+    return getEffectiveTeacherMethodDay(selectedTeacher, subjects);
+  }, [selectedTeacher, subjects]);
+
   const handleSelectMethodDay = (dayId: number | null) => {
     if (!selectedTeacherId) return;
     setTeacherMethodDay(selectedTeacherId, dayId);
   };
 
   const isCellAvailable = (day: number, period: number): boolean => {
-    // If it's teacher's method day, automatically unavailable
-    if (selectedTeacher?.methodDayOfWeek === day) return false;
+    // If it's teacher's or subject's official method day, automatically unavailable
+    if (methodDayInfo.day === day) return false;
 
     const av = availabilities.find((a) => a.dayOfWeek === day && a.period === period);
     return av ? av.isAvailable : true; // Default true
   };
 
   const toggleCell = (day: number, period: number) => {
-    if (selectedTeacher?.methodDayOfWeek === day) return; // Cannot toggle on method day
+    if (methodDayInfo.day === day) return; // Cannot toggle on method day
 
     const current = isCellAvailable(day, period);
     const existingIndex = availabilities.findIndex(
@@ -173,10 +180,15 @@ export const AvailabilityTab: React.FC<AvailabilityTabProps> = ({
             <div>
               <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
                 <span>{selectedTeacher.fullName}</span>
-                {selectedTeacher.methodDayOfWeek && (
+                {methodDayInfo.day && (
                   <span className="text-xs px-2.5 py-0.5 rounded-full font-extrabold bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30 flex items-center gap-1">
                     <Star className="w-3 h-3 fill-amber-500 text-amber-500" />
-                    <span>Metod kuni: {DAYS[selectedTeacher.methodDayOfWeek - 1]?.name}</span>
+                    <span>
+                      Metod kuni: {methodDayInfo.dayName}
+                      {methodDayInfo.source === "SUBJECT_OFFICIAL" && (
+                        <span className="opacity-80 ml-1">({methodDayInfo.subjectName} standarti)</span>
+                      )}
+                    </span>
                   </span>
                 )}
               </h3>
@@ -209,8 +221,12 @@ export const AvailabilityTab: React.FC<AvailabilityTabProps> = ({
               </div>
               <div>
                 <div className="text-xs font-bold text-amber-900 dark:text-amber-200">
-                  {selectedTeacher.methodDayOfWeek
-                    ? `Haftalik Metod kuni: ${DAYS[selectedTeacher.methodDayOfWeek - 1]?.name}`
+                  {methodDayInfo.day
+                    ? `Haftalik Metod kuni: ${methodDayInfo.dayName} ${
+                        methodDayInfo.source === "SUBJECT_OFFICIAL"
+                          ? `(⚡ ${methodDayInfo.subjectName || "Fan"} rasmiy standarti)`
+                          : "(Qo'lda biriktirilgan)"
+                      }`
                     : "Metod kuni belgilanmagan"}
                 </div>
                 <div className="text-[11px] text-amber-700/80 dark:text-amber-400">
@@ -221,12 +237,13 @@ export const AvailabilityTab: React.FC<AvailabilityTabProps> = ({
 
             <div className="flex items-center gap-1.5 flex-wrap">
               {DAYS.map((d) => {
-                const isSelected = selectedTeacher.methodDayOfWeek === d.id;
+                const isSelected = methodDayInfo.day === d.id;
+                const isExplicit = selectedTeacher.methodDayOfWeek === d.id;
                 return (
                   <button
                     key={`method_select_${d.id}`}
                     type="button"
-                    onClick={() => handleSelectMethodDay(isSelected ? null : d.id)}
+                    onClick={() => handleSelectMethodDay(isExplicit ? null : d.id)}
                     className={`px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                       isSelected
                         ? "bg-amber-500 text-slate-950 font-extrabold shadow-sm scale-105"
@@ -245,7 +262,7 @@ export const AvailabilityTab: React.FC<AvailabilityTabProps> = ({
                   type="button"
                   onClick={() => handleSelectMethodDay(null)}
                   className="px-2 py-1.5 rounded-xl text-xs font-bold text-rose-600 hover:bg-rose-100/60 dark:hover:bg-rose-950/30 transition-colors cursor-pointer"
-                  title="Metod kunini bekor qilish"
+                  title="Qo'lda kiritilgan metod kunini bekor qilish (fan standartiga qaytarish)"
                 >
                   ✕ Bekor qilish
                 </button>
@@ -261,7 +278,7 @@ export const AvailabilityTab: React.FC<AvailabilityTabProps> = ({
                     Dars
                   </th>
                   {DAYS.map((d) => {
-                    const isMethodDay = selectedTeacher.methodDayOfWeek === d.id;
+                    const isMethodDay = methodDayInfo.day === d.id;
                     return (
                       <th
                         key={d.id}
@@ -275,7 +292,7 @@ export const AvailabilityTab: React.FC<AvailabilityTabProps> = ({
                           <span className="font-extrabold">{d.name}</span>
                           <button
                             type="button"
-                            onClick={() => handleSelectMethodDay(isMethodDay ? null : d.id)}
+                            onClick={() => handleSelectMethodDay(isMethodDay && selectedTeacher.methodDayOfWeek === d.id ? null : d.id)}
                             className={`px-2 py-0.5 rounded-lg text-[10px] font-bold transition-all cursor-pointer ${
                               isMethodDay
                                 ? "bg-amber-500 text-slate-950 shadow-xs"
@@ -298,7 +315,7 @@ export const AvailabilityTab: React.FC<AvailabilityTabProps> = ({
                       {period}-soat
                     </td>
                     {DAYS.map((day) => {
-                      const isMethodDay = selectedTeacher.methodDayOfWeek === day.id;
+                      const isMethodDay = methodDayInfo.day === day.id;
                       const available = isCellAvailable(day.id, period);
 
                       return (

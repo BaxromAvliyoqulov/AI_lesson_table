@@ -81,7 +81,8 @@ export const SubjectModal: React.FC<SubjectModalProps> = ({
         setDifficultyScore(editingSubject.difficultyScore);
         setAllowDoubleLesson(editingSubject.allowDoubleLesson);
         setRequiresRoomType(editingSubject.requiresRoomType || "");
-        setMethodDayOfWeek(editingSubject.methodDayOfWeek || "");
+        const effectiveDay = editingSubject.methodDayOfWeek ?? getOfficialMethodDayForSubject(editingSubject.name);
+        setMethodDayOfWeek(effectiveDay ?? "");
         setIsActive(editingSubject.isActive !== false);
       } else {
         setName("");

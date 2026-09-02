@@ -3,6 +3,7 @@
 import React, { useState, useMemo, useCallback } from "react";
 import { Teacher, Subject, SchoolClass } from "@/types";
 import { ClassSelectCombobox } from "../shared/ClassSelectCombobox";
+import { getEffectiveTeacherMethodDay } from "@/lib/constants/method-days";
 import {
   Users,
   Plus,
@@ -708,13 +709,32 @@ export const TeachersTab: React.FC<TeachersTabProps> = ({
                         <span>Metod kuni:</span>
                       </span>
                       <span className="font-semibold text-foreground shrink-0 text-right truncate">
-                        {teacher.methodDayOfWeek ? (
-                          <span className="px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-600 dark:text-amber-400 font-bold text-[10px]">
-                            {WEEKDAYS[teacher.methodDayOfWeek - 1]}
-                          </span>
-                        ) : (
-                          <span className="text-[10px] text-muted-foreground">Belgilanmagan</span>
-                        )}
+                        {(() => {
+                          const eff = getEffectiveTeacherMethodDay(teacher, subjects);
+                          if (!eff.day) {
+                            return <span className="text-[10px] text-muted-foreground">Belgilanmagan</span>;
+                          }
+                          const isCustom = eff.source === "TEACHER_EXPLICIT";
+                          return (
+                            <span
+                              className={`px-2 py-0.5 rounded font-bold text-[10px] border inline-flex items-center gap-1 ${
+                                isCustom
+                                  ? "bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30"
+                                  : "bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 border-indigo-500/25"
+                              }`}
+                              title={
+                                isCustom
+                                  ? "O'qituvchiga shaxsiy belgilangan metod kuni"
+                                  : `${eff.subjectName || "Fan"} rasmiy standarti bo'yicha avtomatik belgilangan`
+                              }
+                            >
+                              <span>{eff.dayName}</span>
+                              {!isCustom && eff.subjectName && (
+                                <span className="opacity-75 text-[9px]">({eff.subjectName.slice(0, 8)})</span>
+                              )}
+                            </span>
+                          );
+                        })()}
                       </span>
                     </div>
 

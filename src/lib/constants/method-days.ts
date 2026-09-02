@@ -207,3 +207,57 @@ export const WEEKDAY_NAME_MAP: Record<number, string> = {
   6: "Shanba",
   7: "Yakshanba",
 };
+
+export interface EffectiveMethodDayResult {
+  day: number | null;
+  dayName: string | null;
+  source: "TEACHER_EXPLICIT" | "SUBJECT_OFFICIAL" | "NONE";
+  subjectName?: string;
+}
+
+/**
+ * O'qituvchining haqiqiy amal qiluvchi Metod Kunini avtomatik aniqlash:
+ * 1. O'qituvchining o'zida shaxsiy belgilangan methodDayOfWeek bo'lsa -> o'sha olinadi.
+ * 2. O'qituvchining fani(lari) mavjud bo'lsa -> fanning methodDayOfWeek yoki MMTV rasmiy standarti olinadi.
+ */
+export function getEffectiveTeacherMethodDay(
+  teacher: {
+    methodDayOfWeek?: number | null;
+    subjectIds?: string[];
+    fullName?: string;
+  },
+  allSubjects: Array<{ id: string; name: string; methodDayOfWeek?: number | null }> = []
+): EffectiveMethodDayResult {
+  // 1. O'qituvchining shaxsiy belgilangan metod kuni
+  if (teacher.methodDayOfWeek !== undefined && teacher.methodDayOfWeek !== null && teacher.methodDayOfWeek >= 1 && teacher.methodDayOfWeek <= 6) {
+    return {
+      day: teacher.methodDayOfWeek,
+      dayName: WEEKDAY_NAME_MAP[teacher.methodDayOfWeek] || null,
+      source: "TEACHER_EXPLICIT",
+    };
+  }
+
+  // 2. Fani bo'yicha avtomatik aniqlash
+  if (teacher.subjectIds && teacher.subjectIds.length > 0) {
+    for (const sid of teacher.subjectIds) {
+      const sub = allSubjects.find((s) => s.id === sid);
+      if (sub) {
+        const subMethod = sub.methodDayOfWeek ?? getOfficialMethodDayForSubject(sub.name || sub.id);
+        if (subMethod !== null && subMethod >= 1 && subMethod <= 6) {
+          return {
+            day: subMethod,
+            dayName: WEEKDAY_NAME_MAP[subMethod] || null,
+            source: "SUBJECT_OFFICIAL",
+            subjectName: sub.name,
+          };
+        }
+      }
+    }
+  }
+
+  return {
+    day: null,
+    dayName: null,
+    source: "NONE",
+  };
+}
