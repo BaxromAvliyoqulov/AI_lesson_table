@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { Subject, RoomType } from "@/types";
 import { X, BookOpen, Sparkles, Layers, ShieldCheck } from "lucide-react";
+import { getOfficialMethodDayForSubject } from "@/lib/constants/method-days";
 
 interface SubjectModalProps {
   isOpen: boolean;
@@ -28,12 +29,12 @@ const PRESET_COLORS = [
 ];
 
 const WEEKDAYS = [
-  { id: 1, name: "Dushanba" },
-  { id: 2, name: "Seshanba" },
-  { id: 3, name: "Chorshanba" },
-  { id: 4, name: "Payshanba" },
-  { id: 5, name: "Juma" },
-  { id: 6, name: "Shanba" },
+  { id: 1, name: "Dushanba (Boshlang'ich)" },
+  { id: 2, name: "Seshanba (Ona tili / Rus tili / Filologiya)" },
+  { id: 3, name: "Chorshanba (Matematika / Informatika / Aniq fanlar)" },
+  { id: 4, name: "Payshanba (Tarix / Huquq / Ijtimoiy fanlar)" },
+  { id: 5, name: "Juma (Ingliz tili / Chet tillari)" },
+  { id: 6, name: "Shanba (Fizika / Kimyo / Biologiya / Texnologiya / Sport)" },
 ];
 
 export const SubjectModal: React.FC<SubjectModalProps> = ({
@@ -52,6 +53,16 @@ export const SubjectModal: React.FC<SubjectModalProps> = ({
   const [methodDayOfWeek, setMethodDayOfWeek] = useState<number | "">("");
   const [isActive, setIsActive] = useState(true);
   const lastInitializedIdRef = React.useRef<string | null>(null);
+
+  const handleNameChange = (newName: string) => {
+    setName(newName);
+    if (!editingSubject) {
+      const suggestedDay = getOfficialMethodDayForSubject(newName);
+      if (suggestedDay !== null && methodDayOfWeek === "") {
+        setMethodDayOfWeek(suggestedDay);
+      }
+    }
+  };
 
   useEffect(() => {
     if (!isOpen) {
@@ -148,7 +159,7 @@ export const SubjectModal: React.FC<SubjectModalProps> = ({
                 placeholder="Masalan: Matematika, Fizika"
                 value={name}
                 onChange={(e) => {
-                  setName(e.target.value);
+                  handleNameChange(e.target.value);
                   if (!shortName && e.target.value.length >= 3) {
                     setShortName(e.target.value.slice(0, 3).toUpperCase());
                   }

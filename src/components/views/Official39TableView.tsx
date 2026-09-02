@@ -20,6 +20,7 @@ import { CSPSolver } from "@/lib/solver/csp-solver";
 import { sortClassesByName } from "@/lib/utils";
 import { CheckCircle2, AlertTriangle, Sparkles } from "lucide-react";
 import { FilterScope, Official39TableViewProps, DAYS, PERIOD_TIMES } from "./official-39/types";
+import { validateDropSlot } from "@/lib/solver/drag-validator";
 import { Official39Header, Official39Signatures } from "./official-39/Official39Header";
 import { Official39Filters } from "./official-39/Official39Filters";
 import { Official39Grid } from "./official-39/Official39Grid";
@@ -202,21 +203,52 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
     return map;
   }, [displayTeachers]);
 
+  // Barcha Ziddiyatlarni Real-Time Aniqlash (O'qituvchi kolliziyasi + 1 kunda bir xil fan + Metod kuni)
   const teacherConflictsSet = useMemo(() => {
-    const map = new Map<string, number>();
     const conflicts = new Set<string>();
+
+    // 1. O'qituvchi kolliziyasi (Ayni vaqtda 2 ta sinfda)
+    const teacherOccMap = new Map<string, string[]>();
     for (const l of lessons) {
       const key = `${l.teacherId}_${l.dayOfWeek}_${l.periodNumber}`;
-      map.set(key, (map.get(key) || 0) + 1);
+      const list = teacherOccMap.get(key) || [];
+      list.push(l.id);
+      teacherOccMap.set(key, list);
     }
+    for (const ids of teacherOccMap.values()) {
+      if (ids.length > 1) {
+        ids.forEach((id) => conflicts.add(id));
+      }
+    }
+
+    // 2. Bir kunda bitta sinfda bir xil fan takrorlanishi (QAT'IY TAQIQLANGAN)
+    const classDaySubMap = new Map<string, string[]>();
     for (const l of lessons) {
-      const key = `${l.teacherId}_${l.dayOfWeek}_${l.periodNumber}`;
-      if ((map.get(key) || 0) > 1) {
+      const key = `${l.classId}_${l.dayOfWeek}_${l.subjectId}`;
+      const list = classDaySubMap.get(key) || [];
+      list.push(l.id);
+      classDaySubMap.set(key, list);
+    }
+    for (const ids of classDaySubMap.values()) {
+      if (ids.length > 1) {
+        ids.forEach((id) => conflicts.add(id));
+      }
+    }
+
+    // 3. Metod kuni buzilishi (O'qituvchi yoki fanning metod kuni)
+    for (const l of lessons) {
+      const t = teacherMap.get(l.teacherId);
+      const s = subjectMap.get(l.subjectId);
+      const isTeacherMethod = t?.methodDayOfWeek !== undefined && t?.methodDayOfWeek !== null && t.methodDayOfWeek === l.dayOfWeek;
+      const subMethodDay = s?.methodDayOfWeek !== undefined && s?.methodDayOfWeek !== null ? s.methodDayOfWeek : null;
+      const isSubMethod = subMethodDay === l.dayOfWeek;
+      if (isTeacherMethod || isSubMethod) {
         conflicts.add(l.id);
       }
     }
+
     return conflicts;
-  }, [lessons]);
+  }, [lessons, teacherMap, subjectMap]);
 
   const teacherSubjectsMap = useMemo(() => {
     const map = new Map<string, string>();
@@ -323,6 +355,26 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
       return;
     }
 
+    const targetClass = classes.find((c) => c.id === targetClassId);
+    if (!targetClass) return;
+
+    // Drag-Drop qat'iy tekshiruvi (Ziddiyatli joyga ko'chirish taqiqlanadi)
+    const val = validateDropSlot({
+      draggedLesson: sourceLesson,
+      targetClass,
+      targetDay,
+      targetPeriod,
+      allLessons: lessons,
+      teachers,
+      subjects,
+      rooms,
+    });
+
+    if (val.status === "conflict") {
+      showToast(val.reason || "🛑 Ziddiyat aniqlandi! Darsni bu joyga qo'yish mumkin emas.", "error");
+      return;
+    }
+
     let updated = [...lessons];
     if (targetExistingLesson) {
       updated = updated.map((l) => {
@@ -342,6 +394,7 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
       );
     }
     onLessonsChange(updated);
+    showToast("Dars muvaffaqiyatli ko'chirildi", "success");
   };
 
   const handleAutoFixConflicts = () => {
@@ -384,6 +437,46 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
     if (!cellModal || !onLessonsChange) return;
     const { cls, day, period, lesson } = cellModal;
 
+    // 1. QAT'IY TEKSHIRUV: Bir kunda bir sinfda bir xil fan takrorlanishi
+    const hasSameSubject = lessons.some(
+      (l) =>
+        l.classId === cls.id &&
+        l.dayOfWeek === day &&
+        l.subjectId === selectedSubjectId &&
+        (!lesson || l.id !== lesson.id)
+    );
+
+    if (hasSameSubject) {
+      const sub = subjectMap.get(selectedSubjectId);
+      showToast(
+        `🛑 ${cls.name} sinfida bu kunda "${sub?.name || "ushbu fan"}" darsi allaqachon mavjud! Bir kunda bir xil fanni 2 marta qo'yish qat'iyan taqiqlanadi!`,
+        "error"
+      );
+      return;
+    }
+
+    // 2. QAT'IY TEKSHIRUV: Metod kuni
+    const teacher = teacherMap.get(selectedTeacherId);
+    const isTeacherMethod =
+      teacher?.methodDayOfWeek !== undefined &&
+      teacher.methodDayOfWeek !== null &&
+      teacher.methodDayOfWeek === day;
+
+    const sub = subjectMap.get(selectedSubjectId);
+    const isSubMethod =
+      sub?.methodDayOfWeek !== undefined &&
+      sub.methodDayOfWeek !== null &&
+      sub.methodDayOfWeek === day;
+
+    if (isTeacherMethod || isSubMethod) {
+      const targetEntity = isTeacherMethod ? `${teacher?.fullName || "O'qituvchi"}` : `${sub?.name || "Fan"}`;
+      showToast(
+        `🛑 ${targetEntity} uchun bu kun rasmiy Metod kuni! Dars qo'yish taqiqlanadi!`,
+        "error"
+      );
+      return;
+    }
+
     let updated = [...lessons];
     if (lesson) {
       updated = updated.map((l) =>
@@ -406,6 +499,7 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
       updated.push(newLesson);
     }
     onLessonsChange(updated);
+    showToast("Dars muvaffaqiyatli saqlandi", "success");
     setCellModal(null);
   };
 
@@ -554,6 +648,7 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
             cellModal={cellModal}
             subjects={subjects}
             teachers={teachers}
+            allLessons={lessons}
             selectedSubjectId={selectedSubjectId}
             selectedTeacherId={selectedTeacherId}
             onSubjectChange={setSelectedSubjectId}

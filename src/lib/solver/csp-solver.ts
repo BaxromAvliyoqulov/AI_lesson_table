@@ -9,6 +9,7 @@ import {
   ClassSubject,
 } from "@/types";
 import { generateStandardCurriculumForClass } from "@/lib/curriculum-templates";
+import { getOfficialMethodDayForSubject } from "@/lib/constants/method-days";
 
 export class CSPSolver {
   private input: SolverInput;
@@ -29,8 +30,8 @@ export class CSPSolver {
 
   /**
    * Qat'iy Metod Kuni tekshiruvi (Strict Method Day Constraint)
-   * O'qituvchining shaxsiy metod kuni yoki uning o'qitadigan fani/tanlangan fanning
-   * rasmiy metod kunida dars qo'yish QAT'IYAN TAQIQLANADI!
+   * O'zbekiston Qonunchiligi & SanPiN: O'qituvchining shaxsiy metod kuni yoki
+   * fanning rasmiy metod kunida dars qo'yish QAT'IYAN TAQIQLANADI!
    */
   public isStrictMethodDay(day: number, teacherId?: string | null, subjectId?: string | null): boolean {
     // 1. O'qituvchining shaxsiy belgilangan metod kuni
@@ -40,11 +41,16 @@ export class CSPSolver {
         if (t.methodDayOfWeek === day) return true;
       }
     }
-    // 2. Fanning rasmiy metod kuni (Masalan Ingliz tili = Juma / 5)
+    // 2. Fanning rasmiy metod kuni
     if (subjectId) {
       const s = this.subjectMap.get(subjectId);
       if (s?.methodDayOfWeek !== undefined && s.methodDayOfWeek !== null) {
         if (s.methodDayOfWeek === day) return true;
+      }
+      // Agar subject ob'ektida methodDayOfWeek ko'rsatilmagan bo'lsa, O'zR qonuniy standart katalogidan olinadi
+      const officialDay = getOfficialMethodDayForSubject(s?.name || subjectId);
+      if (officialDay !== null && officialDay === day) {
+        return true;
       }
     }
     return false;

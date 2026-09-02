@@ -132,20 +132,54 @@ describe("CSP Constraint Satisfaction Solver (Dars Jadval AI Generator)", () => 
     const result = solver.solve();
     expect(result.success).toBe(true);
 
-    // 1. English (sub_ing) and Foreign Languages should have 0 lessons on Friday (day 5)
-    const englishOnFriday = result.lessons.filter(
+    // 1. English (sub_ing, sub_nemis, sub_fransuz) should have 0 lessons on Friday (day 5)
+    const foreignLanguagesOnFriday = result.lessons.filter(
       (l) =>
         (l.subjectId === "sub_ing" ||
-          l.subjectId === "sub_rus" ||
           l.subjectId === "sub_nemis" ||
           l.subjectId === "sub_fransuz") &&
         l.dayOfWeek === 5
     );
-    expect(englishOnFriday.length).toBe(0);
+    expect(foreignLanguagesOnFriday.length).toBe(0);
 
-    // 2. No teacher with a methodDayOfWeek should have ANY lesson on that day
+    // 2. Native Language & Literature (sub_ona, sub_adab, sub_rus) should have 0 lessons on Tuesday (day 2)
+    const filologyOnTuesday = result.lessons.filter(
+      (l) =>
+        (l.subjectId === "sub_ona" ||
+          l.subjectId === "sub_adab" ||
+          l.subjectId === "sub_rus" ||
+          l.subjectId === "sub_oqish") &&
+        l.dayOfWeek === 2
+    );
+    expect(filologyOnTuesday.length).toBe(0);
+
+    // 3. Exact Sciences (sub_mat, sub_alg, sub_geom, sub_inf) should have 0 lessons on Wednesday (day 3)
+    const exactSciencesOnWednesday = result.lessons.filter(
+      (l) =>
+        (l.subjectId === "sub_mat" ||
+          l.subjectId === "sub_alg" ||
+          l.subjectId === "sub_geom" ||
+          l.subjectId === "sub_inf") &&
+        l.dayOfWeek === 3
+    );
+    expect(exactSciencesOnWednesday.length).toBe(0);
+
+    // 4. Social Sciences (sub_tar, sub_ozb_tar, sub_jahon_tar, sub_geo, sub_tarbiya, sub_huquq) should have 0 lessons on Thursday (day 4)
+    const socialSciencesOnThursday = result.lessons.filter(
+      (l) =>
+        (l.subjectId === "sub_tar" ||
+          l.subjectId === "sub_ozb_tar" ||
+          l.subjectId === "sub_jahon_tar" ||
+          l.subjectId === "sub_geo" ||
+          l.subjectId === "sub_tarbiya" ||
+          l.subjectId === "sub_huquq") &&
+        l.dayOfWeek === 4
+    );
+    expect(socialSciencesOnThursday.length).toBe(0);
+
+    // 5. No teacher with a methodDayOfWeek should have ANY lesson on that day
     for (const teacher of initialTeachers) {
-      if (teacher.methodDayOfWeek !== undefined) {
+      if (teacher.methodDayOfWeek !== undefined && teacher.methodDayOfWeek !== null) {
         const teacherMethodLessons = result.lessons.filter(
           (l) => l.teacherId === teacher.id && l.dayOfWeek === teacher.methodDayOfWeek
         );

@@ -1,4 +1,5 @@
 import { Lesson, SchoolClass, Subject, Teacher, Room, Shift, Branch } from "@/types";
+import { getOfficialMethodDayForSubject } from "@/lib/constants/method-days";
 
 export interface DropSlotValidation {
   status: "safe" | "warning" | "conflict";
@@ -71,10 +72,12 @@ export function validateDropSlot({
     teacher.methodDayOfWeek !== null &&
     teacher.methodDayOfWeek === targetDay;
 
-  const isSubjectMethodDay =
-    subject?.methodDayOfWeek !== undefined &&
-    subject.methodDayOfWeek !== null &&
-    subject.methodDayOfWeek === targetDay;
+  const subjectMethodDay =
+    subject?.methodDayOfWeek !== undefined && subject.methodDayOfWeek !== null
+      ? subject.methodDayOfWeek
+      : getOfficialMethodDayForSubject(subject?.name || draggedLesson.subjectId);
+
+  const isSubjectMethodDay = subjectMethodDay === targetDay;
 
   if (isTeacherMethodDay || isSubjectMethodDay) {
     const dayName = WEEKDAY_NAMES[targetDay] || `${targetDay}-kun`;
@@ -105,7 +108,7 @@ export function validateDropSlot({
     conflicts.push(`🧒 Boshlang'ich sinflar (${targetClass.name}) uchun Shanba dam olish kuni!`);
   }
 
-  // 1.5. Bir kunda bitta sinfda bir xil fan takrorlanishi (Juftlik darsi ruxsat etilmagan bo'lsa)
+  // 1.5. Bir kunda bitta sinfda bir xil fan takrorlanishi (QAT'IY QOIDA: 1 KUNDA 1 XIL DARS 2 MARTA BO'LMAYDI)
   const classSameDaySubject = otherLessons.find(
     (l) =>
       l.classId === targetClass.id &&
@@ -113,9 +116,10 @@ export function validateDropSlot({
       l.dayOfWeek === targetDay
   );
 
-  if (classSameDaySubject && !subject?.allowDoubleLesson) {
+  if (classSameDaySubject) {
+    const dayName = WEEKDAY_NAMES[targetDay] || `${targetDay}-kun`;
     conflicts.push(
-      `🛑 ${targetClass.name} sinfida ${WEEKDAY_NAMES[targetDay] || "bu kun"} kuni ${subject?.name || "ushbu fan"} darsi allaqachon mavjud! Bir kunda 1 ta fanni takrorlash taqiqlanadi!`
+      `🛑 ${targetClass.name} sinfida ${dayName} kuni "${subject?.name || "ushbu fan"}" darsi allaqachon mavjud! Bir kunda bir xil fanni 2 marta qo'yish qat'iyan taqiqlanadi!`
     );
   }
 

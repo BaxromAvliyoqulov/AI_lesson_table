@@ -131,6 +131,34 @@ describe("Real-Time Drag & Drop Conflict Radar Engine", () => {
     });
 
     expect(validation.status).toBe("conflict");
-    expect(validation.reason).toContain("Shanba dam olish kuni");
+    expect(validation.conflicts.some((c) => c.includes("Shanba"))).toBe(true);
+  });
+
+  it("should STRICTLY detect CONFLICT when dropping duplicate subject into same class on same day", () => {
+    const existingSameDayLesson: Lesson = {
+      id: "l_existing_physics",
+      scheduleId: "s1",
+      schoolId: "school_39",
+      classId: "c_8a",
+      subjectId: "sub_fiz",
+      teacherId: "t_10",
+      branchId: "b39_1",
+      dayOfWeek: 1, // Monday
+      periodNumber: 2,
+    };
+
+    const validation = validateDropSlot({
+      draggedLesson,
+      targetClass: mockClass,
+      targetDay: 1, // Monday (already has Physics)
+      targetPeriod: 4,
+      allLessons: [draggedLesson, existingSameDayLesson],
+      teachers: [mockTeacher],
+      subjects: [mockSubject],
+      rooms: [],
+    });
+
+    expect(validation.status).toBe("conflict");
+    expect(validation.reason).toContain("Bir kunda bir xil fanni 2 marta qo'yish qat'iyan taqiqlanadi");
   });
 });

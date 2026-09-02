@@ -1,7 +1,8 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { SchoolClass, Subject, Teacher, Lesson } from "@/types";
-import { Edit2, X, Lock, Unlock, UserCheck, Trash2 } from "lucide-react";
+import { Edit2, X, Lock, Unlock, UserCheck, Trash2, AlertTriangle, ShieldCheck } from "lucide-react";
 import { DAYS } from "./types";
+import { getOfficialMethodDayForSubject, WEEKDAY_NAME_MAP } from "@/lib/constants/method-days";
 
 interface Official39CellModalProps {
   isOpen: boolean;
@@ -13,6 +14,7 @@ interface Official39CellModalProps {
   };
   subjects: Subject[];
   teachers: Teacher[];
+  allLessons?: Lesson[];
   selectedSubjectId: string;
   selectedTeacherId: string;
   onSubjectChange: (id: string) => void;
@@ -29,6 +31,7 @@ export const Official39CellModal: React.FC<Official39CellModalProps> = ({
   cellModal,
   subjects,
   teachers,
+  allLessons = [],
   selectedSubjectId,
   selectedTeacherId,
   onSubjectChange,
@@ -40,6 +43,50 @@ export const Official39CellModal: React.FC<Official39CellModalProps> = ({
   onOpenZamena,
 }) => {
   if (!isOpen) return null;
+
+  const currentSubject = subjects.find((s) => s.id === selectedSubjectId);
+  const currentTeacher = teachers.find((t) => t.id === selectedTeacherId);
+
+  // Jonli Ziddiyat Tahlili
+  const duplicateSubjectWarning = useMemo(() => {
+    if (!selectedSubjectId) return null;
+    const exists = allLessons.some(
+      (l) =>
+        l.classId === cellModal.cls.id &&
+        l.dayOfWeek === cellModal.day &&
+        l.subjectId === selectedSubjectId &&
+        (!cellModal.lesson || l.id !== cellModal.lesson.id)
+    );
+    if (exists) {
+      return `🛑 "${currentSubject?.name || "Ushbu fan"}" bu kunda allaqachon mavjud! Bir kunda bir xil fanni takrorlash QAT'IYAN TAQIQLANADI!`;
+    }
+    return null;
+  }, [allLessons, cellModal, selectedSubjectId, currentSubject]);
+
+  const methodDayWarning = useMemo(() => {
+    const isTeacherMethod =
+      currentTeacher?.methodDayOfWeek !== undefined &&
+      currentTeacher.methodDayOfWeek !== null &&
+      currentTeacher.methodDayOfWeek === cellModal.day;
+
+    const subMethodDay =
+      currentSubject?.methodDayOfWeek !== undefined && currentSubject.methodDayOfWeek !== null
+        ? currentSubject.methodDayOfWeek
+        : getOfficialMethodDayForSubject(currentSubject?.name || selectedSubjectId);
+
+    const isSubMethod = subMethodDay === cellModal.day;
+
+    if (isTeacherMethod || isSubMethod) {
+      const targetEntity = isTeacherMethod
+        ? `${currentTeacher?.fullName || "O'qituvchi"}`
+        : `${currentSubject?.name || "Fan"}`;
+      const dayName = WEEKDAY_NAME_MAP[cellModal.day] || `${cellModal.day}-kun`;
+      return `🛑 ${targetEntity} uchun ${dayName} rasmiy Metod kuni! Dars qo'yish taqiqlanadi!`;
+    }
+    return null;
+  }, [currentTeacher, currentSubject, selectedSubjectId, cellModal.day]);
+
+  const hasStrictError = !!duplicateSubjectWarning || !!methodDayWarning;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-in fade-in no-print">
@@ -63,6 +110,21 @@ export const Official39CellModal: React.FC<Official39CellModalProps> = ({
             <X className="w-4 h-4" />
           </button>
         </div>
+
+        {/* Real-Time Conflict Alerts */}
+        {duplicateSubjectWarning && (
+          <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-start gap-2 animate-shake">
+            <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+            <span className="font-semibold leading-snug">{duplicateSubjectWarning}</span>
+          </div>
+        )}
+
+        {methodDayWarning && (
+          <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-start gap-2 animate-shake">
+            <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+            <span className="font-semibold leading-snug">{methodDayWarning}</span>
+          </div>
+        )}
 
         <form onSubmit={onSave} className="space-y-4">
           <div>
@@ -159,9 +221,14 @@ export const Official39CellModal: React.FC<Official39CellModalProps> = ({
             </button>
             <button
               type="submit"
-              className="px-5 py-2 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-500 text-white shadow-md shadow-blue-600/20 cursor-pointer transition-all"
+              disabled={hasStrictError}
+              className={`px-5 py-2 rounded-xl text-xs font-bold transition-all shadow-md ${
+                hasStrictError
+                  ? "bg-slate-200 text-slate-400 cursor-not-allowed shadow-none"
+                  : "bg-blue-600 hover:bg-blue-500 text-white shadow-blue-600/20 cursor-pointer"
+              }`}
             >
-              Saqlash
+              {hasStrictError ? "Ziddiyat mavjud" : "Saqlash"}
             </button>
           </div>
         </form>

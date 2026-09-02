@@ -125,7 +125,7 @@ export const initialSubjects: Subject[] = [
     "shortName": "Matematika",
     "colorTag": "#3B82F6",
     "difficultyScore": 11,
-    "allowDoubleLesson": true,
+    "allowDoubleLesson": false,
     "methodDayOfWeek": 3
   },
   {
@@ -135,7 +135,7 @@ export const initialSubjects: Subject[] = [
     "shortName": "Algebra",
     "colorTag": "#2563EB",
     "difficultyScore": 12,
-    "allowDoubleLesson": true,
+    "allowDoubleLesson": false,
     "methodDayOfWeek": 3
   },
   {
@@ -186,7 +186,7 @@ export const initialSubjects: Subject[] = [
     "colorTag": "#A855F7",
     "difficultyScore": 8,
     "allowDoubleLesson": false,
-    "methodDayOfWeek": 5
+    "methodDayOfWeek": 2
   },
   {
     "id": "sub_nemis",
@@ -226,7 +226,7 @@ export const initialSubjects: Subject[] = [
     "colorTag": "#059669",
     "difficultyScore": 7,
     "allowDoubleLesson": false,
-    "methodDayOfWeek": 4
+    "methodDayOfWeek": 6
   },
   {
     "id": "sub_fiz",
@@ -235,9 +235,9 @@ export const initialSubjects: Subject[] = [
     "shortName": "Fizika",
     "colorTag": "#06B6D4",
     "difficultyScore": 10,
-    "allowDoubleLesson": true,
+    "allowDoubleLesson": false,
     "requiresRoomType": "LAB",
-    "methodDayOfWeek": 3
+    "methodDayOfWeek": 6
   },
   {
     "id": "sub_kim",
@@ -246,9 +246,9 @@ export const initialSubjects: Subject[] = [
     "shortName": "Kimyo",
     "colorTag": "#10B981",
     "difficultyScore": 10,
-    "allowDoubleLesson": true,
+    "allowDoubleLesson": false,
     "requiresRoomType": "LAB",
-    "methodDayOfWeek": 4
+    "methodDayOfWeek": 6
   },
   {
     "id": "sub_bio",
@@ -258,7 +258,7 @@ export const initialSubjects: Subject[] = [
     "colorTag": "#84CC16",
     "difficultyScore": 7,
     "allowDoubleLesson": false,
-    "methodDayOfWeek": 4
+    "methodDayOfWeek": 6
   },
   {
     "id": "sub_geo",
@@ -278,7 +278,7 @@ export const initialSubjects: Subject[] = [
     "colorTag": "#F59E0B",
     "difficultyScore": 7,
     "allowDoubleLesson": false,
-    "methodDayOfWeek": 2
+    "methodDayOfWeek": 4
   },
   {
     "id": "sub_ozb_tar",
@@ -288,7 +288,7 @@ export const initialSubjects: Subject[] = [
     "colorTag": "#D97706",
     "difficultyScore": 7,
     "allowDoubleLesson": false,
-    "methodDayOfWeek": 2
+    "methodDayOfWeek": 4
   },
   {
     "id": "sub_jahon_tar",
@@ -298,7 +298,7 @@ export const initialSubjects: Subject[] = [
     "colorTag": "#B45309",
     "difficultyScore": 7,
     "allowDoubleLesson": false,
-    "methodDayOfWeek": 2
+    "methodDayOfWeek": 4
   },
   {
     "id": "sub_inf",
@@ -320,7 +320,7 @@ export const initialSubjects: Subject[] = [
     "difficultyScore": 2,
     "allowDoubleLesson": false,
     "requiresRoomType": "GYM",
-    "methodDayOfWeek": 1
+    "methodDayOfWeek": 6
   },
   {
     "id": "sub_sanat",
@@ -330,7 +330,7 @@ export const initialSubjects: Subject[] = [
     "colorTag": "#D946EF",
     "difficultyScore": 1,
     "allowDoubleLesson": false,
-    "methodDayOfWeek": 1
+    "methodDayOfWeek": 6
   },
   {
     "id": "sub_chiz",
@@ -340,7 +340,7 @@ export const initialSubjects: Subject[] = [
     "colorTag": "#C026D3",
     "difficultyScore": 3,
     "allowDoubleLesson": false,
-    "methodDayOfWeek": 1
+    "methodDayOfWeek": 6
   },
   {
     "id": "sub_musiqa",
@@ -350,7 +350,7 @@ export const initialSubjects: Subject[] = [
     "colorTag": "#F43F5E",
     "difficultyScore": 1,
     "allowDoubleLesson": false,
-    "methodDayOfWeek": 1
+    "methodDayOfWeek": 6
   },
   {
     "id": "sub_texno",
@@ -359,8 +359,8 @@ export const initialSubjects: Subject[] = [
     "shortName": "Texnologiya",
     "colorTag": "#EA580C",
     "difficultyScore": 3,
-    "allowDoubleLesson": true,
-    "methodDayOfWeek": 1
+    "allowDoubleLesson": false,
+    "methodDayOfWeek": 6
   },
   {
     "id": "sub_tarbiya",
@@ -370,7 +370,7 @@ export const initialSubjects: Subject[] = [
     "colorTag": "#F97316",
     "difficultyScore": 3,
     "allowDoubleLesson": false,
-    "methodDayOfWeek": 2
+    "methodDayOfWeek": 4
   },
   {
     "id": "sub_iqtisod",
@@ -380,7 +380,7 @@ export const initialSubjects: Subject[] = [
     "colorTag": "#10B981",
     "difficultyScore": 4,
     "allowDoubleLesson": false,
-    "methodDayOfWeek": 5
+    "methodDayOfWeek": 4
   },
   {
     "id": "sub_huquq",
@@ -390,7 +390,7 @@ export const initialSubjects: Subject[] = [
     "colorTag": "#64748B",
     "difficultyScore": 5,
     "allowDoubleLesson": false,
-    "methodDayOfWeek": 2
+    "methodDayOfWeek": 4
   },
   {
     "id": "sub_tadbirkor",
@@ -400,7 +400,7 @@ export const initialSubjects: Subject[] = [
     "colorTag": "#0D9488",
     "difficultyScore": 4,
     "allowDoubleLesson": false,
-    "methodDayOfWeek": 5
+    "methodDayOfWeek": 4
   },
   {
     "id": "sub_chqbt",
@@ -410,7 +410,7 @@ export const initialSubjects: Subject[] = [
     "colorTag": "#475569",
     "difficultyScore": 3,
     "allowDoubleLesson": false,
-    "methodDayOfWeek": 5
+    "methodDayOfWeek": 6
   },
   {
     "id": "sub_astronomiya",
@@ -420,7 +420,7 @@ export const initialSubjects: Subject[] = [
     "colorTag": "#0284C7",
     "difficultyScore": 6,
     "allowDoubleLesson": false,
-    "methodDayOfWeek": 3
+    "methodDayOfWeek": 6
   },
   {
     "id": "sub_sinf_soati",
