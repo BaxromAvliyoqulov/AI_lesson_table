@@ -130,16 +130,27 @@ export class CSPSolver {
       effectiveClassSubjects.set(cls.id, validatedSubjects);
     }
 
-    // ── 1. SLOTLARNI QURISH (Boshlang'ich: 5 kun x 5 dars; Yuqori: 6 kun x 6 dars) ────────────
+    // ── 1. SLOTLARNI QURISH (Dam kunlari va Band soatlarni to'liq hisobga olgan holda) ────────────
     for (const cls of this.input.classes) {
       if (cls.isClosed) continue;
       const isPrimary = cls.isPrimary || cls.grade <= 4;
-      const days = isPrimary ? 5 : this.daysCount;
+      const blockedDaysSet = new Set(
+        cls.blockedDays || (isPrimary ? [6] : [])
+      );
+      const blockedPeriodsSet = new Set(
+        (cls.blockedPeriods || []).map((bp) => `${bp.dayOfWeek}_${bp.periodNumber}`)
+      );
+
+      const days = this.daysCount;
       const maxP = isPrimary ? 5 : 6;
 
       const slots: Slot[] = [];
       for (let day = 1; day <= days; day++) {
+        if (blockedDaysSet.has(day)) continue; // Bu kun sinf uchun dam kuni
+
         for (let p = 1; p <= maxP; p++) {
+          if (blockedPeriodsSet.has(`${day}_${p}`)) continue; // Bu soat sinf uchun band/yopiq
+
           const slot: Slot = {
             classId: cls.id,
             branchId: cls.branchId,

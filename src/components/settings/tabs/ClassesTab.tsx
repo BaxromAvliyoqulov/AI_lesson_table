@@ -16,6 +16,13 @@ import {
   UserCheck,
   AlertTriangle,
   X,
+  Sparkles,
+  FileSpreadsheet,
+  Download,
+  Upload,
+  Check,
+  CalendarOff,
+  Users,
 } from "lucide-react";
 
 interface ClassesTabProps {
@@ -30,9 +37,13 @@ interface ClassesTabProps {
   onOpenCurriculum: (cls: SchoolClass) => void;
   onSetHomeroomTeacher?: (classId: string, teacherId: string | null) => void;
   onOpenEMaktabImport?: () => void;
+  onBulkAddClasses?: (newClasses: SchoolClass[]) => void;
 }
 
 type ClassFilterType = "ALL" | "PRIMARY" | "MIDDLE" | "HIGH" | "NO_HOMEROOM";
+
+const AVAILABLE_GRADES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
+const AVAILABLE_LETTERS = ["A", "B", "D", "E", "F", "G", "H", "I", "J", "K"];
 
 export const ClassesTab: React.FC<ClassesTabProps> = ({
   classes,
@@ -46,9 +57,20 @@ export const ClassesTab: React.FC<ClassesTabProps> = ({
   onOpenCurriculum,
   onSetHomeroomTeacher,
   onOpenEMaktabImport,
+  onBulkAddClasses,
 }) => {
   const [search, setSearch] = useState("");
   const [filterType, setFilterType] = useState<ClassFilterType>("ALL");
+
+  // Ommaviy generator holati
+  const [selectedGrades, setSelectedGrades] = useState<number[]>([]);
+  const [selectedLetters, setSelectedLetters] = useState<string[]>([]);
+  const [bulkBranchId, setBulkBranchId] = useState<string>(branches[0]?.id || "");
+  const [bulkShiftId, setBulkShiftId] = useState<string>(shifts[0]?.id || "");
+  const [bulkStudentCount, setBulkStudentCount] = useState<number>(25);
+
+  // Yakka qo'lda kiritish holati
+  const [singleClassName, setSingleClassName] = useState("");
 
   // Quick homeroom assignment modal
   const [quickClass, setQuickClass] = useState<SchoolClass | null>(null);
@@ -58,12 +80,18 @@ export const ClassesTab: React.FC<ClassesTabProps> = ({
   const shiftMap = useMemo(() => new Map(shifts.map((s) => [s.id, s])), [shifts]);
   const teacherMap = useMemo(() => new Map(teachers.map((t) => [t.id, t])), [teachers]);
 
-  /**
-   * Universal Class Homeroom Teacher Resolver:
-   * 1. Direct match by homeroomTeacherId
-   * 2. Reverse match: teacher whose homeroomClassId === cls.id or cls.name
-   * 3. ClassSubject: teacher assigned to "sub_sinf_soati"
-   */
+  // Jonli kombinatsiya (Preview)
+  const previewClassNames = useMemo(() => {
+    const list: string[] = [];
+    selectedGrades.forEach((g) => {
+      selectedLetters.forEach((l) => {
+        list.push(`${g}-${l}`);
+      });
+    });
+    return list;
+  }, [selectedGrades, selectedLetters]);
+
+  // Sinf rahbarini topish
   const getClassHomeroomTeacher = useCallback(
     (cls: SchoolClass): Teacher | null => {
       if (cls.homeroomTeacherId) {
@@ -80,7 +108,6 @@ export const ClassesTab: React.FC<ClassesTabProps> = ({
         if (byName) return byName;
       }
 
-      // Reverse lookup: teacher with this homeroomClassId
       const rawClassId = cls.id.toLowerCase();
       const rawClassName = cls.name.toLowerCase();
       const normClassName = rawClassName.replace(/[^a-z0-9]/g, "");
@@ -96,7 +123,6 @@ export const ClassesTab: React.FC<ClassesTabProps> = ({
       });
       if (byTeacher) return byTeacher;
 
-      // Sinf soati match
       const sinfSoatiSub = cls.subjects?.find(
         (s) =>
           s.subjectId === "sub_sinf_soati" ||
@@ -145,6 +171,79 @@ export const ClassesTab: React.FC<ClassesTabProps> = ({
     return sortClassesByName(list);
   }, [classes, filterType, search, getClassHomeroomTeacher]);
 
+  // Ommaviy sinflarni yaratish
+  const handleCreateBulkClasses = () => {
+    if (previewClassNames.length === 0) return;
+
+    const currentSchoolId = classes[0]?.schoolId || "cmthn422g0001uff8vhccbxmz";
+    const existingNames = new Set(classes.map((c) => c.name.toUpperCase()));
+
+    const newClassesToCreate: SchoolClass[] = [];
+    previewClassNames.forEach((cName) => {
+      const upper = cName.toUpperCase();
+      if (!existingNames.has(upper)) {
+        const grade = parseInt(cName) || 1;
+        const isD = cName.toUpperCase().endsWith("D");
+        const bId =
+          isD && branches.find((b) => !b.isMain)
+            ? branches.find((b) => !b.isMain)!.id
+            : bulkBranchId || branches[0]?.id || "";
+
+        newClassesToCreate.push({
+          id: `c_${currentSchoolId}_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
+          schoolId: currentSchoolId,
+          branchId: bId,
+          shiftId: bulkShiftId || shifts[0]?.id || "",
+          name: upper,
+          grade: grade,
+          isPrimary: grade <= 4,
+          studentCount: bulkStudentCount,
+          blockedDays: grade <= 4 ? [6] : [],
+          subjects: [],
+        });
+      }
+    });
+
+    if (newClassesToCreate.length > 0 && onBulkAddClasses) {
+      onBulkAddClasses(newClassesToCreate);
+      setSelectedGrades([]);
+      setSelectedLetters([]);
+    }
+  };
+
+  // Yakka sinf qo'shish
+  const handleAddSingleClass = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!singleClassName.trim()) return;
+
+    const upper = singleClassName.trim().toUpperCase();
+    const currentSchoolId = classes[0]?.schoolId || "cmthn422g0001uff8vhccbxmz";
+    const grade = parseInt(upper) || 1;
+    const isD = upper.endsWith("D");
+    const bId =
+      isD && branches.find((b) => !b.isMain)
+        ? branches.find((b) => !b.isMain)!.id
+        : bulkBranchId || branches[0]?.id || "";
+
+    const newClass: SchoolClass = {
+      id: `c_${currentSchoolId}_${Date.now()}`,
+      schoolId: currentSchoolId,
+      branchId: bId,
+      shiftId: bulkShiftId || shifts[0]?.id || "",
+      name: upper,
+      grade: grade,
+      isPrimary: grade <= 4,
+      studentCount: 25,
+      blockedDays: grade <= 4 ? [6] : [],
+      subjects: [],
+    };
+
+    if (onBulkAddClasses) {
+      onBulkAddClasses([newClass]);
+      setSingleClassName("");
+    }
+  };
+
   const handleSaveQuickHomeroom = () => {
     if (!quickClass || !onSetHomeroomTeacher) return;
     onSetHomeroomTeacher(quickClass.id, quickTeacherId || null);
@@ -153,7 +252,261 @@ export const ClassesTab: React.FC<ClassesTabProps> = ({
 
   return (
     <div className="space-y-4">
-      {/* Top toolbar */}
+      {/* 1. Yuqori Excel Import Bar */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-4 rounded-3xl bg-card border border-border shadow-xs">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-2xl bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold">
+            <FileSpreadsheet className="w-5 h-5" />
+          </div>
+          <div>
+            <h4 className="text-sm font-bold text-foreground">Excel & eMaktab Import</h4>
+            <p className="text-xs text-muted-foreground">
+              Shablonni yuklab oling, to'ldiring va yuklang. Import'dan oldin ma'lumot ko'rsatiladi.
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 self-end sm:self-auto">
+          {onOpenEMaktabImport && (
+            <button
+              type="button"
+              onClick={onOpenEMaktabImport}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-blue-600 text-white hover:bg-blue-700 shadow-md shadow-blue-600/20 transition-all cursor-pointer"
+            >
+              <Upload className="w-4 h-4" />
+              <span>eMaktab Excel yuklash</span>
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* 2. Kombinatorik Ommaviy Sinf Yaratish Paneli (Bulk Creator) */}
+      <div className="p-5 rounded-3xl bg-card border border-border shadow-xs space-y-4">
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <label className="text-xs font-bold text-foreground flex items-center gap-1.5">
+              <span>Sinf raqami (bir yoki bir nechta tanlang)</span>
+            </label>
+            <div className="flex items-center gap-2 text-[11px]">
+              <button
+                type="button"
+                onClick={() => setSelectedGrades([...AVAILABLE_GRADES])}
+                className="text-primary hover:underline font-medium cursor-pointer"
+              >
+                Barchasi
+              </button>
+              <span className="text-muted-foreground/40">•</span>
+              <button
+                type="button"
+                onClick={() => setSelectedGrades([1, 2, 3, 4])}
+                className="text-primary hover:underline font-medium cursor-pointer"
+              >
+                1-4
+              </button>
+              <span className="text-muted-foreground/40">•</span>
+              <button
+                type="button"
+                onClick={() => setSelectedGrades([5, 6, 7, 8, 9])}
+                className="text-primary hover:underline font-medium cursor-pointer"
+              >
+                5-9
+              </button>
+              <span className="text-muted-foreground/40">•</span>
+              <button
+                type="button"
+                onClick={() => setSelectedGrades([10, 11])}
+                className="text-primary hover:underline font-medium cursor-pointer"
+              >
+                10-11
+              </button>
+              <span className="text-muted-foreground/40">•</span>
+              <button
+                type="button"
+                onClick={() => setSelectedGrades([])}
+                className="text-muted-foreground hover:underline cursor-pointer"
+              >
+                Tozalash
+              </button>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap gap-1.5">
+            {AVAILABLE_GRADES.map((g) => {
+              const isSelected = selectedGrades.includes(g);
+              return (
+                <button
+                  key={g}
+                  type="button"
+                  onClick={() =>
+                    setSelectedGrades((prev) =>
+                      prev.includes(g) ? prev.filter((x) => x !== g) : [...prev, g].sort((a, b) => a - b)
+                    )
+                  }
+                  className={`w-9 h-9 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center ${
+                    isSelected
+                      ? "bg-primary text-primary-foreground shadow-md shadow-primary/20 ring-2 ring-primary/30"
+                      : "bg-background border border-border text-foreground hover:border-primary/50"
+                  }`}
+                >
+                  {g}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <label className="text-xs font-bold text-foreground flex items-center gap-1.5">
+              <span>Sinf harflari (parallel — kerakli harflarni belgilang)</span>
+            </label>
+            <div className="flex items-center gap-2 text-[11px]">
+              <button
+                type="button"
+                onClick={() => setSelectedLetters(["A", "B", "D"])}
+                className="text-primary hover:underline font-medium cursor-pointer"
+              >
+                A, B, D
+              </button>
+              <span className="text-muted-foreground/40">•</span>
+              <button
+                type="button"
+                onClick={() => setSelectedLetters(["A", "B"])}
+                className="text-primary hover:underline font-medium cursor-pointer"
+              >
+                A, B
+              </button>
+              <span className="text-muted-foreground/40">•</span>
+              <button
+                type="button"
+                onClick={() => setSelectedLetters([])}
+                className="text-muted-foreground hover:underline cursor-pointer"
+              >
+                Tozalash
+              </button>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap gap-1.5">
+            {AVAILABLE_LETTERS.map((l) => {
+              const isSelected = selectedLetters.includes(l);
+              return (
+                <button
+                  key={l}
+                  type="button"
+                  onClick={() =>
+                    setSelectedLetters((prev) =>
+                      prev.includes(l) ? prev.filter((x) => x !== l) : [...prev, l]
+                    )
+                  }
+                  className={`w-9 h-9 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center ${
+                    isSelected
+                      ? "bg-primary text-primary-foreground shadow-md shadow-primary/20 ring-2 ring-primary/30"
+                      : "bg-background border border-border text-foreground hover:border-primary/50"
+                  }`}
+                >
+                  {l}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Parametrlar va Yaratish tugmasi */}
+        <div className="flex flex-wrap items-center gap-3 pt-2 border-t border-border/60">
+          <div className="flex items-center gap-2">
+            <label className="text-xs font-medium text-muted-foreground">Smena:</label>
+            <select
+              value={bulkShiftId}
+              onChange={(e) => setBulkShiftId(e.target.value)}
+              className="px-3 py-2 text-xs rounded-xl border border-border bg-background cursor-pointer"
+            >
+              {shifts.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <label className="text-xs font-medium text-muted-foreground">O'quvchilar soni:</label>
+            <input
+              type="number"
+              min={1}
+              max={50}
+              value={bulkStudentCount}
+              onChange={(e) => setBulkStudentCount(Number(e.target.value))}
+              className="w-20 px-3 py-2 text-xs rounded-xl border border-border bg-background font-bold"
+            />
+          </div>
+
+          <button
+            type="button"
+            disabled={previewClassNames.length === 0}
+            onClick={handleCreateBulkClasses}
+            className={`inline-flex items-center gap-2 px-5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-md ${
+              previewClassNames.length > 0
+                ? "bg-primary text-primary-foreground hover:bg-primary/90 shadow-primary/20"
+                : "bg-muted text-muted-foreground opacity-50 cursor-not-allowed"
+            }`}
+          >
+            <Plus className="w-4 h-4" />
+            <span>
+              {previewClassNames.length > 0
+                ? `+ ${previewClassNames.length} ta sinfni qo'shish`
+                : "+ Sinflarni qo'shish"}
+            </span>
+          </button>
+        </div>
+
+        {/* Jonli namuna izohi */}
+        {previewClassNames.length > 0 ? (
+          <div className="p-3 rounded-2xl bg-primary/5 border border-primary/20 text-xs text-primary font-medium flex items-center gap-2 flex-wrap">
+            <Sparkles className="w-4 h-4 shrink-0" />
+            <span>Yaratiladigan sinflar:</span>
+            <div className="flex flex-wrap gap-1.5">
+              {previewClassNames.map((cn) => (
+                <span key={cn} className="px-2 py-0.5 rounded-lg bg-primary/10 font-bold">
+                  {cn}
+                </span>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <p className="text-[11px] text-muted-foreground">
+            Masalan: raqam <strong>5</strong> va harflar <strong>A, B</strong> tanlansa — <strong>5-A</strong> va <strong>5-B</strong> sinflari yaratiladi.
+          </p>
+        )}
+      </div>
+
+      {/* 3. Bitta sinfni qo'lda kiritish paneli */}
+      <form
+        onSubmit={handleAddSingleClass}
+        className="flex items-center gap-3 p-4 rounded-3xl bg-card border border-border shadow-xs"
+      >
+        <div className="flex-1 max-w-xs">
+          <label className="block text-[11px] font-medium text-muted-foreground mb-1">
+            Yoki bitta sinfni qo'lda kiritish
+          </label>
+          <input
+            type="text"
+            placeholder="Masalan: 5-A"
+            value={singleClassName}
+            onChange={(e) => setSingleClassName(e.target.value)}
+            className="w-full px-3.5 py-2 text-xs rounded-xl border border-border bg-background focus:ring-2 focus:ring-primary/20 focus:border-primary font-bold uppercase"
+          />
+        </div>
+        <button
+          type="submit"
+          disabled={!singleClassName.trim()}
+          className="self-end px-4 py-2 rounded-xl text-xs font-bold border border-border hover:bg-muted text-foreground transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          + Bitta qo'shish
+        </button>
+      </form>
+
+      {/* 4. Toolbar va Filtrlar */}
       <div className="flex flex-col gap-3 p-4 rounded-3xl bg-card border border-border shadow-xs">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div className="relative flex-1 sm:w-80 w-full">
@@ -168,24 +521,12 @@ export const ClassesTab: React.FC<ClassesTabProps> = ({
           </div>
 
           <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
-            {onOpenEMaktabImport && (
-              <button
-                type="button"
-                onClick={onOpenEMaktabImport}
-                title="eMaktab (Kundalik) Excel faylidan sinflarni avtomatik yuklash"
-                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold border border-blue-200 dark:border-blue-900 bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/80 transition-all cursor-pointer shadow-xs active:scale-95"
-              >
-                <span>📥</span>
-                <span>eMaktab Import</span>
-              </button>
-            )}
-
             <button
               onClick={onAddClass}
               className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold bg-primary text-primary-foreground hover:bg-primary/90 shadow-md shadow-primary/20 transition-all cursor-pointer"
             >
               <Plus className="w-4 h-4 shrink-0" />
-              <span>Yangi sinf qo'shish</span>
+              <span>Sinf modali</span>
             </button>
           </div>
         </div>
@@ -252,13 +593,13 @@ export const ClassesTab: React.FC<ClassesTabProps> = ({
         </div>
       </div>
 
-      {/* Classes Grid */}
+      {/* 5. Classes Grid */}
       {filteredClasses.length === 0 ? (
         <div className="py-16 text-center rounded-3xl border border-dashed border-border bg-card/40">
           <GraduationCap className="w-12 h-12 text-muted-foreground/40 mx-auto mb-3" />
           <p className="text-sm font-semibold text-foreground">Sinf topilmadi</p>
           <p className="text-xs text-muted-foreground mt-1">
-            Qidiruv so'zini o'zgartiring yoki yangi sinf qo'shing
+            Yuqoridagi kombinatorik paneldan bir necha soniyada sinflarni yarating
           </p>
         </div>
       ) : (
@@ -271,6 +612,7 @@ export const ClassesTab: React.FC<ClassesTabProps> = ({
               (sum, s) => sum + (Number(s.weeklyHours) || 0),
               0
             );
+            const blockedDaysCount = (cls.blockedDays || (cls.grade <= 4 ? [6] : [])).length;
 
             return (
               <div
@@ -299,9 +641,16 @@ export const ClassesTab: React.FC<ClassesTabProps> = ({
                             </span>
                           )}
                         </h4>
-                        <p className="text-[11px] text-muted-foreground flex items-center gap-1 truncate">
-                          <Building2 className="w-3 h-3 shrink-0" />
-                          <span className="truncate">{branch?.name || "Asosiy bino"}</span>
+                        <p className="text-[11px] text-muted-foreground flex items-center gap-1 truncate mt-0.5">
+                          <span>{shift?.name || "1-smena"}</span>
+                          <span>•</span>
+                          <span>{cls.studentCount || 25} o'quvchi</span>
+                          {blockedDaysCount > 0 && (
+                            <>
+                              <span>•</span>
+                              <span className="text-rose-500 font-semibold">{blockedDaysCount} band kun</span>
+                            </>
+                          )}
                         </p>
                       </div>
                     </div>
@@ -309,149 +658,135 @@ export const ClassesTab: React.FC<ClassesTabProps> = ({
                     <div className="flex items-center gap-1 shrink-0">
                       <button
                         onClick={() => onEditClass(cls)}
-                        className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
-                        title="Tahrirlash"
+                        title="Tahrirlash va dars cheklovlari"
+                        className="p-1.5 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
                       >
-                        <Edit2 className="w-3.5 h-3.5" />
+                        <Edit2 className="w-4 h-4 text-blue-500" />
                       </button>
                       <button
-                        onClick={() => {
-                          if (confirm(`${cls.name} sinfini o'chirishni tasdiqlaysizmi?`)) {
-                            onDeleteClass(cls.id);
-                          }
-                        }}
-                        className="p-1.5 rounded-lg text-rose-400 hover:text-rose-600 hover:bg-rose-500/10 transition-colors cursor-pointer"
+                        onClick={() => onDeleteClass(cls.id)}
                         title="O'chirish"
+                        className="p-1.5 rounded-xl text-muted-foreground hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors cursor-pointer"
                       >
-                        <Trash2 className="w-3.5 h-3.5" />
+                        <Trash2 className="w-4 h-4 text-rose-500" />
                       </button>
                     </div>
                   </div>
 
-                  {/* Info pills container */}
-                  <div className="space-y-2 text-xs text-muted-foreground bg-muted/20 p-2.5 rounded-2xl border border-border/60 min-w-0 overflow-hidden">
-                    <div className="flex items-center justify-between text-[11px] gap-2">
-                      <span className="flex items-center gap-1 shrink-0">
-                        <Clock className="w-3 h-3 shrink-0" />
-                        <span>Smena:</span>
+                  {/* Badges & Homeroom */}
+                  <div className="space-y-1.5 text-xs">
+                    <div className="flex items-center justify-between text-muted-foreground">
+                      <span className="flex items-center gap-1 text-[11px]">
+                        <Building2 className="w-3.5 h-3.5 text-muted-foreground/70" />
+                        {branch?.name || "Asosiy bino"}
                       </span>
-                      <span className="font-semibold text-foreground shrink-0 text-right truncate">
-                        {shift?.name || "1-smena"}
+                      <span className="font-semibold text-foreground text-[11px]">
+                        {totalHours} soat/hafta
                       </span>
                     </div>
 
-                    {/* Homeroom teacher status & quick action (Zero overflow) */}
-                    <div className="flex items-center justify-between text-[11px] pt-1.5 border-t border-border/40 gap-2 min-w-0">
-                      <span className="flex items-center gap-1 text-[11px] font-semibold text-foreground shrink-0">
-                        <UserCheck className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
-                        <span>Sinf rahbari:</span>
-                      </span>
+                    {/* Homeroom teacher badge */}
+                    <div className="pt-1">
                       {homeroom ? (
-                        <button
-                          type="button"
+                        <div
                           onClick={() => {
-                            setQuickClass(cls);
-                            setQuickTeacherId(homeroom.id);
+                            if (onSetHomeroomTeacher) {
+                              setQuickClass(cls);
+                              setQuickTeacherId(homeroom.id);
+                            }
                           }}
-                          className="font-bold text-foreground hover:text-indigo-600 hover:underline truncate max-w-[130px] cursor-pointer text-right shrink-0"
+                          className="flex items-center justify-between p-2 rounded-xl bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 cursor-pointer hover:opacity-90 transition-opacity"
                           title="Sinf rahbarini o'zgartirish"
                         >
-                          {homeroom.fullName}
-                        </button>
+                          <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                            <UserCheck className="w-3.5 h-3.5 shrink-0" />
+                            <span className="text-[11px] font-bold truncate">
+                              {homeroom.fullName}
+                            </span>
+                          </div>
+                          <span className="text-[9px] underline opacity-70 shrink-0 ml-1">
+                            o'zgartirish
+                          </span>
+                        </div>
                       ) : (
                         <button
                           type="button"
                           onClick={() => {
-                            setQuickClass(cls);
-                            setQuickTeacherId("");
+                            if (onSetHomeroomTeacher) {
+                              setQuickClass(cls);
+                              setQuickTeacherId("");
+                            }
                           }}
-                          className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-amber-500/20 text-amber-700 dark:text-amber-300 hover:bg-amber-500/30 transition-colors cursor-pointer shrink-0"
-                          title="Sinf rahbarini tayinlash"
+                          className="w-full flex items-center justify-center gap-1.5 p-2 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-dashed border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-300 font-semibold text-[11px] hover:bg-amber-100 dark:hover:bg-amber-900/50 transition-colors cursor-pointer"
                         >
-                          + Tayinlash
+                          <Plus className="w-3 h-3" />
+                          <span>Sinf rahbari tayinlash</span>
                         </button>
                       )}
-                    </div>
-
-                    <div className="flex items-center justify-between text-[11px] pt-1.5 border-t border-border/40 gap-2">
-                      <span className="shrink-0">Yuklama:</span>
-                      <span className="font-bold text-primary shrink-0 text-right truncate">
-                        {cls.subjects?.length || 0} ta fan • {totalHours} st
-                      </span>
                     </div>
                   </div>
                 </div>
 
-                {/* Action button */}
-                <button
-                  onClick={() => onOpenCurriculum(cls)}
-                  className="mt-3 w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground transition-all cursor-pointer shrink-0"
-                >
-                  <BookOpen className="w-3.5 h-3.5 shrink-0" />
-                  <span>Fanlar taqsimoti ({totalHours} st)</span>
-                </button>
+                {/* Bottom button: Curriculum */}
+                <div className="mt-3 pt-3 border-t border-border/60">
+                  <button
+                    onClick={() => onOpenCurriculum(cls)}
+                    className="w-full flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-xl text-xs font-semibold bg-muted/50 hover:bg-primary/10 text-foreground hover:text-primary transition-colors cursor-pointer"
+                  >
+                    <BookOpen className="w-3.5 h-3.5 text-primary shrink-0" />
+                    <span>O'quv rejasi ({cls.subjects?.length || 0} fan)</span>
+                  </button>
+                </div>
               </div>
             );
           })}
         </div>
       )}
 
-      {/* ── TEZKOR SINF RAHBARI BIRIKTIRISH MODALI ───────────────────────── */}
+      {/* Quick Homeroom Modal */}
       {quickClass && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-150">
           <div className="bg-card border border-border w-full max-w-md rounded-3xl shadow-2xl p-6 space-y-4 animate-in zoom-in-95 duration-150">
-            <div className="flex items-center justify-between pb-3 border-b border-border/80">
-              <div className="flex items-center gap-3 min-w-0 flex-1">
-                <div className="w-10 h-10 rounded-2xl bg-indigo-500/10 text-indigo-600 flex items-center justify-center font-bold shrink-0">
-                  <GraduationCap className="w-5 h-5" />
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-bold">
+                  {quickClass.name}
                 </div>
-                <div className="min-w-0 flex-1">
-                  <h3 className="font-bold text-sm text-foreground truncate">
-                    {quickClass.name}-sinf Rahbarini Tayinlash
-                  </h3>
-                  <p className="text-xs text-muted-foreground truncate">
-                    Sinfga rahbar o'qituvchini tanlang
-                  </p>
+                <div>
+                  <h3 className="font-bold text-foreground text-sm">Sinf rahbarini biriktirish</h3>
+                  <p className="text-xs text-muted-foreground">{quickClass.name} sinfi uchun</p>
                 </div>
               </div>
               <button
                 onClick={() => setQuickClass(null)}
-                className="p-1.5 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer shrink-0 ml-2"
+                className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <div className="space-y-3">
-              <div>
-                <label className="block text-xs font-semibold text-muted-foreground mb-1.5">
-                  Sinf rahbari (O'qituvchi):
-                </label>
-                <TeacherSelectCombobox
-                  value={quickTeacherId}
-                  onChange={setQuickTeacherId}
-                  teachers={teachers}
-                  placeholder="O'qituvchini tanlang (yoki bo'sh qoldiring)..."
-                />
-              </div>
-
-              <div className="p-3 rounded-2xl bg-muted/40 border border-border/60 text-[11px] text-muted-foreground leading-relaxed">
-                💡 Tanlangan o'qituvchiga ushbu sinfning Juma kungi <strong>Sinf soati</strong> darsi va rasmiy jadvaldagi imzo bandlari avtomatik birikadi.
-              </div>
+            <div className="space-y-2">
+              <label className="text-xs font-semibold text-muted-foreground">O'qituvchi tanlang:</label>
+              <TeacherSelectCombobox
+                value={quickTeacherId}
+                onChange={setQuickTeacherId}
+                teachers={teachers}
+                placeholder="O'qituvchini qidiring..."
+              />
             </div>
 
-            <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-border/60">
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-border">
               <button
                 type="button"
                 onClick={() => setQuickClass(null)}
-                className="px-4 py-2 rounded-xl text-xs font-semibold border border-border hover:bg-muted transition-colors cursor-pointer"
+                className="px-3 py-1.5 text-xs font-semibold border border-border rounded-xl hover:bg-muted cursor-pointer"
               >
                 Bekor qilish
               </button>
               <button
                 type="button"
                 onClick={handleSaveQuickHomeroom}
-                className="px-4 py-2 rounded-xl text-xs font-bold bg-indigo-600 text-white hover:bg-indigo-700 shadow-md shadow-indigo-600/20 transition-all cursor-pointer"
+                className="px-4 py-1.5 text-xs font-semibold bg-primary text-primary-foreground rounded-xl hover:bg-primary/90 cursor-pointer shadow-xs"
               >
                 Saqlash
               </button>

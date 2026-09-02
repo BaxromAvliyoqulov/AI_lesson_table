@@ -127,6 +127,11 @@ export interface ClassSubject {
   groupType?: "WHOLE" | "GROUP_1" | "GROUP_2"; // Guruhlarga bo'lingan darslar (Ingliz, Rus, Informatika)
 }
 
+export interface ClassBlockedPeriod {
+  dayOfWeek: number; // 1-6
+  periodNumber: number; // 1-8
+}
+
 export interface SchoolClass {
   id: string;
   schoolId: string;
@@ -136,7 +141,10 @@ export interface SchoolClass {
   grade: number;
   isPrimary: boolean;
   isClosed?: boolean;
+  studentCount?: number;
   homeroomTeacherId?: string | null;
+  blockedDays?: number[]; // [6] -> Shanba dam kuni
+  blockedPeriods?: ClassBlockedPeriod[];
   subjects: ClassSubject[];
 }
 

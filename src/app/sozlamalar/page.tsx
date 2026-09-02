@@ -268,6 +268,10 @@ export default function SettingsPage() {
               showToast("Sinf rahbari yangilandi", "success");
             }}
             onOpenEMaktabImport={() => setIsEMaktabModalOpen(true)}
+            onBulkAddClasses={(newClasses) => {
+              newClasses.forEach((c) => store.addClass(c));
+              showToast(`${newClasses.length} ta yangi sinf muvaffaqiyatli qo'shildi`, "success");
+            }}
           />
         )}
 
