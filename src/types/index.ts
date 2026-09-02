@@ -148,6 +148,7 @@ export interface Schedule {
   term: number;
   status: "DRAFT" | "PUBLISHED" | "ARCHIVED";
   isActive: boolean;
+  lessonsCount?: number;
   createdAt: string;
   updatedAt: string;
 }

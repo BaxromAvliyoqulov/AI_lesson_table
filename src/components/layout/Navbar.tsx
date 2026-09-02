@@ -19,6 +19,7 @@ import {
   Shield,
   LogOut,
   User,
+  History,
 } from "lucide-react";
 import { SchoolInfo } from "@/types";
 import { Logo } from "@/components/brand/Logo";
@@ -36,6 +37,7 @@ interface NavbarProps {
   onOpenImport: () => void;
   onOpenTariffication?: () => void;
   onOpenTeacherAdvisor?: () => void;
+  onOpenVersions?: () => void;
   onUndo: () => void;
   canUndo: boolean;
   isGenerating: boolean;
@@ -59,6 +61,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenImport,
   onOpenTariffication,
   onOpenTeacherAdvisor,
+  onOpenVersions,
   onUndo,
   canUndo = false,
   isGenerating = false,
@@ -321,6 +324,18 @@ export const Navbar: React.FC<NavbarProps> = ({
             >
               <Sparkles className="h-3.5 w-3.5 text-indigo-500" />
               <span>AI Ustoz & Smena</span>
+            </button>
+          )}
+
+          {/* Dars Jadvali Versiyalari (Arxiv) */}
+          {onOpenVersions && (
+            <button
+              onClick={onOpenVersions}
+              className="flex items-center gap-1.5 rounded-lg border border-border bg-card hover:bg-purple-50/70 dark:hover:bg-purple-950/30 px-3 py-1.5 text-xs font-bold transition-all shadow-sm text-purple-600 dark:text-purple-400 cursor-pointer"
+              title="Dars jadvali versiyalari, snapshotlar va arxiv"
+            >
+              <History className="h-3.5 w-3.5 text-purple-600" />
+              <span>Versiyalar</span>
             </button>
           )}
 

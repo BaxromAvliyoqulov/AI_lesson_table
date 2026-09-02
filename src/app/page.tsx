@@ -34,6 +34,7 @@ import { OfficialSchedulePrintModal } from "@/components/print/OfficialScheduleP
 import { TeacherTimetableCardsModal } from "@/components/print/TeacherTimetableCardsModal";
 import { AIGenerationProgressModal } from "@/components/generator/AIGenerationProgressModal";
 import { AITeacherWorkloadAdvisorModal } from "@/components/generator/AITeacherWorkloadAdvisorModal";
+import { ScheduleVersionsModal } from "@/components/versioning/ScheduleVersionsModal";
 
 export default function HomePage() {
   const store = useSchoolStore();
@@ -43,6 +44,7 @@ export default function HomePage() {
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [isTarifficationOpen, setIsTarifficationOpen] = useState(false);
   const [isTeacherAdvisorOpen, setIsTeacherAdvisorOpen] = useState(false);
+  const [isVersionsModalOpen, setIsVersionsModalOpen] = useState(false);
   const [isAddSchoolOpen, setIsAddSchoolOpen] = useState(false);
   const [newSchoolName, setNewSchoolName] = useState("");
   const [selectedZamenaLesson, setSelectedZamenaLesson] = useState<Lesson | null>(null);
@@ -196,6 +198,7 @@ export default function HomePage() {
         onOpenImport={() => setIsImportOpen(true)}
         onOpenTariffication={() => setIsTarifficationOpen(true)}
         onOpenTeacherAdvisor={() => setIsTeacherAdvisorOpen(true)}
+        onOpenVersions={() => setIsVersionsModalOpen(true)}
         onUndo={store.undo}
         canUndo={store.history.length > 0}
         isGenerating={store.isGenerating}
@@ -622,6 +625,24 @@ export default function HomePage() {
         onApplyAIConstraints={() => {
           handleGenerate();
           showToast("✨ AI Ustoz me'yorlari va smena/bino logistikasi dars jadvaliga muvaffaqiyatli qo'llandi!");
+        }}
+      />
+
+      {/* 📜 Dars Jadvali Versiyalari va Arxiv Modali */}
+      <ScheduleVersionsModal
+        isOpen={isVersionsModalOpen}
+        onClose={() => setIsVersionsModalOpen(false)}
+        schoolId={store.currentSchoolId}
+        currentLessons={schoolLessons}
+        academicYear={currentSchool?.academicYear}
+        onVersionRestored={(restoredLessons, scheduleName) => {
+          store.setLessons(restoredLessons);
+          showToast(`✅ "${scheduleName}" versiyasi muvaffaqiyatli yuklandi va faollashtirildi!`);
+        }}
+        showToast={showToast}
+        onPrintA3={() => {
+          setIsVersionsModalOpen(false);
+          setIsA3PrintOpen(true);
         }}
       />
 
