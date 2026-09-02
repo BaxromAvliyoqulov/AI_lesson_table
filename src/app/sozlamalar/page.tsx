@@ -255,6 +255,7 @@ export default function SettingsPage() {
               store.setHomeroomTeacher(classId, teacherId);
               showToast("Sinf rahbari yangilandi", "success");
             }}
+            onOpenEMaktabImport={() => setIsEMaktabModalOpen(true)}
           />
         )}
 

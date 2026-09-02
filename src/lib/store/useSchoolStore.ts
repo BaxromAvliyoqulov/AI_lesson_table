@@ -15,15 +15,6 @@ import {
   SubstitutionRecord,
   TeacherAvailability,
 } from "@/types";
-import {
-  initialSchools,
-  initialBranches,
-  initialShifts,
-  initialSubjects,
-  initialTeachers,
-  initialRooms,
-  initialClasses,
-} from "@/lib/mock-data";
 import { CSPSolver } from "@/lib/solver/csp-solver";
 import {
   getSchoolFullData,
@@ -75,28 +66,11 @@ interface SchoolStoreState {
   syncStatus: SyncStatus;
 }
 
-const STORAGE_KEY = "dars_jadval_ai_store_v14";
+const STORAGE_KEY = "dars_jadval_ai_store_clean_v1";
 
-// Initial state generator
+// Standart toza boshlang'ich holat (Hech qanday Mock / Soxta ma'lumotlarsiz)
 function createInitialState(): SchoolStoreState {
-  const defaultSchoolId = "school_39";
-  const defaultClasses = initialClasses.filter((c) => c.schoolId === defaultSchoolId);
-  const defaultTeachers = initialTeachers.filter((t) => t.schoolId === defaultSchoolId);
-  const defaultSubjects = initialSubjects.filter((s) => s.schoolId === defaultSchoolId);
-  const defaultRooms = initialRooms.filter((r) => r.schoolId === defaultSchoolId);
-  const defaultShifts = initialShifts.filter((s) => s.schoolId === defaultSchoolId);
-  const defaultBranches = initialBranches.filter((b) => b.schoolId === defaultSchoolId);
-
-  // Generate initial timetable with strict method day constraints
-  const solver = new CSPSolver({
-    classes: defaultClasses,
-    teachers: defaultTeachers,
-    subjects: defaultSubjects,
-    rooms: defaultRooms,
-    shifts: defaultShifts,
-    branches: defaultBranches,
-  });
-  const generatedLessons = solver.solve().lessons;
+  const defaultSchoolId = "school_main";
 
   const defaultBells: BellPeriod[] = [
     { periodNumber: 1, startTime: "08:00", endTime: "08:45", breakDurationMinutes: 5 },
@@ -110,29 +84,50 @@ function createInitialState(): SchoolStoreState {
 
   return {
     currentSchoolId: defaultSchoolId,
-    schools: initialSchools,
-    branches: initialBranches,
-    shifts: initialShifts,
-    subjects: initialSubjects,
-    teachers: initialTeachers,
-    rooms: initialRooms,
-    classes: initialClasses,
-    lessons: generatedLessons,
-    bellPeriods: defaultBells,
-    substitutions: [],
-    auditLogs: [
+    schools: [
       {
-        id: "log_1",
-        timestamp: "08:00",
-        action: "Tizim ishga tushirildi",
-        details: "Boshlang'ich dars jadvali va maktab konfiguratsiyasi yuklandi",
+        id: defaultSchoolId,
+        slug: "maktab",
+        name: "Umumiy o'rta ta'lim maktabi",
+        region: "",
+        academicYear: "2025 - 2026",
+        approvalDate: "",
+        directorName: "",
+        vicePrincipalName: "",
+        psychologistName: "",
       },
     ],
+    branches: [
+      {
+        id: "branch_main",
+        schoolId: defaultSchoolId,
+        name: "Asosiy bino",
+        isMain: true,
+      },
+    ],
+    shifts: [
+      {
+        id: "shift_1",
+        schoolId: defaultSchoolId,
+        name: "1-smena",
+        startTime: "08:00",
+        endTime: "13:10",
+        periodsCount: 6,
+      },
+    ],
+    subjects: [],
+    teachers: [],
+    rooms: [],
+    classes: [],
+    lessons: [],
+    bellPeriods: defaultBells,
+    substitutions: [],
+    auditLogs: [],
     history: [],
     zoomLevel: 100,
     selectedBranch: "ALL",
     viewMode: "OFFICIAL_39",
-    selectedClassId: "c_school_39_1a",
+    selectedClassId: "",
     isGenerating: false,
     syncStatus: "synced",
   };
@@ -149,41 +144,6 @@ function getLocalStorageState(): SchoolStoreState | null {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return null;
     const parsed: SchoolStoreState = JSON.parse(raw);
-
-    // AUTO-SANITIZE: Agar keshdagi eski darslarda Juma kuni ingliz yoki chet tili darsi bo'lsa, tozalaymiz
-    const hasFridayEnglish = parsed.lessons?.some(
-      (l) =>
-        (l.subjectId === "sub_ing" ||
-          l.subjectId === "sub_rus" ||
-          l.subjectId === "sub_nemis" ||
-          l.subjectId === "sub_fransuz") &&
-        l.dayOfWeek === 5
-    );
-
-    if (hasFridayEnglish) {
-      const solver = new CSPSolver({
-        classes: parsed.classes?.length ? parsed.classes : initialClasses,
-        teachers: parsed.teachers?.length ? parsed.teachers : initialTeachers,
-        subjects: parsed.subjects?.length ? parsed.subjects : initialSubjects,
-        rooms: parsed.rooms?.length ? parsed.rooms : initialRooms,
-        shifts: parsed.shifts?.length ? parsed.shifts : initialShifts,
-        branches: parsed.branches?.length ? parsed.branches : initialBranches,
-      });
-      const solved = solver.solve();
-      if (solved.success && solved.lessons.length > 0) {
-        parsed.lessons = solved.lessons;
-        saveLocalStorageState(parsed);
-      }
-    }
-
-    if (parsed.branches) {
-      parsed.branches = parsed.branches.map((b: Branch) => {
-        if (b.id === "b39_1") return { ...b, name: "Asosiy Maktab" };
-        if (b.id === "b39_2") return { ...b, name: "Filial" };
-        return b;
-      });
-    }
-
     return parsed;
   } catch {
     return null;
@@ -311,13 +271,13 @@ export function useSchoolStore() {
                 schoolInfo,
                 ...prev.schools.filter((s) => s.id !== schoolInfo.id && s.id !== "school_39"),
               ],
-              branches: branches.length > 0 ? branches : prev.branches,
-              shifts: shifts.length > 0 ? shifts : prev.shifts,
-              subjects: subjects.length > 0 ? subjects : prev.subjects,
-              rooms: rooms.length > 0 ? rooms : prev.rooms,
-              teachers: teachers.length > 0 ? teachers : prev.teachers,
-              classes: classes.length > 0 ? sortClassesByName(classes) : sortClassesByName(prev.classes),
-              lessons: lessons.length > 0 ? lessons : prev.lessons,
+              branches: branches,
+              shifts: shifts,
+              subjects: subjects,
+              rooms: rooms,
+              teachers: teachers,
+              classes: sortClassesByName(classes),
+              lessons: lessons,
               bellPeriods: bellPeriods.length > 0 ? bellPeriods : prev.bellPeriods,
               syncStatus: "synced" as const,
             };
@@ -836,6 +796,13 @@ export function useSchoolStore() {
       ...prev,
       teachers: prev.teachers.filter((t) => t.id !== teacherId),
       lessons: prev.lessons.filter((l) => l.teacherId !== teacherId),
+      classes: prev.classes.map((c) => ({
+        ...c,
+        homeroomTeacherId: c.homeroomTeacherId === teacherId ? null : c.homeroomTeacherId,
+        subjects: (c.subjects || []).map((cs) =>
+          cs.teacherId === teacherId ? { ...cs, teacherId: "" } : cs
+        ),
+      })),
       syncStatus: "syncing",
     }));
     if (target) {

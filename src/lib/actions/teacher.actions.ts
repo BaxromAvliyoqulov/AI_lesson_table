@@ -138,13 +138,66 @@ export async function upsertTeacherAction(schoolId: string, teacher: Teacher) {
 }
 
 /**
- * O'qituvchini o'chirish
+ * O'qituvchini o'chirish (Cascade tozalash bilan)
  */
 export async function deleteTeacherAction(schoolId: string, teacherId: string) {
   try {
-    await prisma.teacher.deleteMany({
-      where: { id: teacherId },
+    const school = await resolveSchool(schoolId);
+    const actualSchoolId = school ? school.id : schoolId;
+
+    await prisma.$transaction(async (tx) => {
+      // 1. O'qituvchini topish (ID, fullName yoki displayNumber bo'yicha)
+      const teacher = await tx.teacher.findFirst({
+        where: {
+          schoolId: actualSchoolId,
+          OR: [
+            { id: teacherId },
+            { fullName: teacherId },
+            ...(Number.isInteger(Number(teacherId)) ? [{ displayNumber: Number(teacherId) }] : []),
+          ],
+        },
+      });
+
+      if (!teacher) {
+        // Agar to'g'ridan-to'g'ri ID bo'yicha bo'lsa
+        await tx.teacher.deleteMany({
+          where: { id: teacherId },
+        });
+        return;
+      }
+
+      // 2. Dars jadvalidan o'sha o'qituvchining darslarini o'chirish
+      await tx.lesson.deleteMany({
+        where: { teacherId: teacher.id },
+      });
+
+      // 3. Tarifikatsiyadan o'sha o'qituvchi soatlarini tozalash
+      await tx.classSubject.deleteMany({
+        where: { teacherId: teacher.id },
+      });
+
+      // 4. Boshqa jadvallardan tozalash
+      await tx.teacherAvailability.deleteMany({
+        where: { teacherId: teacher.id },
+      });
+      await tx.teacherSubject.deleteMany({
+        where: { teacherId: teacher.id },
+      });
+      await tx.teacherBranch.deleteMany({
+        where: { teacherId: teacher.id },
+      });
+      await tx.lessonReplacement.deleteMany({
+        where: {
+          OR: [{ originalTeacherId: teacher.id }, { replacementTeacherId: teacher.id }],
+        },
+      });
+
+      // 5. O'qituvchini o'chirish
+      await tx.teacher.delete({
+        where: { id: teacher.id },
+      });
     });
+
     return { success: true };
   } catch (error: any) {
     console.error("deleteTeacherAction xatosi:", error);

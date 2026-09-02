@@ -13,19 +13,10 @@ import {
   Lesson,
   BellPeriod,
 } from "@/types";
-import {
-  initialBranches,
-  initialShifts,
-  initialSubjects,
-  initialRooms,
-  initialTeachers,
-  initialClasses,
-} from "@/lib/mock-data";
 import { CSPSolver } from "@/lib/solver/csp-solver";
 
 /**
  * 0. Maktab ID yoki slug bo'yicha bazadagi haqiqiy School yozuvini aniqlash (Auto-Resolver)
- * Har qanday alias (school_39, demo-maktab, maktab-39, cuid) ni haqiqiy bazadagi maktabga bog'laydi.
  */
 export async function resolveSchool(schoolIdOrSlug?: string) {
   try {
@@ -39,15 +30,12 @@ export async function resolveSchool(schoolIdOrSlug?: string) {
       });
       if (byId) return byId;
 
-      // 2. Slug yoki mashhur aliaslar bo'yicha
+      // 2. Slug bo'yicha
       const bySlug = await prisma.school.findFirst({
         where: {
           OR: [
             { slug: schoolIdOrSlug },
-            { slug: "demo-maktab" },
-            { slug: "school_39" },
-            { slug: "maktab-39" },
-            { name: { contains: "39" } },
+            { id: schoolIdOrSlug },
           ],
         },
       });
@@ -61,11 +49,11 @@ export async function resolveSchool(schoolIdOrSlug?: string) {
     // 4. Agar bazada umuman maktab bo'lmasa, yaratish
     const created = await prisma.school.create({
       data: {
-        name: "39-umumiy o'rta ta'lim maktabi",
-        slug: schoolIdOrSlug || "demo-maktab",
-        region: "Muzrabot tumani",
-        directorFullName: "M. Ramazonov",
-        academicVicePrincipalName: "N. Narziqulov",
+        name: "Umumiy o'rta ta'lim maktabi",
+        slug: schoolIdOrSlug || "maktab",
+        region: "",
+        directorFullName: "",
+        academicVicePrincipalName: "",
         subscriptionPlan: "pro",
         subscriptionStatus: "active",
       },
@@ -122,19 +110,13 @@ export async function getSchoolFullData(schoolId?: string) {
       return { success: false, error: "Maktab topilmadi" };
     }
 
-    // Agar bazada o'qituvchilar yoki sinflar umuman bo'lmasa, boshlang'ich ma'lumotlarni seed qilish
-    if (school.teachers.length === 0 || school.classes.length === 0) {
-      await seedSchoolInitialData(school.id);
-      return await getSchoolFullData(school.id);
-    }
-
     const schoolInfo: SchoolInfo = {
       id: school.id,
       slug: school.slug,
       name: school.name,
-      region: school.region || "Muzrabot tumani",
+      region: school.region || "",
       academicYear: school.academicYear || "2025 - 2026",
-      approvalDate: school.approvalDate || "2026-yil 28-mart",
+      approvalDate: school.approvalDate || "",
       directorName: school.directorFullName || "",
       vicePrincipalName: school.academicVicePrincipalName || "",
       psychologistName: school.psychologistName || "",
@@ -297,7 +279,7 @@ export async function getSchoolFullData(schoolId?: string) {
 }
 
 /**
- * 2. Maktab uchun boshlang'ich ma'lumotlarni PostgreSQL bazasiga kiritish (Seed)
+ * 2. Maktab uchun boshlang'ich asosiy tuzilmani yaratish (Clean Init)
  */
 export async function seedSchoolInitialData(schoolId: string) {
   try {
@@ -305,299 +287,36 @@ export async function seedSchoolInitialData(schoolId: string) {
     if (!school) return { success: false, error: "Maktab topilmadi" };
     const actualSchoolId = school.id;
 
-    return await prisma.$transaction(
-      async (tx) => {
-        // 1. Filiallar
-        const branchMap = new Map<string, string>();
-        const initialB = initialBranches.filter((b) => b.schoolId === "school_39");
-        for (const b of initialB) {
-          const branch = await tx.branch.create({
-            data: {
-              schoolId: actualSchoolId,
-              name: b.name,
-              address: b.address || null,
-              isMain: b.isMain,
-            },
-          });
-          branchMap.set(b.id, branch.id);
-        }
-
-        // 2. Smenalar
-        const shiftMap = new Map<string, string>();
-        const initialS = initialShifts.filter((s) => s.schoolId === "school_39");
-        for (let i = 0; i < initialS.length; i++) {
-          const s = initialS[i];
-          const shift = await tx.shift.create({
-            data: {
-              schoolId: actualSchoolId,
-              name: s.name,
-              startTime: s.startTime,
-              endTime: s.endTime,
-              periodsCount: s.periodsCount,
-              order: i + 1,
-            },
-          });
-          shiftMap.set(s.id, shift.id);
-        }
-
-        // 3. Fanlar
-        const subjectMap = new Map<string, string>();
-        const initialSub = initialSubjects.filter((s) => s.schoolId === "school_39");
-        for (const sub of initialSub) {
-          const createdSub = await tx.subject.create({
-            data: {
-              schoolId: actualSchoolId,
-              name: sub.name,
-              shortName: sub.shortName || null,
-              colorTag: sub.colorTag,
-              difficultyScore: sub.difficultyScore,
-              allowDoubleLesson: sub.allowDoubleLesson,
-              requiresRoomType: sub.requiresRoomType || null,
-            },
-          });
-          subjectMap.set(sub.id, createdSub.id);
-        }
-
-        // 4. Xonalar
-        const roomMap = new Map<string, string>();
-        const initialR = initialRooms.filter((r) => r.schoolId === "school_39");
-        for (const r of initialR) {
-          const bId = branchMap.get(r.branchId) || Array.from(branchMap.values())[0];
-          const createdRoom = await tx.room.create({
-            data: {
-              schoolId: actualSchoolId,
-              branchId: bId,
-              name: r.name,
-              roomType: r.roomType,
-              capacity: r.capacity,
-            },
-          });
-          roomMap.set(r.id, createdRoom.id);
-        }
-
-        // 5. O'qituvchilar
-        const teacherMap = new Map<string, string>();
-        const initialT = initialTeachers.filter((t) => t.schoolId === "school_39");
-        const teacherSubjectRows: Array<{ schoolId: string; teacherId: string; subjectId: string }> = [];
-        const teacherBranchRows: Array<{ schoolId: string; teacherId: string; branchId: string }> = [];
-
-        for (let i = 0; i < initialT.length; i++) {
-          const t = initialT[i];
-          const createdTeacher = await tx.teacher.create({
-            data: {
-              schoolId: actualSchoolId,
-              displayNumber: i + 1,
-              fullName: t.fullName,
-              phone: t.phone || null,
-              weeklyHourCapacity: t.weeklyHourCapacity,
-              maxConsecutiveHours: t.maxConsecutiveHours,
-              methodDay: t.methodDayOfWeek !== undefined ? t.methodDayOfWeek : null,
-            },
-          });
-          teacherMap.set(t.id, createdTeacher.id);
-
-          // Fan bog'lamalari
-          for (const sId of t.subjectIds) {
-            const mappedSubId = subjectMap.get(sId);
-            if (mappedSubId) {
-              teacherSubjectRows.push({
-                schoolId: actualSchoolId,
-                teacherId: createdTeacher.id,
-                subjectId: mappedSubId,
-              });
-            }
-          }
-
-          // Filial bog'lamalari
-          for (const bId of t.branchIds) {
-            const mappedBranchId = branchMap.get(bId);
-            if (mappedBranchId) {
-              teacherBranchRows.push({
-                schoolId: actualSchoolId,
-                teacherId: createdTeacher.id,
-                branchId: mappedBranchId,
-              });
-            }
-          }
-        }
-
-        if (teacherSubjectRows.length > 0) {
-          await tx.teacherSubject.createMany({ data: teacherSubjectRows, skipDuplicates: true });
-        }
-        if (teacherBranchRows.length > 0) {
-          await tx.teacherBranch.createMany({ data: teacherBranchRows, skipDuplicates: true });
-        }
-
-        // 6. Sinflar va Tarifikatsiya
-        const classMap = new Map<string, string>();
-        const initialC = initialClasses.filter((c) => c.schoolId === "school_39");
-        const classSubjectRows: Array<{
-          schoolId: string;
-          classId: string;
-          subjectId: string;
-          teacherId: string;
-          weeklyHours: number;
-        }> = [];
-
-        for (const c of initialC) {
-          const bId = branchMap.get(c.branchId) || Array.from(branchMap.values())[0];
-          const sId = shiftMap.get(c.shiftId) || Array.from(shiftMap.values())[0];
-
-          const createdClass = await tx.class.create({
-            data: {
-              schoolId: actualSchoolId,
-              branchId: bId,
-              shiftId: sId,
-              name: c.name,
-              grade: c.grade,
-              isPrimary: c.isPrimary,
-            },
-          });
-          classMap.set(c.id, createdClass.id);
-
-          // Sinf rahbari bog'lash
-          if (c.homeroomTeacherId) {
-            const mappedTeacherId = teacherMap.get(c.homeroomTeacherId);
-            if (mappedTeacherId) {
-              await tx.teacher.update({
-                where: { id: mappedTeacherId },
-                data: { homeroomClassId: createdClass.id },
-              });
-            }
-          }
-
-          // Fanlar va dars soatlari (ClassSubjects)
-          for (const cs of c.subjects) {
-            const mappedSubId = subjectMap.get(cs.subjectId);
-            const mappedTeacherId = teacherMap.get(cs.teacherId);
-            if (mappedSubId && mappedTeacherId) {
-              classSubjectRows.push({
-                schoolId: actualSchoolId,
-                classId: createdClass.id,
-                subjectId: mappedSubId,
-                teacherId: mappedTeacherId,
-                weeklyHours: cs.weeklyHours,
-              });
-            }
-          }
-        }
-
-        if (classSubjectRows.length > 0) {
-          await tx.classSubject.createMany({ data: classSubjectRows, skipDuplicates: true });
-        }
-
-        // 7. Darslar (Schedule & Lessons)
-        const activeSchedule = await tx.schedule.create({
+    return await prisma.$transaction(async (tx) => {
+      // 1. Asosiy filial
+      const existingBranch = await tx.branch.findFirst({ where: { schoolId: actualSchoolId } });
+      if (!existingBranch) {
+        await tx.branch.create({
           data: {
             schoolId: actualSchoolId,
-            name: "2025-2026 o'quv yili 1-chorak dars jadvali",
-            academicYear: "2025 - 2026",
-            term: 1,
-            status: "PUBLISHED",
-            isActive: true,
+            name: "Asosiy bino",
+            isMain: true,
           },
         });
+      }
 
-        // CSP Solver orqali boshlang'ich dars jadvalini hisoblash
-        const transformedClasses: SchoolClass[] = initialC.map((c) => ({
-          id: classMap.get(c.id) || c.id,
-          schoolId: actualSchoolId,
-          branchId: branchMap.get(c.branchId) || c.branchId,
-          shiftId: shiftMap.get(c.shiftId) || c.shiftId,
-          name: c.name,
-          grade: c.grade,
-          isPrimary: c.isPrimary,
-          homeroomTeacherId: c.homeroomTeacherId ? teacherMap.get(c.homeroomTeacherId) : undefined,
-          subjects: c.subjects.map((cs) => ({
-            id: cs.id,
-            classId: classMap.get(c.id) || c.id,
-            subjectId: subjectMap.get(cs.subjectId) || cs.subjectId,
-            teacherId: teacherMap.get(cs.teacherId) || cs.teacherId,
-            weeklyHours: cs.weeklyHours,
-          })),
-        }));
-
-        const transformedTeachers: Teacher[] = initialT.map((t) => ({
-          id: teacherMap.get(t.id) || t.id,
-          schoolId: actualSchoolId,
-          displayNumber: t.displayNumber,
-          fullName: t.fullName,
-          phone: t.phone,
-          subjectIds: t.subjectIds.map((s) => subjectMap.get(s) || s),
-          branchIds: t.branchIds.map((b) => branchMap.get(b) || b),
-          weeklyHourCapacity: t.weeklyHourCapacity,
-          maxConsecutiveHours: t.maxConsecutiveHours,
-          methodDayOfWeek: t.methodDayOfWeek,
-        }));
-
-        const solver = new CSPSolver({
-          classes: transformedClasses,
-          teachers: transformedTeachers,
-          subjects: Array.from(subjectMap.entries()).map(([origId, dbId]) => {
-            const orig = initialSub.find((s) => s.id === origId)!;
-            return {
-              id: dbId,
-              schoolId: actualSchoolId,
-              name: orig?.name || "Fan",
-              colorTag: orig?.colorTag || "#3B82F6",
-              difficultyScore: orig?.difficultyScore || 5,
-              allowDoubleLesson: orig?.allowDoubleLesson || false,
-            };
-          }),
-          rooms: Array.from(roomMap.entries()).map(([origId, dbId]) => {
-            const orig = initialR.find((r) => r.id === origId)!;
-            return {
-              id: dbId,
-              schoolId: actualSchoolId,
-              branchId: branchMap.get(orig?.branchId) || "",
-              name: orig?.name || "Xona",
-              roomType: orig?.roomType || "GENERAL",
-              capacity: orig?.capacity || 35,
-            };
-          }),
-          shifts: initialS.map((s) => ({
-            id: shiftMap.get(s.id) || s.id,
+      // 2. 1-smena
+      const existingShift = await tx.shift.findFirst({ where: { schoolId: actualSchoolId } });
+      if (!existingShift) {
+        await tx.shift.create({
+          data: {
             schoolId: actualSchoolId,
-            name: s.name,
-            startTime: s.startTime,
-            endTime: s.endTime,
-            periodsCount: s.periodsCount,
-          })),
-          branches: initialB.map((b) => ({
-            id: branchMap.get(b.id) || b.id,
-            schoolId: actualSchoolId,
-            name: b.name,
-            isMain: b.isMain,
-          })),
-          daysCount: 6,
-          maxPeriodsPerDay: 6,
+            name: "1-smena",
+            startTime: "08:00",
+            endTime: "13:10",
+            periodsCount: 6,
+            order: 1,
+          },
         });
+      }
 
-        const solveResult = solver.solve();
-        if (solveResult.lessons && solveResult.lessons.length > 0) {
-          const lessonRows = solveResult.lessons.map((l) => ({
-            scheduleId: activeSchedule.id,
-            schoolId: actualSchoolId,
-            classId: l.classId,
-            subjectId: l.subjectId,
-            teacherId: l.teacherId,
-            roomId: l.roomId || null,
-            branchId: l.branchId,
-            dayOfWeek: l.dayOfWeek,
-            periodNumber: l.periodNumber,
-            isLocked: l.isLocked || false,
-          }));
-
-          await tx.lesson.createMany({
-            data: lessonRows,
-            skipDuplicates: true,
-          });
-        }
-
-        return { success: true };
-      },
-      { timeout: 60000, maxWait: 20000 }
-    );
+      return { success: true };
+    });
   } catch (error: any) {
     console.error("seedSchoolInitialData xatosi:", error);
     return { success: false, error: error?.message };
@@ -866,30 +585,34 @@ export async function syncFullSchoolDataAction(
             classMap.set(c.name.trim(), existing.id);
 
             // Tarifikatsiya
-            if (c.subjects && c.subjects.length > 0) {
+            if (c.subjects !== undefined) {
+              await tx.classSubject.deleteMany({
+                where: { classId: existing.id },
+              });
+
               for (const cs of c.subjects) {
-                const mappedSubId = subjectMap.get(cs.subjectId);
-                const mappedTeacherId = teacherMap.get(cs.teacherId);
-                if (mappedSubId && mappedTeacherId) {
-                  await tx.classSubject.upsert({
-                    where: {
-                      classId_subjectId_teacherId: {
-                        classId: existing.id,
-                        subjectId: mappedSubId,
-                        teacherId: mappedTeacherId,
-                      },
-                    },
-                    create: {
-                      schoolId: actualSchoolId,
-                      classId: existing.id,
-                      subjectId: mappedSubId,
-                      teacherId: mappedTeacherId,
-                      weeklyHours: cs.weeklyHours,
-                    },
-                    update: {
-                      weeklyHours: cs.weeklyHours,
-                    },
+                const mappedSubId = subjectMap.get(cs.subjectId) || cs.subjectId;
+                const mappedTeacherId = teacherMap.get(cs.teacherId) || cs.teacherId;
+                if (mappedSubId && mappedTeacherId && cs.weeklyHours > 0) {
+                  // Sub va Teacher mavjudligini tekshirish
+                  const dbSub = await tx.subject.findFirst({
+                    where: { OR: [{ id: mappedSubId }, { schoolId: actualSchoolId, name: mappedSubId }] },
                   });
+                  const dbTeacher = await tx.teacher.findFirst({
+                    where: { OR: [{ id: mappedTeacherId }, { schoolId: actualSchoolId, fullName: mappedTeacherId }] },
+                  });
+
+                  if (dbSub && dbTeacher) {
+                    await tx.classSubject.create({
+                      data: {
+                        schoolId: actualSchoolId,
+                        classId: existing.id,
+                        subjectId: dbSub.id,
+                        teacherId: dbTeacher.id,
+                        weeklyHours: cs.weeklyHours,
+                      },
+                    });
+                  }
                 }
               }
             }

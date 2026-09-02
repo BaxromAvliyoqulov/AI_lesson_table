@@ -29,6 +29,7 @@ interface ClassesTabProps {
   onDeleteClass: (classId: string) => void;
   onOpenCurriculum: (cls: SchoolClass) => void;
   onSetHomeroomTeacher?: (classId: string, teacherId: string | null) => void;
+  onOpenEMaktabImport?: () => void;
 }
 
 type ClassFilterType = "ALL" | "PRIMARY" | "MIDDLE" | "HIGH" | "NO_HOMEROOM";
@@ -44,6 +45,7 @@ export const ClassesTab: React.FC<ClassesTabProps> = ({
   onDeleteClass,
   onOpenCurriculum,
   onSetHomeroomTeacher,
+  onOpenEMaktabImport,
 }) => {
   const [search, setSearch] = useState("");
   const [filterType, setFilterType] = useState<ClassFilterType>("ALL");
@@ -165,13 +167,27 @@ export const ClassesTab: React.FC<ClassesTabProps> = ({
             />
           </div>
 
-          <button
-            onClick={onAddClass}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold bg-primary text-primary-foreground hover:bg-primary/90 shadow-md shadow-primary/20 transition-all cursor-pointer shrink-0 self-end sm:self-auto"
-          >
-            <Plus className="w-4 h-4 shrink-0" />
-            <span>Yangi sinf qo'shish</span>
-          </button>
+          <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
+            {onOpenEMaktabImport && (
+              <button
+                type="button"
+                onClick={onOpenEMaktabImport}
+                title="eMaktab (Kundalik) Excel faylidan sinflarni avtomatik yuklash"
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold border border-blue-200 dark:border-blue-900 bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/80 transition-all cursor-pointer shadow-xs active:scale-95"
+              >
+                <span>📥</span>
+                <span>eMaktab Import</span>
+              </button>
+            )}
+
+            <button
+              onClick={onAddClass}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold bg-primary text-primary-foreground hover:bg-primary/90 shadow-md shadow-primary/20 transition-all cursor-pointer"
+            >
+              <Plus className="w-4 h-4 shrink-0" />
+              <span>Yangi sinf qo'shish</span>
+            </button>
+          </div>
         </div>
 
         {/* Filter pills */}
