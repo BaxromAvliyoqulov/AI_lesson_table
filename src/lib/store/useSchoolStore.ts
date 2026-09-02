@@ -75,7 +75,7 @@ interface SchoolStoreState {
   syncStatus: SyncStatus;
 }
 
-const STORAGE_KEY = "dars_jadval_ai_store_v11";
+const STORAGE_KEY = "dars_jadval_ai_store_v12";
 
 // Initial state generator
 function createInitialState(): SchoolStoreState {

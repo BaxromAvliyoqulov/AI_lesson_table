@@ -105,6 +105,20 @@ export function validateDropSlot({
     conflicts.push(`🧒 Boshlang'ich sinflar (${targetClass.name}) uchun Shanba dam olish kuni!`);
   }
 
+  // 1.5. Bir kunda bitta sinfda bir xil fan takrorlanishi (Juftlik darsi ruxsat etilmagan bo'lsa)
+  const classSameDaySubject = otherLessons.find(
+    (l) =>
+      l.classId === targetClass.id &&
+      l.subjectId === draggedLesson.subjectId &&
+      l.dayOfWeek === targetDay
+  );
+
+  if (classSameDaySubject && !subject?.allowDoubleLesson) {
+    conflicts.push(
+      `🛑 ${targetClass.name} sinfida ${WEEKDAY_NAMES[targetDay] || "bu kun"} kuni ${subject?.name || "ushbu fan"} darsi allaqachon mavjud! Bir kunda 1 ta fanni takrorlash taqiqlanadi!`
+    );
+  }
+
   if (conflicts.length > 0) {
     return {
       status: "conflict",

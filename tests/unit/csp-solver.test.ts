@@ -153,4 +153,42 @@ describe("CSP Constraint Satisfaction Solver (Dars Jadval AI Generator)", () => 
       }
     }
   });
+
+  it("should STRICTLY guarantee NO duplicate non-double subjects in the same class on the same day", () => {
+    const solver = new CSPSolver({
+      classes: initialClasses,
+      teachers: initialTeachers,
+      subjects: initialSubjects,
+      rooms: initialRooms,
+      branches: initialBranches,
+      shifts: initialShifts,
+      daysCount: 6,
+      maxPeriodsPerDay: 6,
+    });
+
+    const result = solver.solve();
+    expect(result.success).toBe(true);
+
+    const subjectMap = new Map(initialSubjects.map((s) => [s.id, s]));
+
+    // Check every class and every day: count occurrences of each subject
+    const classDaySubjectMap = new Map<string, number>();
+    for (const lesson of result.lessons) {
+      const sub = subjectMap.get(lesson.subjectId);
+      if (!sub?.allowDoubleLesson) {
+        const key = `${lesson.classId}_day${lesson.dayOfWeek}_sub${lesson.subjectId}`;
+        const current = classDaySubjectMap.get(key) || 0;
+        classDaySubjectMap.set(key, current + 1);
+      }
+    }
+
+    const duplicates: string[] = [];
+    classDaySubjectMap.forEach((count, key) => {
+      if (count > 1) {
+        duplicates.push(`${key} -> count: ${count}`);
+      }
+    });
+
+    expect(duplicates).toEqual([]);
+  });
 });
