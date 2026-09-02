@@ -27,6 +27,7 @@ export async function upsertSubjectAction(schoolId: string, subject: Subject) {
           difficultyScore: subject.difficultyScore || 5,
           allowDoubleLesson: subject.allowDoubleLesson || false,
           requiresRoomType: subject.requiresRoomType || null,
+          methodDayOfWeek: subject.methodDayOfWeek !== undefined ? subject.methodDayOfWeek : null,
           isActive: subject.isActive !== undefined ? subject.isActive : true,
         },
       });
@@ -40,6 +41,7 @@ export async function upsertSubjectAction(schoolId: string, subject: Subject) {
           difficultyScore: subject.difficultyScore,
           allowDoubleLesson: subject.allowDoubleLesson,
           requiresRoomType: subject.requiresRoomType || null,
+          methodDayOfWeek: subject.methodDayOfWeek !== undefined ? subject.methodDayOfWeek : null,
           isActive: subject.isActive !== undefined ? subject.isActive : true,
         },
       });

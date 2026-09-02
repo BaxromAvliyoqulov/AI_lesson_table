@@ -148,6 +148,7 @@ export async function getSchoolFullData(schoolId?: string) {
       difficultyScore: sub.difficultyScore,
       allowDoubleLesson: sub.allowDoubleLesson,
       requiresRoomType: (sub.requiresRoomType as any) || undefined,
+      methodDayOfWeek: sub.methodDayOfWeek !== null ? sub.methodDayOfWeek : undefined,
       isActive: sub.isActive,
     }));
 
@@ -416,6 +417,10 @@ export async function syncFullSchoolDataAction(
               await tx.subject.update({
                 where: { id: existing.id },
                 data: {
+                  colorTag: s.colorTag || existing.colorTag,
+                  shortName: s.shortName !== undefined ? s.shortName : existing.shortName,
+                  difficultyScore: s.difficultyScore || existing.difficultyScore,
+                  methodDayOfWeek: s.methodDayOfWeek !== undefined ? s.methodDayOfWeek : existing.methodDayOfWeek,
                   isActive: s.isActive !== undefined ? s.isActive : existing.isActive,
                 },
               });
