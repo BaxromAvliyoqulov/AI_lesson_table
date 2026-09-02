@@ -4,6 +4,7 @@ import React, { useState, useMemo, useCallback } from "react";
 import { SchoolClass, Branch, Shift, Teacher, Subject } from "@/types";
 import { sortClassesByName } from "@/lib/utils";
 import { TeacherSelectCombobox } from "../shared/TeacherSelectCombobox";
+import { useSchoolStore } from "@/lib/store/useSchoolStore";
 import {
   GraduationCap,
   Plus,
@@ -23,6 +24,10 @@ import {
   Check,
   CalendarOff,
   Users,
+  Lock,
+  Unlock,
+  Layers,
+  BarChart3,
 } from "lucide-react";
 
 interface ClassesTabProps {
@@ -40,7 +45,7 @@ interface ClassesTabProps {
   onBulkAddClasses?: (newClasses: SchoolClass[]) => void;
 }
 
-type ClassFilterType = "ALL" | "PRIMARY" | "MIDDLE" | "HIGH" | "NO_HOMEROOM";
+type ClassFilterType = "ALL" | "PRIMARY" | "MIDDLE" | "HIGH" | "NO_HOMEROOM" | "LOCKED";
 
 const AVAILABLE_GRADES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
 const AVAILABLE_LETTERS = ["A", "B", "D", "E", "F", "G", "H", "I", "J", "K"];
@@ -59,8 +64,10 @@ export const ClassesTab: React.FC<ClassesTabProps> = ({
   onOpenEMaktabImport,
   onBulkAddClasses,
 }) => {
+  const { lockedClassIds = [], toggleLockClass } = useSchoolStore();
   const [search, setSearch] = useState("");
   const [filterType, setFilterType] = useState<ClassFilterType>("ALL");
+  const [selectedGrade, setSelectedGrade] = useState<number | null>(null);
 
   // Ommaviy generator holati
   const [selectedGrades, setSelectedGrades] = useState<number[]>([]);
@@ -141,14 +148,35 @@ export const ClassesTab: React.FC<ClassesTabProps> = ({
     [teachers, teacherMap]
   );
 
+  const primaryCount = useMemo(() => classes.filter((c) => c.grade <= 4).length, [classes]);
+  const middleCount = useMemo(() => classes.filter((c) => c.grade >= 5 && c.grade <= 9).length, [classes]);
+  const highCount = useMemo(() => classes.filter((c) => c.grade >= 10).length, [classes]);
+  const totalStudents = useMemo(() => classes.reduce((sum, c) => sum + (c.studentCount || 25), 0), [classes]);
+  const lockedCount = useMemo(() => classes.filter((c) => lockedClassIds.includes(c.id)).length, [classes, lockedClassIds]);
+
   const noHomeroomCount = useMemo(
     () => classes.filter((c) => !getClassHomeroomTeacher(c)).length,
     [classes, getClassHomeroomTeacher]
   );
+  const withHomeroomCount = useMemo(() => classes.length - noHomeroomCount, [classes.length, noHomeroomCount]);
+
+  // Har bir aniq sinf raqami (1..11) dagi sinflar soni
+  const gradeCounts = useMemo(() => {
+    const map = new Map<number, number>();
+    for (let g = 1; g <= 11; g++) map.set(g, 0);
+    classes.forEach((c) => {
+      const g = c.grade || 1;
+      map.set(g, (map.get(g) || 0) + 1);
+    });
+    return map;
+  }, [classes]);
 
   const filteredClasses = useMemo(() => {
     let list = classes;
-    if (filterType === "PRIMARY") {
+
+    if (selectedGrade !== null) {
+      list = list.filter((c) => c.grade === selectedGrade);
+    } else if (filterType === "PRIMARY") {
       list = list.filter((c) => c.grade <= 4);
     } else if (filterType === "MIDDLE") {
       list = list.filter((c) => c.grade >= 5 && c.grade <= 9);
@@ -156,6 +184,8 @@ export const ClassesTab: React.FC<ClassesTabProps> = ({
       list = list.filter((c) => c.grade >= 10);
     } else if (filterType === "NO_HOMEROOM") {
       list = list.filter((c) => !getClassHomeroomTeacher(c));
+    } else if (filterType === "LOCKED") {
+      list = list.filter((c) => lockedClassIds.includes(c.id));
     }
 
     if (search.trim()) {
@@ -169,7 +199,7 @@ export const ClassesTab: React.FC<ClassesTabProps> = ({
     }
 
     return sortClassesByName(list);
-  }, [classes, filterType, search, getClassHomeroomTeacher]);
+  }, [classes, selectedGrade, filterType, search, getClassHomeroomTeacher, lockedClassIds]);
 
   // Ommaviy sinflarni yaratish
   const handleCreateBulkClasses = () => {
@@ -506,8 +536,9 @@ export const ClassesTab: React.FC<ClassesTabProps> = ({
         </button>
       </form>
 
-      {/* 4. Toolbar va Filtrlar */}
-      <div className="flex flex-col gap-3 p-4 rounded-3xl bg-card border border-border shadow-xs">
+      {/* 4. Toolbar, Status Bar va Kengaytirilgan Filtrlar */}
+      <div className="flex flex-col gap-3.5 p-4 rounded-3xl bg-card border border-border shadow-xs">
+        {/* Yuqori qidiruv va sinf qo'shish */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div className="relative flex-1 sm:w-80 w-full">
             <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground shrink-0" />
@@ -531,12 +562,77 @@ export const ClassesTab: React.FC<ClassesTabProps> = ({
           </div>
         </div>
 
-        {/* Filter pills */}
+        {/* 🌟 STATUS BAR (Sinflar holati, kontingent va rahbarlar monitoring paneli) */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 pt-2 border-t border-border/60">
+          <div className="flex items-center gap-2 p-2 rounded-xl bg-muted/30 border border-border/50">
+            <div className="w-7 h-7 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
+              <GraduationCap className="w-4 h-4" />
+            </div>
+            <div className="min-w-0">
+              <div className="text-[10px] text-muted-foreground font-semibold">Jami sinflar</div>
+              <div className="text-xs font-extrabold text-foreground">{classes.length} ta sinf</div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 p-2 rounded-xl bg-muted/30 border border-border/50">
+            <div className="w-7 h-7 rounded-lg bg-emerald-500/10 text-emerald-600 flex items-center justify-center shrink-0">
+              <Users className="w-4 h-4" />
+            </div>
+            <div className="min-w-0">
+              <div className="text-[10px] text-muted-foreground font-semibold">O'quvchilar</div>
+              <div className="text-xs font-extrabold text-foreground">~{totalStudents} nafar</div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 p-2 rounded-xl bg-muted/30 border border-border/50">
+            <div className="w-7 h-7 rounded-lg bg-indigo-500/10 text-indigo-600 flex items-center justify-center shrink-0">
+              <Layers className="w-4 h-4" />
+            </div>
+            <div className="min-w-0">
+              <div className="text-[10px] text-muted-foreground font-semibold">1-4 / 5-9 / 10-11</div>
+              <div className="text-xs font-extrabold text-foreground">{primaryCount} / {middleCount} / {highCount}</div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 p-2 rounded-xl bg-muted/30 border border-border/50">
+            <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
+              noHomeroomCount === 0 ? "bg-emerald-500/10 text-emerald-600" : "bg-amber-500/10 text-amber-600"
+            }`}>
+              <UserCheck className="w-4 h-4" />
+            </div>
+            <div className="min-w-0">
+              <div className="text-[10px] text-muted-foreground font-semibold">Sinf rahbarlari</div>
+              <div className="text-xs font-extrabold text-foreground">{withHomeroomCount}/{classes.length} ta</div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 p-2 rounded-xl bg-muted/30 border border-border/50">
+            <div className="w-7 h-7 rounded-lg bg-rose-500/10 text-rose-600 flex items-center justify-center shrink-0">
+              <Lock className="w-4 h-4" />
+            </div>
+            <div className="min-w-0">
+              <div className="text-[10px] text-muted-foreground font-semibold">Qulflangan</div>
+              <div className="text-xs font-extrabold text-foreground">{lockedCount} ta sinf</div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 p-2 rounded-xl bg-muted/30 border border-border/50">
+            <div className="w-7 h-7 rounded-lg bg-blue-500/10 text-blue-600 flex items-center justify-center shrink-0">
+              <BarChart3 className="w-4 h-4" />
+            </div>
+            <div className="min-w-0">
+              <div className="text-[10px] text-muted-foreground font-semibold">Ko'rsatilmoqda</div>
+              <div className="text-xs font-extrabold text-foreground">{filteredClasses.length} ta sinf</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Filter pills: Bosqichlar */}
         <div className="flex items-center gap-1.5 pt-2 border-t border-border/60 overflow-x-auto no-scrollbar">
           <button
-            onClick={() => setFilterType("ALL")}
+            onClick={() => { setFilterType("ALL"); setSelectedGrade(null); }}
             className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
-              filterType === "ALL"
+              filterType === "ALL" && selectedGrade === null
                 ? "bg-foreground text-background font-bold shadow-xs"
                 : "bg-muted/40 hover:bg-muted text-muted-foreground"
             }`}
@@ -545,41 +641,55 @@ export const ClassesTab: React.FC<ClassesTabProps> = ({
           </button>
 
           <button
-            onClick={() => setFilterType("PRIMARY")}
+            onClick={() => { setFilterType("PRIMARY"); setSelectedGrade(null); }}
             className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
-              filterType === "PRIMARY"
+              filterType === "PRIMARY" && selectedGrade === null
                 ? "bg-primary text-primary-foreground font-bold shadow-xs"
                 : "bg-muted/40 hover:bg-muted text-muted-foreground"
             }`}
           >
-            1-4 sinf
+            1-4 sinf ({primaryCount})
           </button>
 
           <button
-            onClick={() => setFilterType("MIDDLE")}
+            onClick={() => { setFilterType("MIDDLE"); setSelectedGrade(null); }}
             className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
-              filterType === "MIDDLE"
+              filterType === "MIDDLE" && selectedGrade === null
                 ? "bg-primary text-primary-foreground font-bold shadow-xs"
                 : "bg-muted/40 hover:bg-muted text-muted-foreground"
             }`}
           >
-            5-9 sinf
+            5-9 sinf ({middleCount})
           </button>
 
           <button
-            onClick={() => setFilterType("HIGH")}
+            onClick={() => { setFilterType("HIGH"); setSelectedGrade(null); }}
             className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
-              filterType === "HIGH"
+              filterType === "HIGH" && selectedGrade === null
                 ? "bg-primary text-primary-foreground font-bold shadow-xs"
                 : "bg-muted/40 hover:bg-muted text-muted-foreground"
             }`}
           >
-            10-11 sinf
+            10-11 sinf ({highCount})
           </button>
+
+          {lockedCount > 0 && (
+            <button
+              onClick={() => { setFilterType("LOCKED"); setSelectedGrade(null); }}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
+                filterType === "LOCKED"
+                  ? "bg-rose-600 text-white shadow-xs"
+                  : "bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-900/60"
+              }`}
+            >
+              <Lock className="w-3.5 h-3.5 shrink-0" />
+              <span>🔒 Qulflanganlar ({lockedCount})</span>
+            </button>
+          )}
 
           {noHomeroomCount > 0 && (
             <button
-              onClick={() => setFilterType("NO_HOMEROOM")}
+              onClick={() => { setFilterType("NO_HOMEROOM"); setSelectedGrade(null); }}
               className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
                 filterType === "NO_HOMEROOM"
                   ? "bg-rose-600 text-white shadow-xs"
@@ -590,6 +700,35 @@ export const ClassesTab: React.FC<ClassesTabProps> = ({
               <span>⚠️ Rahbari yo'qlar ({noHomeroomCount})</span>
             </button>
           )}
+        </div>
+
+        {/* 🔢 Aniq sinf parallellari (1 dan 11 gacha) mikro-filtri */}
+        <div className="flex items-center gap-1 overflow-x-auto no-scrollbar pt-1">
+          <span className="text-[11px] font-bold text-muted-foreground/70 uppercase tracking-wider shrink-0 mr-1">
+            Sinflar:
+          </span>
+          {AVAILABLE_GRADES.map((g) => {
+            const count = gradeCounts.get(g) || 0;
+            if (count === 0) return null;
+            const isSelected = selectedGrade === g;
+
+            return (
+              <button
+                key={`grade_btn_${g}`}
+                type="button"
+                onClick={() => setSelectedGrade(isSelected ? null : g)}
+                className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
+                  isSelected
+                    ? "bg-primary text-primary-foreground shadow-xs scale-105"
+                    : "bg-muted/40 hover:bg-muted text-foreground/80"
+                }`}
+                title={`${g}-sinflarni ko'rish (${count} ta)`}
+              >
+                <span>{g}-sinf</span>
+                <span className="ml-1 opacity-70 text-[10px]">({count})</span>
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -656,6 +795,29 @@ export const ClassesTab: React.FC<ClassesTabProps> = ({
                     </div>
 
                     <div className="flex items-center gap-1 shrink-0">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleLockClass(cls.id);
+                        }}
+                        title={
+                          lockedClassIds.includes(cls.id)
+                            ? "🔒 Dars jadvali qulflangan (Generatsiyada darslar o'zgarmaydi). Ochish uchun bosing"
+                            : "🔓 Dars jadvalini qulflash"
+                        }
+                        className={`p-1.5 rounded-xl transition-all cursor-pointer ${
+                          lockedClassIds.includes(cls.id)
+                            ? "bg-rose-50 text-rose-600 dark:bg-rose-950/50 dark:text-rose-400"
+                            : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                        }`}
+                      >
+                        {lockedClassIds.includes(cls.id) ? (
+                          <Lock className="w-4 h-4 text-rose-600" />
+                        ) : (
+                          <Unlock className="w-4 h-4 text-slate-400" />
+                        )}
+                      </button>
                       <button
                         onClick={() => onEditClass(cls)}
                         title="Tahrirlash va dars cheklovlari"
