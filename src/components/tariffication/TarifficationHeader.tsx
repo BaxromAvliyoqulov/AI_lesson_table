@@ -50,7 +50,7 @@ export const TarifficationHeader: React.FC<TarifficationHeaderProps> = ({
 }) => {
   return (
     <header className="sticky top-0 z-40 bg-slate-900 text-white border-b border-slate-800 shadow-md">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex flex-wrap items-center justify-between gap-3">
+      <div className="max-w-[1920px] w-full mx-auto px-3 sm:px-6 py-3 flex flex-wrap items-center justify-between gap-3">
         {/* Left: Back & Title */}
         <div className="flex items-center gap-3">
           <Link
@@ -100,8 +100,8 @@ export const TarifficationHeader: React.FC<TarifficationHeaderProps> = ({
       </div>
 
       {/* Sub-Header: Mode Switcher & Global Filters */}
-      <div className="bg-slate-950/80 border-t border-slate-800 px-4 sm:px-6 py-2">
-        <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
+      <div className="bg-slate-950/80 border-t border-slate-800 px-3 sm:px-6 py-2">
+        <div className="max-w-[1920px] w-full mx-auto flex flex-wrap items-center justify-between gap-3">
           {/* 3 xil View Mode Tablari */}
           <div className="flex items-center gap-1 bg-slate-900 p-1 rounded-xl border border-slate-800">
             <button

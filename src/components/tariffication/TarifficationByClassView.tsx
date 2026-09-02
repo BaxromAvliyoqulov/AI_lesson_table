@@ -57,8 +57,8 @@ export const TarifficationByClassView: React.FC<TarifficationByClassViewProps> =
 
   return (
     <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
-      {/* Chap: Sinflar Ro'yxati (4 kolonka) */}
-      <div className="lg:col-span-4 bg-white rounded-2xl border border-slate-200 p-4 shadow-sm flex flex-col gap-3">
+      {/* Chap: Sinflar Ro'yxati (3 kolonka) */}
+      <div className="lg:col-span-3 bg-white rounded-2xl border border-slate-200 p-4 shadow-sm flex flex-col gap-3">
         <div className="flex items-center justify-between">
           <h2 className="text-xs font-black uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
             <GraduationCap className="w-4 h-4 text-blue-600" />
@@ -145,8 +145,8 @@ export const TarifficationByClassView: React.FC<TarifficationByClassViewProps> =
         </div>
       </div>
 
-      {/* O'ng: Tanlangan Sinfning O'quv Rejasi (8 kolonka) */}
-      <div className="lg:col-span-8 bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-4">
+      {/* O'ng: Tanlangan Sinfning O'quv Rejasi (9 kolonka) */}
+      <div className="lg:col-span-9 bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-4">
         {/* Tanlangan Sinf Sarlavhasi va CRUD tugmalari */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-200">
           <div>

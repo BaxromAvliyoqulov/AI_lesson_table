@@ -260,7 +260,7 @@ export const TarifficationWorkspace: React.FC<TarifficationWorkspaceProps> = ({
         isGenerating={isGenerating}
       />
 
-      <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 flex flex-col">
+      <main className="flex-1 w-full max-w-[1920px] mx-auto px-3 sm:px-6 py-4 flex flex-col">
         {viewMode === "BY_CLASS" && (
           <TarifficationByClassView
             classes={filteredClasses}
