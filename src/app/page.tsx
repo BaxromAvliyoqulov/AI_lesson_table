@@ -6,10 +6,6 @@ import { Navbar } from "@/components/layout/Navbar";
 import { MasterGrid } from "@/components/master-grid/MasterGrid";
 import { SingleClassView } from "@/components/views/SingleClassView";
 import { TeacherScheduleView } from "@/components/views/TeacherScheduleView";
-import { SetupWizard } from "@/components/wizard/SetupWizard";
-import { ZamenaModal } from "@/components/zamena/ZamenaModal";
-import { ExcelImportModal } from "@/components/excel/ExcelImportModal";
-import { TarifficationMatrixModal } from "@/components/tariffication/TarifficationMatrixModal";
 import { exportScheduleToExcel } from "@/lib/excel/excel-export";
 import { CSPSolver } from "@/lib/solver/csp-solver";
 import { Official39TableView } from "@/components/views/Official39TableView";
@@ -30,11 +26,7 @@ import {
   Printer,
   FileText,
 } from "lucide-react";
-import { OfficialSchedulePrintModal } from "@/components/print/OfficialSchedulePrintModal";
-import { TeacherTimetableCardsModal } from "@/components/print/TeacherTimetableCardsModal";
-import { AIGenerationProgressModal } from "@/components/generator/AIGenerationProgressModal";
-import { AITeacherWorkloadAdvisorModal } from "@/components/generator/AITeacherWorkloadAdvisorModal";
-import { ScheduleVersionsModal } from "@/components/versioning/ScheduleVersionsModal";
+import { AppModalsContainer } from "@/components/modals/AppModalsContainer";
 
 export default function HomePage() {
   const store = useSchoolStore();
@@ -45,6 +37,7 @@ export default function HomePage() {
   const [isTarifficationOpen, setIsTarifficationOpen] = useState(false);
   const [isTeacherAdvisorOpen, setIsTeacherAdvisorOpen] = useState(false);
   const [isVersionsModalOpen, setIsVersionsModalOpen] = useState(false);
+  const [isConflictModalOpen, setIsConflictModalOpen] = useState(false);
   const [isAddSchoolOpen, setIsAddSchoolOpen] = useState(false);
   const [newSchoolName, setNewSchoolName] = useState("");
   const [selectedZamenaLesson, setSelectedZamenaLesson] = useState<Lesson | null>(null);
@@ -295,6 +288,16 @@ export default function HomePage() {
             <FileText className="h-3.5 w-3.5 text-indigo-600" />
             <span>📄 Ustozlar Varaqalari</span>
           </button>
+
+          {/* ⚠️ Ziddiyatlar Radari Modali Tugmasi */}
+          <button
+            onClick={() => setIsConflictModalOpen(true)}
+            className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-all bg-amber-500/10 text-amber-700 dark:text-amber-400 hover:bg-amber-500/20 border border-amber-500/30 shadow-sm cursor-pointer ml-1"
+            title="Dars jadvalining barcha ziddiyatlari va ogohlantirishlarini tahlil qilish"
+          >
+            <AlertCircle className="h-3.5 w-3.5 text-amber-600" />
+            <span>⚠️ Ziddiyatlar Radari</span>
+          </button>
         </div>
 
         <div className="flex items-center gap-3 text-xs text-muted-foreground">
@@ -330,9 +333,14 @@ export default function HomePage() {
                         0 ta ziddiyat (Oyna va bo'shliqlarsiz)
                       </span>
                     ) : (
-                      <span className="text-amber-600 font-semibold">
-                        ⚠️ {generationResult.stats.conflictsCount} ta dars bo'yicha ogohlantirish
-                      </span>
+                      <button
+                        onClick={() => setIsConflictModalOpen(true)}
+                        className="text-amber-600 dark:text-amber-400 font-bold hover:underline cursor-pointer inline-flex items-center gap-1 bg-amber-500/10 hover:bg-amber-500/20 px-2 py-0.5 rounded-lg transition-all"
+                        title="Ziddiyatlar tafsilotini ko'rish va AI bilan to'g'rilash"
+                      >
+                        <AlertCircle className="w-3.5 h-3.5 text-amber-600" />
+                        <span>⚠️ {generationResult.stats.conflictsCount} ta dars bo'yicha ogohlantirish (Tafsilotlar)</span>
+                      </button>
                     )}
                   </p>
                 </div>
@@ -505,145 +513,70 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* Setup Wizard */}
-      <SetupWizard
-        isOpen={isWizardOpen}
-        onClose={() => setIsWizardOpen(false)}
-        branches={schoolBranches}
-        shifts={schoolShifts}
-        subjects={schoolSubjects}
+      {/* 🚀 Markazlashgan Modallar Hubi (Barcha 10 ta Modal Bitta Komponentda) */}
+      <AppModalsContainer
+        isWizardOpen={isWizardOpen}
+        setIsWizardOpen={setIsWizardOpen}
+        isImportOpen={isImportOpen}
+        setIsImportOpen={setIsImportOpen}
+        isTarifficationOpen={isTarifficationOpen}
+        setIsTarifficationOpen={setIsTarifficationOpen}
+        isTeacherAdvisorOpen={isTeacherAdvisorOpen}
+        setIsTeacherAdvisorOpen={setIsTeacherAdvisorOpen}
+        isVersionsModalOpen={isVersionsModalOpen}
+        setIsVersionsModalOpen={setIsVersionsModalOpen}
+        isConflictModalOpen={isConflictModalOpen}
+        setIsConflictModalOpen={setIsConflictModalOpen}
+        isGenModalOpen={isGenModalOpen}
+        setIsGenModalOpen={setIsGenModalOpen}
+        isA3PrintOpen={isA3PrintOpen}
+        setIsA3PrintOpen={setIsA3PrintOpen}
+        isTeacherCardsPrintOpen={isTeacherCardsPrintOpen}
+        setIsTeacherCardsPrintOpen={setIsTeacherCardsPrintOpen}
+        selectedZamenaLesson={selectedZamenaLesson}
+        setSelectedZamenaLesson={setSelectedZamenaLesson}
+        currentSchool={currentSchool}
+        currentSchoolId={store.currentSchoolId}
         teachers={schoolTeachers}
-        rooms={schoolRooms}
         classes={schoolClasses}
-        onSave={(data) => {
-          data.classes.forEach((c) => store.addClass({ ...c, schoolId: store.currentSchoolId }));
-          data.teachers.forEach((t) => store.addTeacher({ ...t, schoolId: store.currentSchoolId }));
-          data.subjects.forEach((s) => store.addSubject({ ...s, schoolId: store.currentSchoolId }));
-          data.rooms.forEach((r) => store.addRoom({ ...r, schoolId: store.currentSchoolId }));
+        subjects={schoolSubjects}
+        rooms={schoolRooms}
+        shifts={schoolShifts}
+        branches={schoolBranches}
+        lessons={schoolLessons}
+        generationResult={generationResult}
+        isGenerating={store.isGenerating}
+        onGenerate={handleGenerate}
+        onSaveSetupWizard={(data) => {
+          data.classes.forEach((c: any) => store.addClass({ ...c, schoolId: store.currentSchoolId }));
+          data.teachers.forEach((t: any) => store.addTeacher({ ...t, schoolId: store.currentSchoolId }));
+          data.subjects.forEach((s: any) => store.addSubject({ ...s, schoolId: store.currentSchoolId }));
+          data.rooms.forEach((r: any) => store.addRoom({ ...r, schoolId: store.currentSchoolId }));
           showToast("Maktab ma'lumotlari muvaffaqiyatli saqlandi!");
         }}
-      />
-
-      {/* Excel Import Modal */}
-      <ExcelImportModal
-        isOpen={isImportOpen}
-        onClose={() => setIsImportOpen(false)}
         onImportSuccess={(data) => {
-          data.classes.forEach((c) => store.addClass({ ...c, schoolId: store.currentSchoolId }));
-          data.teachers.forEach((t) => store.addTeacher({ ...t, schoolId: store.currentSchoolId }));
-          data.subjects.forEach((s) => store.addSubject({ ...s, schoolId: store.currentSchoolId }));
+          data.classes.forEach((c: any) => store.addClass({ ...c, schoolId: store.currentSchoolId }));
+          data.teachers.forEach((t: any) => store.addTeacher({ ...t, schoolId: store.currentSchoolId }));
+          data.subjects.forEach((s: any) => store.addSubject({ ...s, schoolId: store.currentSchoolId }));
           showToast("Excel ma'lumotlari muvaffaqiyatli yuklandi!");
         }}
-      />
-
-      {/* Tarifikatsiya Matritsasi Modali */}
-      <TarifficationMatrixModal
-        isOpen={isTarifficationOpen}
-        onClose={() => setIsTarifficationOpen(false)}
-        classes={schoolClasses}
-        subjects={schoolSubjects}
-        teachers={schoolTeachers}
-        branches={schoolBranches}
         onSaveClassSubjects={(updated) => {
           store.updateClasses(updated);
           showToast("Tarifikatsiya o'zgarishlari muvaffaqiyatli saqlandi!");
         }}
-        onGenerateAI={handleGenerate}
-        isGenerating={store.isGenerating}
-      />
-
-      {/* Zamena Modal */}
-      <ZamenaModal
-        isOpen={!!selectedZamenaLesson}
-        onClose={() => setSelectedZamenaLesson(null)}
-        lesson={selectedZamenaLesson}
-        subject={schoolSubjects.find((s) => s.id === selectedZamenaLesson?.subjectId)}
-        originalTeacher={schoolTeachers.find((t) => t.id === selectedZamenaLesson?.teacherId)}
-        classObj={schoolClasses.find((c) => c.id === selectedZamenaLesson?.classId)}
-        allTeachers={schoolTeachers}
-        allLessons={schoolLessons}
         onAssignReplacement={handleAssignReplacement}
-      />
-
-      {/* 🖨️ Rasmiy A3 Print Modali */}
-      <OfficialSchedulePrintModal
-        isOpen={isA3PrintOpen}
-        onClose={() => setIsA3PrintOpen(false)}
-        classes={schoolClasses}
-        subjects={schoolSubjects}
-        teachers={schoolTeachers}
-        rooms={schoolRooms}
-        lessons={schoolLessons}
-        schoolName={currentSchool?.name}
-        region={currentSchool?.region}
-        directorName={currentSchool?.directorName}
-        vicePrincipalName={currentSchool?.vicePrincipalName}
-        psychologistName={currentSchool?.psychologistName}
-        academicYear={currentSchool?.academicYear}
-        approvalDate={currentSchool?.approvalDate}
-      />
-
-      {/* 📄 O'qituvchilar Shaxsiy Jadval Varaqalari Modali */}
-      <TeacherTimetableCardsModal
-        isOpen={isTeacherCardsPrintOpen}
-        onClose={() => setIsTeacherCardsPrintOpen(false)}
-        teachers={schoolTeachers}
-        classes={schoolClasses}
-        subjects={schoolSubjects}
-        rooms={schoolRooms}
-        lessons={schoolLessons}
-        schoolName={currentSchool?.name}
-        academicYear={currentSchool?.academicYear}
-      />
-
-      {/* 🤖 AI Generatsiya Bosqichlari va Progress Modali */}
-      <AIGenerationProgressModal
-        isOpen={isGenModalOpen}
-        isGenerating={store.isGenerating}
-        result={generationResult}
-        onClose={() => setIsGenModalOpen(false)}
-        onViewSchedule={() => {
-          setIsGenModalOpen(false);
-          store.setViewMode("OFFICIAL_39");
-        }}
-        onPrintA3={() => {
-          setIsGenModalOpen(false);
-          setIsA3PrintOpen(true);
-        }}
-      />
-
-      {/* ✨ AI Ustozlar Yuklamasi, Smena va Bino Maslahatchisi Modali */}
-      <AITeacherWorkloadAdvisorModal
-        isOpen={isTeacherAdvisorOpen}
-        onClose={() => setIsTeacherAdvisorOpen(false)}
-        teachers={schoolTeachers}
-        classes={schoolClasses}
-        subjects={schoolSubjects}
-        branches={schoolBranches}
-        shifts={schoolShifts}
-        lessons={schoolLessons}
-        onApplyAIConstraints={() => {
-          handleGenerate();
-          showToast("✨ AI Ustoz me'yorlari va smena/bino logistikasi dars jadvaliga muvaffaqiyatli qo'llandi!");
-        }}
-      />
-
-      {/* 📜 Dars Jadvali Versiyalari va Arxiv Modali */}
-      <ScheduleVersionsModal
-        isOpen={isVersionsModalOpen}
-        onClose={() => setIsVersionsModalOpen(false)}
-        schoolId={store.currentSchoolId}
-        currentLessons={schoolLessons}
-        academicYear={currentSchool?.academicYear}
         onVersionRestored={(restoredLessons, scheduleName) => {
           store.setLessons(restoredLessons);
           showToast(`✅ "${scheduleName}" versiyasi muvaffaqiyatli yuklandi va faollashtirildi!`);
         }}
-        showToast={showToast}
-        onPrintA3={() => {
-          setIsVersionsModalOpen(false);
-          setIsA3PrintOpen(true);
+        onSelectClass={(classId) => {
+          store.setSelectedClassId(classId);
+          store.setViewMode("CLASS");
         }}
+        onViewOfficialSchedule={() => {
+          store.setViewMode("OFFICIAL_39");
+        }}
+        showToast={showToast}
       />
 
       {/* Modern Toast Notification */}
