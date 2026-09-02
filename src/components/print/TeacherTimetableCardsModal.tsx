@@ -429,21 +429,3 @@ export const TeacherTimetableCardsModal: React.FC<TeacherTimetableCardsModalProp
   );
 };
 
-                  {/* Card Footer Signature */}
-                  <div className="mt-4 pt-3 flex justify-between items-center text-xs font-serif text-slate-700">
-                    <div>
-                      O'qituvchi imzosi: <span className="inline-block border-b border-black w-28"></span>
-                    </div>
-                    <div>
-                      O'IBDO' (Zauch) imzosi: <span className="inline-block border-b border-black w-28"></span>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
