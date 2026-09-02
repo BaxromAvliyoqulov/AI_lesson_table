@@ -303,17 +303,15 @@ export const Navbar: React.FC<NavbarProps> = ({
             <span>Excel Import</span>
           </button>
 
-          {/* Tarifikatsiya Matritsasi */}
-          {onOpenTariffication && (
-            <button
-              onClick={onOpenTariffication}
-              className="flex items-center gap-1.5 rounded-lg border border-border bg-card hover:bg-blue-50/70 dark:hover:bg-blue-950/30 px-3 py-1.5 text-xs font-bold transition-all shadow-sm text-blue-600 dark:text-blue-400 cursor-pointer"
-              title="O'quv yuklamasi va Tarifikatsiya matritsasi"
-            >
-              <Building2 className="h-3.5 w-3.5 text-blue-600" />
-              <span>Tarifikatsiya</span>
-            </button>
-          )}
+          {/* Tarifikatsiya & Yuklama Sahifasi (Alohida Sahifa) */}
+          <a
+            href="/tarifikatsiya"
+            className="flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50/70 hover:bg-blue-100 px-3 py-1.5 text-xs font-bold transition-all shadow-sm text-blue-700 cursor-pointer"
+            title="O'quv yuklamasi va Tarifikatsiya konsoli"
+          >
+            <Building2 className="h-3.5 w-3.5 text-blue-600" />
+            <span>Tarifikatsiya &amp; Yuklama</span>
+          </a>
 
           {/* AI Ustoz, Smena & Bino Maslahatchisi */}
           {onOpenTeacherAdvisor && (

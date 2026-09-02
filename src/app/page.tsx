@@ -260,14 +260,14 @@ export default function HomePage() {
             <span>O'qituvchi Bo'yicha</span>
           </button>
 
-          {/* Tarifikatsiya Matritsasi Tugmasi */}
-          <button
-            onClick={() => setIsTarifficationOpen(true)}
+          {/* Tarifikatsiya & Yuklama Sahifasi */}
+          <a
+            href="/tarifikatsiya"
             className="flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-bold transition-all bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 shadow-sm cursor-pointer ml-1"
           >
             <Building2 className="h-4 w-4 text-blue-600" />
             <span>Tarifikatsiya &amp; Yuklama</span>
-          </button>
+          </a>
 
           {/* 🖨️ A3 Chop Etish (Print) Tugmasi */}
           <button
