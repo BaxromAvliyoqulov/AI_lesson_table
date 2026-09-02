@@ -230,6 +230,49 @@ export async function getSchoolFullData(schoolId?: string) {
         periodNumber: l.periodNumber,
         isLocked: l.isLocked,
       }));
+
+      // BAZA TOZALASH: Agar avvalgi eski darslarda Juma kuni ingliz yoki chet tili bo'lsa, darhol tozalaymiz
+      const hasMethodViolation = lessons.some(
+        (l) =>
+          (l.subjectId === "sub_ing" ||
+            l.subjectId === "sub_rus" ||
+            l.subjectId === "sub_nemis" ||
+            l.subjectId === "sub_fransuz") &&
+          l.dayOfWeek === 5
+      );
+
+      if (hasMethodViolation && classes.length > 0 && teachers.length > 0) {
+        const solver = new CSPSolver({
+          classes,
+          teachers,
+          subjects,
+          rooms,
+          branches,
+          shifts,
+        });
+        const solved = solver.solve();
+        if (solved.success && solved.lessons.length > 0) {
+          lessons = solved.lessons;
+          // Asinxron tarzda PostgreSQL bazasini yangilab qo'yamiz
+          prisma.lesson.deleteMany({ where: { scheduleId: activeSchedule.id } }).then(() => {
+            prisma.lesson.createMany({
+              data: solved.lessons.map((l) => ({
+                scheduleId: activeSchedule.id,
+                schoolId: school.id,
+                classId: l.classId,
+                subjectId: l.subjectId,
+                teacherId: l.teacherId,
+                roomId: l.roomId || null,
+                branchId: l.branchId,
+                dayOfWeek: l.dayOfWeek,
+                periodNumber: l.periodNumber,
+                isLocked: l.isLocked || false,
+              })),
+              skipDuplicates: true,
+            }).catch(() => {});
+          }).catch(() => {});
+        }
+      }
     }
 
     return {

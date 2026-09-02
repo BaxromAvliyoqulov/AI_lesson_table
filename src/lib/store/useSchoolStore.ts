@@ -75,7 +75,7 @@ interface SchoolStoreState {
   syncStatus: SyncStatus;
 }
 
-const STORAGE_KEY = "dars_jadval_ai_store_v9";
+const STORAGE_KEY = "dars_jadval_ai_store_v11";
 
 // Initial state generator
 function createInitialState(): SchoolStoreState {
@@ -87,7 +87,7 @@ function createInitialState(): SchoolStoreState {
   const defaultShifts = initialShifts.filter((s) => s.schoolId === defaultSchoolId);
   const defaultBranches = initialBranches.filter((b) => b.schoolId === defaultSchoolId);
 
-  // Generate initial timetable
+  // Generate initial timetable with strict method day constraints
   const solver = new CSPSolver({
     classes: defaultClasses,
     teachers: defaultTeachers,
@@ -147,13 +147,36 @@ function getLocalStorageState(): SchoolStoreState | null {
   if (typeof window === "undefined") return null;
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) {
-      // Oldingi v8 dan o'tish tekshiruvi
-      const legacyRaw = localStorage.getItem("dars_jadval_ai_store_v8");
-      if (legacyRaw) return JSON.parse(legacyRaw);
-      return null;
+    if (!raw) return null;
+    const parsed: SchoolStoreState = JSON.parse(raw);
+
+    // AUTO-SANITIZE: Agar keshdagi eski darslarda Juma kuni ingliz yoki chet tili darsi bo'lsa, tozalaymiz
+    const hasFridayEnglish = parsed.lessons?.some(
+      (l) =>
+        (l.subjectId === "sub_ing" ||
+          l.subjectId === "sub_rus" ||
+          l.subjectId === "sub_nemis" ||
+          l.subjectId === "sub_fransuz") &&
+        l.dayOfWeek === 5
+    );
+
+    if (hasFridayEnglish) {
+      const solver = new CSPSolver({
+        classes: parsed.classes?.length ? parsed.classes : initialClasses,
+        teachers: parsed.teachers?.length ? parsed.teachers : initialTeachers,
+        subjects: parsed.subjects?.length ? parsed.subjects : initialSubjects,
+        rooms: parsed.rooms?.length ? parsed.rooms : initialRooms,
+        shifts: parsed.shifts?.length ? parsed.shifts : initialShifts,
+        branches: parsed.branches?.length ? parsed.branches : initialBranches,
+      });
+      const solved = solver.solve();
+      if (solved.success && solved.lessons.length > 0) {
+        parsed.lessons = solved.lessons;
+        saveLocalStorageState(parsed);
+      }
     }
-    return JSON.parse(raw);
+
+    return parsed;
   } catch {
     return null;
   }
