@@ -1,0 +1,134 @@
+import { useCallback } from "react";
+import { Teacher, TeacherAvailability } from "@/types";
+import { upsertTeacherAction, deleteTeacherAction } from "@/lib/actions/school.actions";
+import { storeState, updateStore, addAuditLog } from "../store-core";
+
+export function useTeacherActions() {
+  const addTeacher = useCallback((teacher: Teacher) => {
+    updateStore((prev) => {
+      let updatedClasses = prev.classes;
+      let updatedTeachers = [...prev.teachers, teacher];
+
+      if (teacher.homeroomClassId) {
+        const cId = teacher.homeroomClassId;
+        updatedClasses = prev.classes.map((c) => {
+          if (c.id === cId) {
+            const updatedSubs = c.subjects.map((s) =>
+              s.subjectId === "sub_sinf_soati" ? { ...s, teacherId: teacher.id } : s
+            );
+            return { ...c, homeroomTeacherId: teacher.id, subjects: updatedSubs };
+          }
+          return c;
+        });
+        updatedTeachers = updatedTeachers.map((t) =>
+          t.id !== teacher.id && t.homeroomClassId === cId
+            ? { ...t, homeroomClassId: undefined }
+            : t
+        );
+      }
+
+      return {
+        ...prev,
+        teachers: updatedTeachers,
+        classes: updatedClasses,
+        syncStatus: "syncing",
+      };
+    });
+    addAuditLog("O'qituvchi qo'shildi", `${teacher.fullName} ro'yxatga kiritildi`);
+
+    upsertTeacherAction(teacher.schoolId || storeState.currentSchoolId, teacher).then((res) => {
+      updateStore((prev) => ({ ...prev, syncStatus: res.success ? "synced" : "error" }));
+    });
+  }, []);
+
+  const updateTeacher = useCallback((teacher: Teacher) => {
+    updateStore((prev) => {
+      const cId = teacher.homeroomClassId;
+
+      const updatedTeachers = prev.teachers.map((t) => {
+        if (t.id === teacher.id) return teacher;
+        if (cId && t.homeroomClassId === cId) return { ...t, homeroomClassId: undefined };
+        return t;
+      });
+
+      const updatedClasses = prev.classes.map((c) => {
+        if (cId && c.id === cId) {
+          const updatedSubs = c.subjects.map((s) =>
+            s.subjectId === "sub_sinf_soati" ? { ...s, teacherId: teacher.id } : s
+          );
+          return { ...c, homeroomTeacherId: teacher.id, subjects: updatedSubs };
+        }
+        if (c.homeroomTeacherId === teacher.id && c.id !== cId) {
+          return { ...c, homeroomTeacherId: undefined };
+        }
+        return c;
+      });
+
+      const updatedLessons = prev.lessons.map((l) => {
+        if (
+          cId &&
+          l.classId === cId &&
+          (l.subjectId === "sub_sinf_soati" ||
+            l.subjectId === "sub_kelajak" ||
+            l.subjectId.includes("sinf_soati") ||
+            (l.dayOfWeek === 1 && l.periodNumber === 1))
+        ) {
+          return { ...l, teacherId: teacher.id };
+        }
+        return l;
+      });
+
+      return {
+        ...prev,
+        teachers: updatedTeachers,
+        classes: updatedClasses,
+        lessons: updatedLessons,
+        syncStatus: "syncing",
+      };
+    });
+    addAuditLog("O'qituvchi yangilandi", `${teacher.fullName} ma'lumotlari tahrirlandi`);
+
+    upsertTeacherAction(teacher.schoolId || storeState.currentSchoolId, teacher).then((res) => {
+      updateStore((prev) => ({ ...prev, syncStatus: res.success ? "synced" : "error" }));
+    });
+  }, []);
+
+  const deleteTeacher = useCallback((teacherId: string) => {
+    const target = storeState.teachers.find((t) => t.id === teacherId);
+    updateStore((prev) => ({
+      ...prev,
+      teachers: prev.teachers.filter((t) => t.id !== teacherId),
+      lessons: prev.lessons.filter((l) => l.teacherId !== teacherId),
+      classes: prev.classes.map((c) => ({
+        ...c,
+        homeroomTeacherId: c.homeroomTeacherId === teacherId ? null : c.homeroomTeacherId,
+        subjects: (c.subjects || []).map((cs) =>
+          cs.teacherId === teacherId ? { ...cs, teacherId: "" } : cs
+        ),
+      })),
+      syncStatus: "syncing",
+    }));
+    if (target) {
+      addAuditLog("O'qituvchi o'chirildi", `${target.fullName} tizimdan o'chirildi`);
+    }
+
+    deleteTeacherAction(storeState.currentSchoolId, teacherId).then((res) => {
+      updateStore((prev) => ({ ...prev, syncStatus: res.success ? "synced" : "error" }));
+    });
+  }, []);
+
+  const updateTeacherAvailability = useCallback((teacherId: string, availabilities: TeacherAvailability[]) => {
+    updateStore((prev) => ({
+      ...prev,
+      teachers: prev.teachers.map((t) => (t.id === teacherId ? { ...t, availabilities } : t)),
+    }));
+    addAuditLog("O'qituvchi bo'sh vaqti yangilandi", `O'qituvchi ID: ${teacherId} matrisasi saqlandi`);
+  }, []);
+
+  return {
+    addTeacher,
+    updateTeacher,
+    deleteTeacher,
+    updateTeacherAvailability,
+  };
+}
