@@ -133,6 +133,49 @@ export const TarifficationWorkspace: React.FC<TarifficationWorkspaceProps> = ({
     );
   };
 
+  const handleRemoveSubject = (classId: string, subjectId: string) => {
+    setClassesData((prev) =>
+      prev.map((cls) => {
+        if (cls.id !== classId) return cls;
+        return {
+          ...cls,
+          subjects: (cls.subjects || []).filter((cs) => cs.subjectId !== subjectId),
+        };
+      })
+    );
+    showToast("🗑️ Fan sinf o'quv rejasidan olib tashlandi");
+  };
+
+  const handleClearClassSubjects = (classId: string) => {
+    if (!window.confirm("Ushbu sinfning barcha o'quv rejasini tozalashni tasdiqlaysizmi?")) return;
+    setClassesData((prev) =>
+      prev.map((cls) => (cls.id === classId ? { ...cls, subjects: [] } : cls))
+    );
+    showToast("🗑️ Sinf o'quv rejasi tozalandi");
+  };
+
+  const handleTransferLesson = (
+    fromTeacherId: string,
+    toTeacherId: string,
+    classId: string,
+    subjectId: string
+  ) => {
+    setClassesData((prev) =>
+      prev.map((cls) => {
+        if (cls.id !== classId) return cls;
+        return {
+          ...cls,
+          subjects: (cls.subjects || []).map((cs) =>
+            cs.subjectId === subjectId && cs.teacherId === fromTeacherId
+              ? { ...cs, teacherId: toTeacherId }
+              : cs
+          ),
+        };
+      })
+    );
+    showToast("🔄 Dars boshqa o'qituvchiga muvaffaqiyatli o'tkazildi!");
+  };
+
   const handleLoadStandardForClass = (targetClass: SchoolClass) => {
     const newSubjects = generateStandardCurriculumForClass(
       targetClass.grade,
@@ -228,6 +271,8 @@ export const TarifficationWorkspace: React.FC<TarifficationWorkspaceProps> = ({
             teacherAssignedHours={teacherAssignedHours}
             branchMap={branchMap}
             onUpdateSubject={handleUpdateSubject}
+            onRemoveSubject={handleRemoveSubject}
+            onClearClassSubjects={handleClearClassSubjects}
             onLoadStandardForClass={handleLoadStandardForClass}
           />
         )}
@@ -243,6 +288,7 @@ export const TarifficationWorkspace: React.FC<TarifficationWorkspaceProps> = ({
             subjectMap={subjectMap}
             teacherAssignedHours={teacherAssignedHours}
             onUpdateSubject={handleUpdateSubject}
+            onTransferLesson={handleTransferLesson}
           />
         )}
 
