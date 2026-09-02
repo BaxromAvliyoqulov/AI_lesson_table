@@ -60,13 +60,27 @@ export default function HomePage() {
   // Filtered entities for current school
   const currentSchool =
     store.schools.find((s) => s.id === store.currentSchoolId) || store.schools[0];
-  const schoolBranches = store.branches.filter((b) => b.schoolId === store.currentSchoolId);
-  const schoolShifts = store.shifts.filter((s) => s.schoolId === store.currentSchoolId);
-  const schoolSubjects = store.subjects.filter((s) => s.schoolId === store.currentSchoolId);
-  const schoolTeachers = store.teachers.filter((t) => t.schoolId === store.currentSchoolId);
-  const schoolRooms = store.rooms.filter((r) => r.schoolId === store.currentSchoolId);
-  const schoolClasses = store.classes.filter((c) => c.schoolId === store.currentSchoolId);
-  const schoolLessons = store.lessons.filter((l) => l.schoolId === store.currentSchoolId);
+  const schoolBranches = store.branches.filter((b) => b.schoolId === store.currentSchoolId).length > 0
+    ? store.branches.filter((b) => b.schoolId === store.currentSchoolId)
+    : store.branches;
+  const schoolShifts = store.shifts.filter((s) => s.schoolId === store.currentSchoolId).length > 0
+    ? store.shifts.filter((s) => s.schoolId === store.currentSchoolId)
+    : store.shifts;
+  const schoolSubjects = store.subjects.filter((s) => s.schoolId === store.currentSchoolId).length > 0
+    ? store.subjects.filter((s) => s.schoolId === store.currentSchoolId)
+    : store.subjects;
+  const schoolTeachers = store.teachers.filter((t) => t.schoolId === store.currentSchoolId).length > 0
+    ? store.teachers.filter((t) => t.schoolId === store.currentSchoolId)
+    : store.teachers;
+  const schoolRooms = store.rooms.filter((r) => r.schoolId === store.currentSchoolId).length > 0
+    ? store.rooms.filter((r) => r.schoolId === store.currentSchoolId)
+    : store.rooms;
+  const schoolClasses = store.classes.filter((c) => c.schoolId === store.currentSchoolId).length > 0
+    ? store.classes.filter((c) => c.schoolId === store.currentSchoolId)
+    : store.classes;
+  const schoolLessons = store.lessons.filter((l) => l.schoolId === store.currentSchoolId).length > 0
+    ? store.lessons.filter((l) => l.schoolId === store.currentSchoolId)
+    : store.lessons;
 
   // AI & CSP Generator (Interaktiv Progress Modal bilan)
   const handleGenerate = () => {

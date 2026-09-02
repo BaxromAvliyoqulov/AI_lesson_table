@@ -70,7 +70,7 @@ const STORAGE_KEY = "dars_jadval_ai_store_clean_v1";
 
 // Standart toza boshlang'ich holat (Hech qanday Mock / Soxta ma'lumotlarsiz)
 function createInitialState(): SchoolStoreState {
-  const defaultSchoolId = "school_main";
+  const defaultSchoolId = "cmthn422g0001uff8vhccbxmz";
 
   const defaultBells: BellPeriod[] = [
     { periodNumber: 1, startTime: "08:00", endTime: "08:45", breakDurationMinutes: 5 },
@@ -87,13 +87,13 @@ function createInitialState(): SchoolStoreState {
     schools: [
       {
         id: defaultSchoolId,
-        slug: "maktab",
-        name: "Umumiy o'rta ta'lim maktabi",
-        region: "",
+        slug: "maktab-39",
+        name: "39-umumiy o'rta ta'lim maktabi",
+        region: "Muzrabot tumani",
         academicYear: "2025 - 2026",
         approvalDate: "",
-        directorName: "",
-        vicePrincipalName: "",
+        directorName: "M. Ramazonov",
+        vicePrincipalName: "N. Narziqulov",
         psychologistName: "",
       },
     ],

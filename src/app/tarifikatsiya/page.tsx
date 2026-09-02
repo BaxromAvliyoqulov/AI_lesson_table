@@ -10,12 +10,24 @@ export default function TarifficationPage() {
 
   const currentSchool =
     store.schools.find((s) => s.id === store.currentSchoolId) || store.schools[0];
-  const schoolClasses = store.classes.filter((c) => c.schoolId === store.currentSchoolId);
-  const schoolTeachers = store.teachers.filter((t) => t.schoolId === store.currentSchoolId);
-  const schoolSubjects = store.subjects.filter((s) => s.schoolId === store.currentSchoolId);
-  const schoolBranches = store.branches.filter((b) => b.schoolId === store.currentSchoolId);
-  const schoolRooms = store.rooms.filter((r) => r.schoolId === store.currentSchoolId);
-  const schoolShifts = store.shifts.filter((s) => s.schoolId === store.currentSchoolId);
+  const schoolClasses = store.classes.filter((c) => c.schoolId === store.currentSchoolId).length > 0
+    ? store.classes.filter((c) => c.schoolId === store.currentSchoolId)
+    : store.classes;
+  const schoolTeachers = store.teachers.filter((t) => t.schoolId === store.currentSchoolId).length > 0
+    ? store.teachers.filter((t) => t.schoolId === store.currentSchoolId)
+    : store.teachers;
+  const schoolSubjects = store.subjects.filter((s) => s.schoolId === store.currentSchoolId).length > 0
+    ? store.subjects.filter((s) => s.schoolId === store.currentSchoolId)
+    : store.subjects;
+  const schoolBranches = store.branches.filter((b) => b.schoolId === store.currentSchoolId).length > 0
+    ? store.branches.filter((b) => b.schoolId === store.currentSchoolId)
+    : store.branches;
+  const schoolRooms = store.rooms.filter((r) => r.schoolId === store.currentSchoolId).length > 0
+    ? store.rooms.filter((r) => r.schoolId === store.currentSchoolId)
+    : store.rooms;
+  const schoolShifts = store.shifts.filter((s) => s.schoolId === store.currentSchoolId).length > 0
+    ? store.shifts.filter((s) => s.schoolId === store.currentSchoolId)
+    : store.shifts;
 
   const handleSaveClassSubjects = (updatedClasses: typeof schoolClasses) => {
     store.updateClasses(updatedClasses);
