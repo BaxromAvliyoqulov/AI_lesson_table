@@ -39,40 +39,9 @@ export const Official39Filters: React.FC<Official39FiltersProps> = ({
 }) => {
   return (
     <div className="no-print mb-6 p-3.5 rounded-2xl bg-slate-50 border border-slate-200 text-slate-900 shadow-sm flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3.5">
-      {/* Chap: Asosiy Maktab va Filial Aniq Filtrlari */}
+      {/* Chap: Asosiy Maktab va Filial Aniq Tab Filtrlari */}
       <div className="flex items-center gap-2 flex-wrap">
-        <div className="flex items-center gap-1.5 p-1 rounded-xl bg-white border border-slate-200 shadow-sm">
-          <Building2 className="w-4 h-4 text-blue-600 ml-2" />
-          <select
-            value={filterScope}
-            onChange={(e) => onFilterScopeChange(e.target.value as FilterScope)}
-            className="bg-transparent text-slate-800 text-xs font-bold py-1.5 pr-3 outline-none cursor-pointer"
-          >
-            <option value="MAIN_ALL" className="bg-white text-slate-900 font-bold">
-              1. 🏢 Asosiy — Hammasi (1-11)
-            </option>
-            <option value="MAIN_PRIMARY" className="bg-white text-slate-900 font-bold">
-              2. 👦 Asosiy — Boshlang'ich (1-4)
-            </option>
-            <option value="MAIN_HIGH" className="bg-white text-slate-900 font-bold">
-              3. 🧑 Asosiy — Kattalar (5-11)
-            </option>
-            <option value="BRANCH_ALL" className="bg-white text-slate-900 font-bold">
-              4. 🏠 Filial — Hammasi (1-7 D)
-            </option>
-            <option value="BRANCH_PRIMARY" className="bg-white text-slate-900 font-bold">
-              5. 👦 Filial — Boshlang'ich (1-4 D)
-            </option>
-            <option value="BRANCH_HIGH" className="bg-white text-slate-900 font-bold">
-              6. 🧑 Filial — Kattalar (5-7 D)
-            </option>
-            <option value="ALL" className="bg-white text-slate-900 font-bold">
-              7. 🏛️ Hammasi (Butun maktab)
-            </option>
-          </select>
-        </div>
-
-        {/* 7 xil Aniq Dars Jadvali Ko'rinishlari (1 dan 7 gacha) */}
+        {/* Aniq Dars Jadvali Ko'rinishlari Tablari */}
         <div className="flex items-center gap-1 bg-white p-1 rounded-xl border border-slate-200 shadow-sm flex-wrap">
           {/* 1. Asosiy Hammasi */}
           <button
