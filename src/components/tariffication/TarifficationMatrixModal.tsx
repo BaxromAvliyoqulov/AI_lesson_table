@@ -50,6 +50,9 @@ export const TarifficationMatrixModal: React.FC<TarifficationMatrixModalProps> =
   const [selectedBranchId, setSelectedBranchId] = useState<string>("ALL");
   const [stageFilter, setStageFilter] = useState<"ALL" | "PRIMARY" | "HIGH">("ALL");
   const [searchQuery, setSearchQuery] = useState<string>("");
+  const [teacherSearchQuery, setTeacherSearchQuery] = useState<string>("");
+  const [teacherStatusFilter, setTeacherStatusFilter] = useState<"ALL" | "FULL" | "AVAILABLE" | "OVER">("ALL");
+  const [highlightTeacherId, setHighlightTeacherId] = useState<string | null>(null);
 
   // Sync state if props change when opening
   React.useEffect(() => {
@@ -59,6 +62,11 @@ export const TarifficationMatrixModal: React.FC<TarifficationMatrixModalProps> =
   // Maps for fast lookups
   const teacherMap = useMemo(() => new Map(teachers.map((t) => [t.id, t])), [teachers]);
   const subjectMap = useMemo(() => new Map(subjects.map((s) => [s.id, s])), [subjects]);
+
+  // Alifbo bo'yicha saralangan barcha o'qituvchilar (Selectlar uchun)
+  const sortedTeachers = useMemo(() => {
+    return [...teachers].sort((a, b) => a.fullName.localeCompare(b.fullName, "uz"));
+  }, [teachers]);
 
   // Filtered classes
   const filteredClasses = useMemo(() => {
@@ -72,8 +80,11 @@ export const TarifficationMatrixModal: React.FC<TarifficationMatrixModalProps> =
 
   // Filtered subjects
   const filteredSubjects = useMemo(() => {
+    if (!searchQuery.trim()) return subjects;
+    const q = searchQuery.toLowerCase().trim();
     return subjects.filter((s) =>
-      s.name.toLowerCase().includes(searchQuery.toLowerCase())
+      s.name.toLowerCase().includes(q) ||
+      (s.shortName && s.shortName.toLowerCase().includes(q))
     );
   }, [subjects, searchQuery]);
 
@@ -90,6 +101,28 @@ export const TarifficationMatrixModal: React.FC<TarifficationMatrixModalProps> =
     }
     return map;
   }, [classesData]);
+
+  // Filtered and Sorted Teachers for Sidebar
+  const filteredTeachers = useMemo(() => {
+    const query = (teacherSearchQuery || searchQuery).toLowerCase().trim();
+
+    return sortedTeachers.filter((t) => {
+      // 1. Qidiruv matni (Ism-familiya bo'yicha)
+      if (query && !t.fullName.toLowerCase().includes(query)) {
+        return false;
+      }
+
+      // 2. Status filtri
+      const assigned = teacherAssignedHours.get(t.id) || 0;
+      const capacity = t.weeklyHourCapacity || 20;
+
+      if (teacherStatusFilter === "FULL" && assigned < capacity) return false;
+      if (teacherStatusFilter === "AVAILABLE" && assigned >= capacity) return false;
+      if (teacherStatusFilter === "OVER" && assigned <= capacity) return false;
+
+      return true;
+    });
+  }, [sortedTeachers, teacherSearchQuery, searchQuery, teacherStatusFilter, teacherAssignedHours]);
 
   // Helper to get ClassSubject for a given class & subject
   const getClassSubject = (cls: SchoolClass, subjectId: string): ClassSubject | undefined => {
@@ -301,13 +334,20 @@ export const TarifficationMatrixModal: React.FC<TarifficationMatrixModalProps> =
                       const cs = getClassSubject(cls, sub.id);
                       const currentTeacherId = cs?.teacherId || "";
                       const currentHours = cs?.weeklyHours || 0;
+                      const isHighlighted = highlightTeacherId && currentTeacherId === highlightTeacherId;
 
                       return (
                         <td
                           key={`${cls.id}_${sub.id}`}
-                          className="border border-slate-300 p-1 text-center align-middle"
+                          className={`border border-slate-300 p-1 text-center align-middle transition-colors ${
+                            isHighlighted ? "bg-amber-100/80 ring-2 ring-amber-400" : ""
+                          }`}
                         >
-                          <div className="flex items-center gap-1 bg-white border border-slate-200 rounded p-1 shadow-sm">
+                          <div className={`flex items-center gap-1 border rounded p-1 shadow-sm transition-all ${
+                            isHighlighted
+                              ? "bg-amber-50 border-amber-300 shadow-amber-100"
+                              : "bg-white border-slate-200"
+                          }`}>
                             {/* O'qituvchi tanlash */}
                             <select
                               value={currentTeacherId}
@@ -324,7 +364,7 @@ export const TarifficationMatrixModal: React.FC<TarifficationMatrixModalProps> =
                               }`}
                             >
                               <option value="">— O&apos;qituvchi yo&apos;q —</option>
-                              {teachers.map((t) => (
+                              {sortedTeachers.map((t) => (
                                 <option key={t.id} value={t.id}>
                                   {t.fullName}
                                 </option>
@@ -361,57 +401,158 @@ export const TarifficationMatrixModal: React.FC<TarifficationMatrixModalProps> =
           </div>
 
           {/* O'ng Tomon: O'qituvchilar Yuklamasi Paneli */}
-          <div className="w-72 shrink-0 border-l border-slate-200 bg-slate-50/50 p-4 overflow-y-auto">
-            <h3 className="font-black text-xs uppercase tracking-wider text-slate-800 mb-3 flex items-center gap-1.5">
-              <Users className="w-4 h-4 text-blue-600" />
-              O&apos;qituvchilar Yuklamasi
-            </h3>
+          <div className="w-80 shrink-0 border-l border-slate-200 bg-slate-50/70 p-3.5 flex flex-col overflow-hidden">
+            <div className="flex items-center justify-between mb-2.5">
+              <h3 className="font-black text-xs uppercase tracking-wider text-slate-800 flex items-center gap-1.5">
+                <Users className="w-4 h-4 text-blue-600" />
+                <span>O&apos;qituvchilar ({filteredTeachers.length})</span>
+              </h3>
+              {highlightTeacherId && (
+                <button
+                  type="button"
+                  onClick={() => setHighlightTeacherId(null)}
+                  className="text-[10px] text-amber-700 hover:text-amber-900 font-bold underline cursor-pointer"
+                >
+                  Filtrni tozalash
+                </button>
+              )}
+            </div>
 
-            <div className="space-y-2">
-              {teachers.map((t) => {
-                const assigned = teacherAssignedHours.get(t.id) || 0;
-                const capacity = t.weeklyHourCapacity || 20;
-                const isOver = assigned > capacity;
-                const isFull = assigned === capacity;
+            {/* O'qituvchini Qidirish Inputi */}
+            <div className="relative mb-2">
+              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                placeholder="Ustozni qidirish..."
+                value={teacherSearchQuery}
+                onChange={(e) => setTeacherSearchQuery(e.target.value)}
+                className="w-full bg-white border border-slate-300 rounded-xl pl-8 pr-7 py-1.5 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm font-medium"
+              />
+              {teacherSearchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setTeacherSearchQuery("")}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
 
-                return (
-                  <div
-                    key={t.id}
-                    className="p-2 bg-white rounded-xl border border-slate-200 shadow-sm text-xs"
-                  >
-                    <div className="flex items-center justify-between font-bold text-slate-900 mb-1">
-                      <span className="truncate max-w-[140px]">{t.fullName}</span>
-                      <span
-                        className={`font-mono font-black ${
-                          isOver
-                            ? "text-rose-600"
-                            : isFull
-                            ? "text-emerald-600"
-                            : "text-slate-700"
-                        }`}
-                      >
-                        {assigned} / {capacity} s
-                      </span>
+            {/* O'qituvchilar Status Filtrlari */}
+            <div className="grid grid-cols-4 gap-1 mb-2.5 bg-slate-200/60 p-1 rounded-xl text-[10px] font-bold">
+              <button
+                type="button"
+                onClick={() => setTeacherStatusFilter("ALL")}
+                className={`py-1 rounded-lg transition-all text-center truncate cursor-pointer ${
+                  teacherStatusFilter === "ALL"
+                    ? "bg-white text-slate-900 shadow-sm font-extrabold"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                Hammasi
+              </button>
+              <button
+                type="button"
+                onClick={() => setTeacherStatusFilter("FULL")}
+                className={`py-1 rounded-lg transition-all text-center truncate cursor-pointer ${
+                  teacherStatusFilter === "FULL"
+                    ? "bg-emerald-600 text-white shadow-sm font-extrabold"
+                    : "text-emerald-700 hover:bg-emerald-100"
+                }`}
+                title="Stavkasi 100% to'lgan o'qituvchilar"
+              >
+                To&apos;liq
+              </button>
+              <button
+                type="button"
+                onClick={() => setTeacherStatusFilter("AVAILABLE")}
+                className={`py-1 rounded-lg transition-all text-center truncate cursor-pointer ${
+                  teacherStatusFilter === "AVAILABLE"
+                    ? "bg-blue-600 text-white shadow-sm font-extrabold"
+                    : "text-blue-700 hover:bg-blue-100"
+                }`}
+                title="Bo'sh soati bor o'qituvchilar"
+              >
+                Bo&apos;sh
+              </button>
+              <button
+                type="button"
+                onClick={() => setTeacherStatusFilter("OVER")}
+                className={`py-1 rounded-lg transition-all text-center truncate cursor-pointer ${
+                  teacherStatusFilter === "OVER"
+                    ? "bg-rose-600 text-white shadow-sm font-extrabold"
+                    : "text-rose-700 hover:bg-rose-100"
+                }`}
+                title="Stavkadan ortiqcha dars yuklanganlar"
+              >
+                Ortiqcha
+              </button>
+            </div>
+
+            {/* O'qituvchilar Ro'yxati */}
+            <div className="flex-1 overflow-y-auto space-y-1.5 pr-1">
+              {filteredTeachers.length === 0 ? (
+                <div className="text-center py-8 text-xs text-slate-400">
+                  Mos o&apos;qituvchi topilmadi
+                </div>
+              ) : (
+                filteredTeachers.map((t) => {
+                  const assigned = teacherAssignedHours.get(t.id) || 0;
+                  const capacity = t.weeklyHourCapacity || 20;
+                  const isOver = assigned > capacity;
+                  const isFull = assigned === capacity;
+                  const isSelected = highlightTeacherId === t.id;
+
+                  return (
+                    <div
+                      key={t.id}
+                      onClick={() =>
+                        setHighlightTeacherId(isSelected ? null : t.id)
+                      }
+                      className={`p-2 rounded-xl border transition-all cursor-pointer text-xs ${
+                        isSelected
+                          ? "bg-amber-50 border-amber-400 shadow-md ring-1 ring-amber-300"
+                          : "bg-white border-slate-200 hover:border-blue-300 shadow-sm"
+                      }`}
+                      title="Matritsada ushbu o'qituvchi darslarini ajratib ko'rish uchun bosing"
+                    >
+                      <div className="flex items-center justify-between font-bold text-slate-900 mb-1">
+                        <span className="truncate max-w-[155px]" title={t.fullName}>
+                          {t.fullName}
+                        </span>
+                        <span
+                          className={`font-mono font-black ${
+                            isOver
+                              ? "text-rose-600"
+                              : isFull
+                              ? "text-emerald-600"
+                              : "text-slate-700"
+                          }`}
+                        >
+                          {assigned} / {capacity} s
+                        </span>
+                      </div>
+
+                      {/* Progress Bar */}
+                      <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
+                        <div
+                          className={`h-1.5 rounded-full transition-all duration-300 ${
+                            isOver
+                              ? "bg-rose-500"
+                              : isFull
+                              ? "bg-emerald-500"
+                              : "bg-blue-500"
+                          }`}
+                          style={{
+                            width: `${Math.min(100, (assigned / capacity) * 100)}%`,
+                          }}
+                        />
+                      </div>
                     </div>
-
-                    {/* Progress Bar */}
-                    <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
-                      <div
-                        className={`h-1.5 rounded-full transition-all duration-300 ${
-                          isOver
-                            ? "bg-rose-500"
-                            : isFull
-                            ? "bg-emerald-500"
-                            : "bg-blue-500"
-                        }`}
-                        style={{
-                          width: `${Math.min(100, (assigned / capacity) * 100)}%`,
-                        }}
-                      />
-                    </div>
-                  </div>
-                );
-              })}
+                  );
+                })
+              )}
             </div>
           </div>
         </div>
