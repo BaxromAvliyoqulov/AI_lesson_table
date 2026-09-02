@@ -295,23 +295,27 @@ export function useSchoolStore() {
         } = res.data;
 
         updateStore(
-          (prev) => ({
-            ...prev,
-            currentSchoolId: schoolInfo.id,
-            schools: [
-              schoolInfo,
-              ...prev.schools.filter((s) => s.id !== schoolInfo.id && s.id !== "school_39"),
-            ],
-            branches: branches.length > 0 ? branches : prev.branches,
-            shifts: shifts.length > 0 ? shifts : prev.shifts,
-            subjects: subjects.length > 0 ? subjects : prev.subjects,
-            rooms: rooms.length > 0 ? rooms : prev.rooms,
-            teachers: teachers.length > 0 ? teachers : prev.teachers,
-            classes: classes.length > 0 ? sortClassesByName(classes) : sortClassesByName(prev.classes),
-            lessons: lessons.length > 0 ? lessons : prev.lessons,
-            bellPeriods: bellPeriods.length > 0 ? bellPeriods : prev.bellPeriods,
-            syncStatus: "synced",
-          }),
+          (prev) => {
+            const newState = {
+              ...prev,
+              currentSchoolId: schoolInfo.id,
+              schools: [
+                schoolInfo,
+                ...prev.schools.filter((s) => s.id !== schoolInfo.id && s.id !== "school_39"),
+              ],
+              branches: branches.length > 0 ? branches : prev.branches,
+              shifts: shifts.length > 0 ? shifts : prev.shifts,
+              subjects: subjects.length > 0 ? subjects : prev.subjects,
+              rooms: rooms.length > 0 ? rooms : prev.rooms,
+              teachers: teachers.length > 0 ? teachers : prev.teachers,
+              classes: classes.length > 0 ? sortClassesByName(classes) : sortClassesByName(prev.classes),
+              lessons: lessons.length > 0 ? lessons : prev.lessons,
+              bellPeriods: bellPeriods.length > 0 ? bellPeriods : prev.bellPeriods,
+              syncStatus: "synced" as const,
+            };
+            saveLocalStorageState(newState);
+            return newState;
+          },
           false
         );
       } else {
