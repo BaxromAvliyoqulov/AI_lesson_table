@@ -188,3 +188,94 @@ export async function saveClassTarifficationAction(
     return { success: false, error: error?.message };
   }
 }
+
+/**
+ * Barcha sinflar tarifikatsiyasini ommaviy saqlash (Neon PostgreSQL DB ga doimiy yozish)
+ */
+export async function saveAllClassesTarifficationAction(
+  schoolId: string,
+  classesData: Array<{
+    id: string;
+    homeroomTeacherId?: string | null;
+    subjects: Array<{ subjectId: string; teacherId: string; weeklyHours: number }>;
+  }>
+) {
+  try {
+    const school = await resolveSchool(schoolId);
+    if (!school) return { success: false, error: "Maktab topilmadi" };
+    const actualSchoolId = school.id;
+
+    await prisma.$transaction(async (tx) => {
+      // 1. DB dagi fanlar va ustozlar xaritasini olish
+      const dbSubjects = await tx.subject.findMany({ where: { schoolId: actualSchoolId } });
+      const dbTeachers = await tx.teacher.findMany({ where: { schoolId: actualSchoolId } });
+
+      const subMap = new Map<string, string>();
+      dbSubjects.forEach((s) => {
+        subMap.set(s.id, s.id);
+        subMap.set(s.name.trim(), s.id);
+      });
+
+      const teacherMap = new Map<string, string>();
+      dbTeachers.forEach((t) => {
+        teacherMap.set(t.id, t.id);
+        teacherMap.set(t.fullName.trim(), t.id);
+      });
+
+      for (const clsData of classesData) {
+        const cls = await tx.class.findFirst({
+          where: { OR: [{ id: clsData.id }, { schoolId: actualSchoolId, name: clsData.id }] },
+        });
+        if (!cls) continue;
+
+        // Sinf rahbari yangilanishi
+        if (clsData.homeroomTeacherId) {
+          const tId = teacherMap.get(clsData.homeroomTeacherId);
+          if (tId) {
+            await tx.teacher.updateMany({
+              where: { schoolId: actualSchoolId, homeroomClassId: cls.id },
+              data: { homeroomClassId: null },
+            });
+            await tx.teacher.update({
+              where: { id: tId },
+              data: { homeroomClassId: cls.id },
+            });
+          }
+        }
+
+        // Sinf o'quv rejasini tozalab, qaytadan yozish
+        await tx.classSubject.deleteMany({
+          where: { classId: cls.id, schoolId: actualSchoolId },
+        });
+
+        const rowsToCreate: any[] = [];
+        for (const s of clsData.subjects || []) {
+          const mappedSubId = subMap.get(s.subjectId) || s.subjectId;
+          const mappedTeacherId = teacherMap.get(s.teacherId) || s.teacherId;
+
+          if (mappedSubId && mappedTeacherId && (s.weeklyHours || 0) > 0) {
+            rowsToCreate.push({
+              schoolId: actualSchoolId,
+              classId: cls.id,
+              subjectId: mappedSubId,
+              teacherId: mappedTeacherId,
+              weeklyHours: s.weeklyHours,
+            });
+          }
+        }
+
+        if (rowsToCreate.length > 0) {
+          await tx.classSubject.createMany({
+            data: rowsToCreate,
+          });
+        }
+      }
+    });
+
+    return { success: true };
+  } catch (error: any) {
+    console.error("saveAllClassesTarifficationAction xatosi:", error);
+    return { success: false, error: error?.message };
+  }
+}
+

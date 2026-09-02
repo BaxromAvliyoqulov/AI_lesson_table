@@ -142,107 +142,124 @@ export const TarifficationWorkspace: React.FC<TarifficationWorkspaceProps> = ({
     );
   };
 
-  const handleSetHomeroomTeacher = (classId: string, teacherId: string) => {
-    setClassesData((prev) =>
-      prev.map((cls) => {
-        if (cls.id !== classId) return cls;
-        // Sinf soati faniga ham avtomatik shu ustozni biriktirish
-        const updatedSubjects = (cls.subjects || []).map((cs) => {
-          if (
-            cs.subjectId === "sub_sinf_soati" ||
-            cs.subjectId?.toLowerCase().includes("sinf_soati")
-          ) {
-            return { ...cs, teacherId };
-          }
-          return cs;
-        });
-        return { ...cls, homeroomTeacherId: teacherId, subjects: updatedSubjects };
-      })
-    );
-    showToast("👤 Sinf rahbari muvaffaqiyatli belgilandi!");
+  const handleSetHomeroomTeacher = async (classId: string, teacherId: string) => {
+    const updated = classesData.map((cls) => {
+      if (cls.id !== classId) return cls;
+      const updatedSubjects = (cls.subjects || []).map((cs) => {
+        if (
+          cs.subjectId === "sub_sinf_soati" ||
+          cs.subjectId?.toLowerCase().includes("sinf_soati")
+        ) {
+          return { ...cs, teacherId };
+        }
+        return cs;
+      });
+      return { ...cls, homeroomTeacherId: teacherId, subjects: updatedSubjects };
+    });
+    setClassesData(updated);
+    await onSaveClassSubjects(updated);
+    showToast("👤 Sinf rahbari muvaffaqiyatli belgilandi va saqlandi!");
   };
 
-  const handleRemoveSubject = (classId: string, subjectId: string) => {
-    setClassesData((prev) =>
-      prev.map((cls) => {
-        if (cls.id !== classId) return cls;
-        return {
-          ...cls,
-          subjects: (cls.subjects || []).filter((cs) => cs.subjectId !== subjectId),
-        };
-      })
-    );
-    showToast("🗑️ Fan sinf o'quv rejasidan olib tashlandi");
+  const handleRemoveSubject = async (classId: string, subjectId: string) => {
+    const updated = classesData.map((cls) => {
+      if (cls.id !== classId) return cls;
+      return {
+        ...cls,
+        subjects: (cls.subjects || []).filter((cs) => cs.subjectId !== subjectId),
+      };
+    });
+    setClassesData(updated);
+    await onSaveClassSubjects(updated);
+    showToast("🗑️ Fan sinf o'quv rejasidan olib tashlandi va saqlandi!");
   };
 
-  const handleClearClassSubjects = (classId: string) => {
+  const handleClearClassSubjects = async (classId: string) => {
     if (!window.confirm("Ushbu sinfning barcha o'quv rejasini tozalashni tasdiqlaysizmi?")) return;
-    setClassesData((prev) =>
-      prev.map((cls) => (cls.id === classId ? { ...cls, subjects: [] } : cls))
-    );
-    showToast("🗑️ Sinf o'quv rejasi tozalandi");
+    const updated = classesData.map((cls) => (cls.id === classId ? { ...cls, subjects: [] } : cls));
+    setClassesData(updated);
+    await onSaveClassSubjects(updated);
+    showToast("🗑️ Sinf o'quv rejasi tozalandi!");
   };
 
-  const handleTransferLesson = (
+  const handleTransferLesson = async (
     fromTeacherId: string,
     toTeacherId: string,
     classId: string,
     subjectId: string
   ) => {
-    setClassesData((prev) =>
-      prev.map((cls) => {
-        if (cls.id !== classId) return cls;
-        return {
-          ...cls,
-          subjects: (cls.subjects || []).map((cs) =>
-            cs.subjectId === subjectId && cs.teacherId === fromTeacherId
-              ? { ...cs, teacherId: toTeacherId }
-              : cs
-          ),
-        };
-      })
-    );
-    showToast("🔄 Dars boshqa o'qituvchiga muvaffaqiyatli o'tkazildi!");
+    const updated = classesData.map((cls) => {
+      if (cls.id !== classId) return cls;
+      return {
+        ...cls,
+        subjects: (cls.subjects || []).map((cs) =>
+          cs.subjectId === subjectId && cs.teacherId === fromTeacherId
+            ? { ...cs, teacherId: toTeacherId }
+            : cs
+        ),
+      };
+    });
+    setClassesData(updated);
+    await onSaveClassSubjects(updated);
+    showToast("🔄 Dars boshqa o'qituvchiga muvaffaqiyatli o'tkazildi va saqlandi!");
   };
 
-  const handleLoadStandardForClass = (targetClass: SchoolClass) => {
+  const handleLoadStandardForClass = async (targetClass: SchoolClass) => {
+    const tracker = new Map<string, number>();
+    classesData.forEach((c) => {
+      if (c.id !== targetClass.id) {
+        (c.subjects || []).forEach((cs) => {
+          if (cs.teacherId) {
+            tracker.set(cs.teacherId, (tracker.get(cs.teacherId) || 0) + cs.weeklyHours);
+          }
+        });
+      }
+    });
+
     const newSubjects = generateStandardCurriculumForClass(
       targetClass.grade,
       targetClass.id,
       targetClass.homeroomTeacherId,
       subjects,
-      teachers
+      sortedTeachers,
+      tracker
     );
 
-    setClassesData((prev) =>
-      prev.map((cls) => (cls.id === targetClass.id ? { ...cls, subjects: newSubjects } : cls))
+    const updated = classesData.map((cls) =>
+      cls.id === targetClass.id ? { ...cls, subjects: newSubjects } : cls
     );
 
-    showToast(`✅ ${targetClass.name} sinfiga davlat standarti bo'yicha ${newSubjects.length} ta fan yuklandi!`);
+    setClassesData(updated);
+    await onSaveClassSubjects(updated);
+    showToast(`✅ ${targetClass.name} sinfiga standart reja yuklandi va bazaga saqlandi!`);
   };
 
-  const handleLoadStandardForAllClasses = () => {
+  const handleLoadStandardForAllClasses = async () => {
     if (!window.confirm("Barcha tanlangan sinflarga davlat o'quv rejasini yuklashni tasdiqlaysizmi?")) return;
 
-    setClassesData((prev) =>
-      prev.map((cls) => {
-        if (selectedBranchId !== "ALL" && cls.branchId !== selectedBranchId) return cls;
-        if (stageFilter === "PRIMARY" && !cls.isPrimary && cls.grade > 4) return cls;
-        if (stageFilter === "HIGH" && (cls.isPrimary || cls.grade <= 4)) return cls;
+    const tracker = new Map<string, number>();
+    sortedTeachers.forEach((t) => tracker.set(t.id, 0));
 
-        const newSubjects = generateStandardCurriculumForClass(
-          cls.grade,
-          cls.id,
-          cls.homeroomTeacherId,
-          subjects,
-          teachers
-        );
+    const updated = classesData.map((cls) => {
+      if (selectedBranchId !== "ALL" && cls.branchId !== selectedBranchId) return cls;
+      if (stageFilter === "PRIMARY" && !cls.isPrimary && cls.grade > 4) return cls;
+      if (stageFilter === "HIGH" && (cls.isPrimary || cls.grade <= 4)) return cls;
 
-        return { ...cls, subjects: newSubjects };
-      })
-    );
+      const newSubjects = generateStandardCurriculumForClass(
+        cls.grade,
+        cls.id,
+        cls.homeroomTeacherId,
+        subjects,
+        sortedTeachers,
+        tracker
+      );
 
-    showToast("✅ Barcha sinflarga davlat o'quv rejasi muvaffaqiyatli tatbiq etildi!");
+      return { ...cls, subjects: newSubjects };
+    });
+
+    setClassesData(updated);
+    await onSaveClassSubjects(updated);
+    showToast("✅ Barcha sinflarga davlat o'quv rejasi muvaffaqiyatli tatbiq etildi va saqlandi!");
   };
 
   const handleSave = async () => {

@@ -5,6 +5,8 @@ import { useSchoolStore } from "@/lib/store/useSchoolStore";
 import { TarifficationWorkspace } from "@/components/tariffication/TarifficationWorkspace";
 import { CSPSolver } from "@/lib/solver/csp-solver";
 
+import { saveAllClassesTarifficationAction } from "@/lib/actions/class.actions";
+
 export default function TarifficationPage() {
   const store = useSchoolStore();
 
@@ -29,8 +31,16 @@ export default function TarifficationPage() {
     ? store.shifts.filter((s) => s.schoolId === store.currentSchoolId)
     : store.shifts;
 
-  const handleSaveClassSubjects = (updatedClasses: typeof schoolClasses) => {
+  const handleSaveClassSubjects = async (updatedClasses: typeof schoolClasses) => {
     store.updateClasses(updatedClasses);
+    try {
+      await saveAllClassesTarifficationAction(
+        store.currentSchoolId || currentSchool?.id || "",
+        updatedClasses as any
+      );
+    } catch (err) {
+      console.error("Tarifikatsiyani bazaga saqlashda xatolik:", err);
+    }
   };
 
   const handleGenerateAI = () => {
