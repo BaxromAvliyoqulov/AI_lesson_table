@@ -20,6 +20,11 @@ import {
   LogOut,
   User,
   History,
+  Printer,
+  FileSpreadsheet,
+  FileText,
+  AlertCircle,
+  Wand2,
 } from "lucide-react";
 import { SchoolInfo } from "@/types";
 import { Logo } from "@/components/brand/Logo";
@@ -38,6 +43,11 @@ interface NavbarProps {
   onOpenTariffication?: () => void;
   onOpenTeacherAdvisor?: () => void;
   onOpenVersions?: () => void;
+  onOpenA3Print?: () => void;
+  onOpenTeacherCardsPrint?: () => void;
+  onOpenConflictModal?: () => void;
+  conflictsCount?: number;
+  onAutoFixConflicts?: () => void;
   onUndo: () => void;
   canUndo: boolean;
   isGenerating: boolean;
@@ -62,6 +72,11 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenTariffication,
   onOpenTeacherAdvisor,
   onOpenVersions,
+  onOpenA3Print,
+  onOpenTeacherCardsPrint,
+  onOpenConflictModal,
+  conflictsCount = 0,
+  onAutoFixConflicts,
   onUndo,
   canUndo = false,
   isGenerating = false,
@@ -72,6 +87,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   onSyncCloud,
 }) => {
   const [isSchoolMenuOpen, setIsSchoolMenuOpen] = useState(false);
+  const [isAiMenuOpen, setIsAiMenuOpen] = useState(false);
+  const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
 
   const safeSchools = schools || [];
   const currentSchool =
@@ -292,87 +309,244 @@ export const Navbar: React.FC<NavbarProps> = ({
           </button>
         </div>
 
-        {/* Action Tugmalar (Generatsiya, Excel, Wizard) */}
-        <div className="flex items-center gap-2">
-          {/* Excel Import */}
-          <button
-            onClick={onOpenImport}
-            className="hidden md:flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-medium hover:bg-muted transition-colors shadow-sm"
-          >
-            <Upload className="h-3.5 w-3.5 text-emerald-600" />
-            <span>Excel Import</span>
-          </button>
-
-          {/* Tarifikatsiya & Yuklama Sahifasi (Alohida Sahifa) */}
+        {/* Action Tugmalar: Aqlli Guruhlangan B2B SaaS Menyusi */}
+        <div className="flex items-center gap-2 relative">
+          {/* 1. Tarifikatsiya & Yuklama Konsoli */}
           <a
             href="/tarifikatsiya"
-            className="flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50/70 hover:bg-blue-100 px-3 py-1.5 text-xs font-bold transition-all shadow-sm text-blue-700 cursor-pointer"
+            className="flex items-center gap-1.5 rounded-xl border border-blue-200 bg-blue-50/80 hover:bg-blue-100 px-3 py-1.5 text-xs font-bold transition-all shadow-sm text-blue-700 cursor-pointer"
             title="O'quv yuklamasi va Tarifikatsiya konsoli"
           >
             <Building2 className="h-3.5 w-3.5 text-blue-600" />
-            <span>Tarifikatsiya &amp; Yuklama</span>
+            <span className="hidden sm:inline">Tarifikatsiya</span>
           </a>
 
-          {/* AI Ustoz, Smena & Bino Maslahatchisi */}
-          {onOpenTeacherAdvisor && (
+          {/* 2. 🖨️ Eksport & Chop Dropdown */}
+          <div className="relative">
             <button
-              onClick={onOpenTeacherAdvisor}
-              className="flex items-center gap-1.5 rounded-lg border border-indigo-500/40 bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-blue-500/10 hover:border-indigo-500/70 px-3 py-1.5 text-xs font-bold transition-all shadow-sm text-indigo-600 dark:text-indigo-400 cursor-pointer animate-pulse hover:animate-none"
-              title="AI Ustozlar yuklamasi, smenasi va bino taqsimoti tahlili"
+              type="button"
+              onClick={() => {
+                setIsExportMenuOpen(!isExportMenuOpen);
+                setIsAiMenuOpen(false);
+              }}
+              className="flex items-center gap-1.5 rounded-xl border border-border bg-card hover:bg-muted/80 px-3 py-1.5 text-xs font-bold transition-all shadow-sm text-slate-700 dark:text-slate-200 cursor-pointer"
+              title="Excel yuklab olish va Chop etish menyusi"
             >
-              <Sparkles className="h-3.5 w-3.5 text-indigo-500" />
-              <span>AI Ustoz & Smena</span>
+              <Printer className="h-3.5 w-3.5 text-emerald-600" />
+              <span>Chop &amp; Eksport</span>
+              <ChevronDown className="h-3 w-3 text-muted-foreground" />
             </button>
-          )}
 
-          {/* Dars Jadvali Versiyalari (Arxiv) */}
-          {onOpenVersions && (
+            {isExportMenuOpen && (
+              <>
+                <div
+                  className="fixed inset-0 z-40"
+                  onClick={() => setIsExportMenuOpen(false)}
+                />
+                <div className="absolute right-0 top-11 z-50 w-72 rounded-2xl border border-border bg-card p-1.5 shadow-2xl animate-in fade-in slide-in-from-top-2 text-slate-800 dark:text-slate-100">
+                  <div className="px-3 py-1.5 text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                    Eksport va Chop Etish
+                  </div>
+
+                  <button
+                    onClick={() => {
+                      onExport();
+                      setIsExportMenuOpen(false);
+                    }}
+                    className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-semibold hover:bg-emerald-50 dark:hover:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 transition-colors text-left"
+                  >
+                    <FileSpreadsheet className="h-4 w-4 text-emerald-600" />
+                    <div>
+                      <div>39-Maktab Rasmiy Excel (A3)</div>
+                      <div className="text-[10px] text-muted-foreground font-normal">Rangli, shtampli to'liq Excel fayl</div>
+                    </div>
+                  </button>
+
+                  {onOpenA3Print && (
+                    <button
+                      onClick={() => {
+                        onOpenA3Print();
+                        setIsExportMenuOpen(false);
+                      }}
+                      className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-semibold hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-left"
+                    >
+                      <Printer className="h-4 w-4 text-slate-700 dark:text-slate-300" />
+                      <div>
+                        <div>A3 Devoriy Jadval (Print / PDF)</div>
+                        <div className="text-[10px] text-muted-foreground font-normal">Maktab devoriga osish uchun</div>
+                      </div>
+                    </button>
+                  )}
+
+                  {onOpenTeacherCardsPrint && (
+                    <button
+                      onClick={() => {
+                        onOpenTeacherCardsPrint();
+                        setIsExportMenuOpen(false);
+                      }}
+                      className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-semibold hover:bg-indigo-50 dark:hover:bg-indigo-950/40 text-indigo-700 dark:text-indigo-400 transition-colors text-left"
+                    >
+                      <FileText className="h-4 w-4 text-indigo-600" />
+                      <div>
+                        <div>Ustozlar Shaxsiy Varaqalari</div>
+                        <div className="text-[10px] text-muted-foreground font-normal">Har bir o'qituvchiga alohida jadval</div>
+                      </div>
+                    </button>
+                  )}
+
+                  <div className="my-1 border-t border-border" />
+
+                  <button
+                    onClick={() => {
+                      onOpenImport();
+                      setIsExportMenuOpen(false);
+                    }}
+                    className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-semibold hover:bg-muted text-foreground transition-colors text-left"
+                  >
+                    <Upload className="h-4 w-4 text-blue-600" />
+                    <div>
+                      <div>eMaktab / Excel Import</div>
+                      <div className="text-[10px] text-muted-foreground font-normal">Kundalik.com yoki Exceldan yuklash</div>
+                    </div>
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* 3. ✨ AI Markazi Dropdown */}
+          <div className="relative">
             <button
-              onClick={onOpenVersions}
-              className="flex items-center gap-1.5 rounded-lg border border-border bg-card hover:bg-purple-50/70 dark:hover:bg-purple-950/30 px-3 py-1.5 text-xs font-bold transition-all shadow-sm text-purple-600 dark:text-purple-400 cursor-pointer"
-              title="Dars jadvali versiyalari, snapshotlar va arxiv"
+              type="button"
+              onClick={() => {
+                setIsAiMenuOpen(!isAiMenuOpen);
+                setIsExportMenuOpen(false);
+              }}
+              disabled={isGenerating}
+              className="flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-700 hover:to-indigo-800 text-white px-3 py-1.5 text-xs font-bold shadow-md shadow-blue-600/20 disabled:opacity-60 transition-all cursor-pointer"
+              title="AI Dvigateli va yordamchilari"
             >
-              <History className="h-3.5 w-3.5 text-purple-600" />
-              <span>Versiyalar</span>
+              {isGenerating ? (
+                <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Sparkles className="h-3.5 w-3.5 text-amber-300 animate-pulse" />
+              )}
+              <span>{isGenerating ? "Tuzilmoqda..." : "AI Markazi"}</span>
+              <ChevronDown className="h-3 w-3 text-white/80" />
             </button>
-          )}
 
-          {/* Maktab Sozlamalari (Alohida Sahifa) */}
+            {isAiMenuOpen && (
+              <>
+                <div
+                  className="fixed inset-0 z-40"
+                  onClick={() => setIsAiMenuOpen(false)}
+                />
+                <div className="absolute right-0 top-11 z-50 w-72 rounded-2xl border border-border bg-card p-1.5 shadow-2xl animate-in fade-in slide-in-from-top-2 text-slate-800 dark:text-slate-100">
+                  <div className="px-3 py-1.5 text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                    Sun'iy Intellekt Vositalari
+                  </div>
+
+                  {/* Asosiy Generatsiya */}
+                  <button
+                    onClick={() => {
+                      onGenerate();
+                      setIsAiMenuOpen(false);
+                    }}
+                    className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-bold hover:bg-blue-50 dark:hover:bg-blue-950/40 text-blue-700 dark:text-blue-400 transition-colors text-left"
+                  >
+                    <Sparkles className="h-4 w-4 text-blue-600" />
+                    <div>
+                      <div>⚡ To'liq Dars Jadvalini Generatsiya Qilish</div>
+                      <div className="text-[10px] text-muted-foreground font-normal">SanPiN va 0-ziddiyatli optimal jadval</div>
+                    </div>
+                  </button>
+
+                  {/* AI Ziddiyatlarni To'g'rilash (agar bor bo'lsa) */}
+                  {onAutoFixConflicts && conflictsCount > 0 && (
+                    <button
+                      onClick={() => {
+                        onAutoFixConflicts();
+                        setIsAiMenuOpen(false);
+                      }}
+                      className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-bold hover:bg-amber-50 dark:hover:bg-amber-950/40 text-amber-700 dark:text-amber-400 transition-colors text-left"
+                    >
+                      <Wand2 className="h-4 w-4 text-amber-600" />
+                      <div>
+                        <div>🪄 AI Bilan To'g'rilash ({conflictsCount} ta ziddiyat)</div>
+                        <div className="text-[10px] text-muted-foreground font-normal">Ziddiyatlarni avtomatik bartaraf etish</div>
+                      </div>
+                    </button>
+                  )}
+
+                  {/* Ziddiyatlar Radari */}
+                  {onOpenConflictModal && (
+                    <button
+                      onClick={() => {
+                        onOpenConflictModal();
+                        setIsAiMenuOpen(false);
+                      }}
+                      className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-semibold hover:bg-amber-50/60 dark:hover:bg-amber-950/20 text-foreground transition-colors text-left"
+                    >
+                      <AlertCircle className="h-4 w-4 text-amber-600" />
+                      <div>
+                        <div>⚠️ Ziddiyatlar Radari</div>
+                        <div className="text-[10px] text-muted-foreground font-normal">Metod kuni, xona va o'qituvchi tahlili</div>
+                      </div>
+                    </button>
+                  )}
+
+                  {/* AI Ustoz & Smena */}
+                  {onOpenTeacherAdvisor && (
+                    <button
+                      onClick={() => {
+                        onOpenTeacherAdvisor();
+                        setIsAiMenuOpen(false);
+                      }}
+                      className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-semibold hover:bg-purple-50/60 dark:hover:bg-purple-950/20 text-foreground transition-colors text-left"
+                    >
+                      <User className="h-4 w-4 text-purple-600" />
+                      <div>
+                        <div>👥 AI Ustoz &amp; Smena Maslahatchisi</div>
+                        <div className="text-[10px] text-muted-foreground font-normal">Yuklama va smenalarni optimallash</div>
+                      </div>
+                    </button>
+                  )}
+
+                  {/* Versiyalar */}
+                  {onOpenVersions && (
+                    <button
+                      onClick={() => {
+                        onOpenVersions();
+                        setIsAiMenuOpen(false);
+                      }}
+                      className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-semibold hover:bg-muted text-foreground transition-colors text-left"
+                    >
+                      <History className="h-4 w-4 text-muted-foreground" />
+                      <div>
+                        <div>🕒 Dars Jadvali Versiyalari (Arxiv)</div>
+                        <div className="text-[10px] text-muted-foreground font-normal">Avvalgi saqlangan holatlar</div>
+                      </div>
+                    </button>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* 4. Maktab Sozlamalari (Alohida Sahifa) */}
           <a
             href="/sozlamalar"
-            className="flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-semibold hover:bg-muted transition-colors shadow-sm text-foreground"
+            className="flex items-center gap-1.5 rounded-xl border border-border bg-card px-2.5 py-1.5 text-xs font-semibold hover:bg-muted transition-colors shadow-sm text-foreground"
+            title="Maktab, sinflar, o'qituvchilar va xonalar sozlamalari"
           >
             <Settings2 className="h-3.5 w-3.5 text-blue-600" />
-            <span className="hidden sm:inline">Maktabni Sozlash (CRUD)</span>
+            <span className="hidden xl:inline">Sozlamalar</span>
           </a>
 
-          {/* Excel Export */}
-          <button
-            onClick={onExport}
-            className="flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-medium hover:bg-muted transition-colors shadow-sm"
-          >
-            <Download className="h-3.5 w-3.5 text-emerald-600" />
-            <span className="hidden sm:inline">Eksport</span>
-          </button>
-
-          {/* AI Generatsiya */}
-          <button
-            onClick={onGenerate}
-            disabled={isGenerating}
-            className="flex items-center gap-2 rounded-lg bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-700 hover:to-indigo-800 text-white px-3.5 py-1.5 text-xs font-semibold shadow-md shadow-blue-600/20 disabled:opacity-60 transition-all cursor-pointer"
-          >
-            {isGenerating ? (
-              <RefreshCw className="h-3.5 w-3.5 animate-spin" />
-            ) : (
-              <Sparkles className="h-3.5 w-3.5 text-amber-300 animate-pulse" />
-            )}
-            <span>{isGenerating ? "Tuzilmoqda..." : "AI Generatsiya"}</span>
-          </button>
-
-          {/* Chiqish (Logout) */}
+          {/* 5. Chiqish (Logout) */}
           <button
             onClick={() => signOut({ callbackUrl: "/login" })}
-            className="p-2 rounded-lg border border-border bg-card hover:bg-rose-500/10 text-muted-foreground hover:text-rose-500 transition-colors"
+            className="p-1.5 rounded-xl border border-border bg-card hover:bg-rose-500/10 text-muted-foreground hover:text-rose-500 transition-colors cursor-pointer"
             title="Tizimdan chiqish (Logout)"
           >
             <LogOut className="h-4 w-4" />

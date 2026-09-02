@@ -209,6 +209,9 @@ export default function HomePage() {
         onOpenTariffication={() => setIsTarifficationOpen(true)}
         onOpenTeacherAdvisor={() => setIsTeacherAdvisorOpen(true)}
         onOpenVersions={() => setIsVersionsModalOpen(true)}
+        onOpenA3Print={() => setIsA3PrintOpen(true)}
+        onOpenTeacherCardsPrint={() => setIsTeacherCardsPrintOpen(true)}
+        onOpenConflictModal={() => setIsConflictModalOpen(true)}
         onUndo={store.undo}
         canUndo={store.history.length > 0}
         isGenerating={store.isGenerating}
@@ -226,9 +229,10 @@ export default function HomePage() {
         }}
       />
 
-      {/* View Mode Switcher Sub-Header */}
-      <div className="border-b border-border/80 bg-card/60 px-4 md:px-6 py-2.5 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-1.5 bg-muted/40 p-1 rounded-xl border border-border/60 flex-wrap">
+      {/* View Mode Switcher Sub-Header — Toza va Ixcham Rejimlar */}
+      <div className="border-b border-border/80 bg-card/60 px-4 md:px-6 py-2 flex flex-wrap items-center justify-between gap-3">
+        {/* 4 ta Asosiy Dars Jadvali Ko'rinish Rejimi */}
+        <div className="flex items-center gap-1.5 bg-muted/40 p-1 rounded-xl border border-border/60">
           <button
             onClick={() => store.setViewMode("OFFICIAL_39")}
             className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-bold transition-all cursor-pointer ${
@@ -276,49 +280,20 @@ export default function HomePage() {
             <Users className="h-4 w-4" />
             <span>O'qituvchi Bo'yicha</span>
           </button>
-
-          {/* Tarifikatsiya & Yuklama Sahifasi */}
-          <a
-            href="/tarifikatsiya"
-            className="flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-bold transition-all bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 shadow-sm cursor-pointer ml-1"
-          >
-            <Building2 className="h-4 w-4 text-blue-600" />
-            <span>Tarifikatsiya &amp; Yuklama</span>
-          </a>
-
-          {/* 🖨️ A3 Chop Etish (Print) Tugmasi */}
-          <button
-            onClick={() => setIsA3PrintOpen(true)}
-            className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-all bg-slate-900 text-white hover:bg-slate-800 shadow-sm cursor-pointer ml-1"
-            title="39-Maktab rasmiy A3 albom formatida chop etish"
-          >
-            <Printer className="h-3.5 w-3.5 text-amber-400" />
-            <span>🖨️ A3 Chop Etish</span>
-          </button>
-
-          {/* 📄 O'qituvchilar Shaxsiy Varaqalari (Print) Tugmasi */}
-          <button
-            onClick={() => setIsTeacherCardsPrintOpen(true)}
-            className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-all bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 shadow-sm cursor-pointer ml-1"
-            title="Har bir o'qituvchining haftalik dars jadvalini alohida chop etish"
-          >
-            <FileText className="h-3.5 w-3.5 text-indigo-600" />
-            <span>📄 Ustozlar Varaqalari</span>
-          </button>
-
-          {/* ⚠️ Ziddiyatlar Radari Modali Tugmasi */}
-          <button
-            onClick={() => setIsConflictModalOpen(true)}
-            className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-all bg-amber-500/10 text-amber-700 dark:text-amber-400 hover:bg-amber-500/20 border border-amber-500/30 shadow-sm cursor-pointer ml-1"
-            title="Dars jadvalining barcha ziddiyatlari va ogohlantirishlarini tahlil qilish"
-          >
-            <AlertCircle className="h-3.5 w-3.5 text-amber-600" />
-            <span>⚠️ Ziddiyatlar Radari</span>
-          </button>
         </div>
 
-        <div className="flex items-center gap-3 text-xs text-muted-foreground">
-          <span>
+        {/* O'ng tomon: Maktab statistikasi & Ziddiyatlar radari tugmasi */}
+        <div className="flex items-center gap-2.5 text-xs">
+          <button
+            onClick={() => setIsConflictModalOpen(true)}
+            className="flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-bold transition-all bg-amber-500/10 text-amber-700 dark:text-amber-400 hover:bg-amber-500/20 border border-amber-500/30 shadow-sm cursor-pointer"
+            title="Dars jadvali ziddiyatlari radari"
+          >
+            <AlertCircle className="h-3.5 w-3.5 text-amber-600" />
+            <span>Radarni Ko'rish</span>
+          </button>
+
+          <span className="text-muted-foreground hidden sm:inline">
             {currentSchool?.name}:{" "}
             <strong className="text-foreground">{schoolClasses.length} ta sinf</strong>,{" "}
             <strong className="text-foreground">{schoolTeachers.length} nafar o'qituvchi</strong>
