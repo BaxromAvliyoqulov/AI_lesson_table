@@ -82,9 +82,21 @@ export const Official39Grid: React.FC<Official39GridProps> = ({
                 Vaqti
               </th>
 
+              {displayClasses.length === 0 && (
+                <th rowSpan={2} className="border border-black px-6 py-2 text-center text-xs font-bold text-amber-800 bg-amber-50 min-w-[200px]">
+                  Ushbu filtr bo&apos;yicha sinflar topilmadi
+                </th>
+              )}
+
               {displayClasses.map((cls) => {
                 const homeroomTeacher = getHomeroomTeacher(cls);
                 const isClassLocked = lockedClassIds?.includes(cls.id);
+
+                const isBranchClass =
+                  cls.branchId === "b39_2" ||
+                  cls.name.trim().toUpperCase().endsWith("D") ||
+                  cls.branchId?.toLowerCase().includes("branch_2") ||
+                  cls.branchId?.toLowerCase().includes("filial");
 
                 return (
                   <th
@@ -94,7 +106,7 @@ export const Official39Grid: React.FC<Official39GridProps> = ({
                     className={`border border-black px-1.5 py-1 text-center font-black text-xs min-w-[92px] cursor-pointer hover:opacity-90 transition-opacity select-none ${
                       isClassLocked
                         ? "bg-rose-50 text-rose-950 border-rose-600"
-                        : cls.branchId === "b39_2"
+                        : isBranchClass
                         ? "bg-amber-100 text-amber-950"
                         : "bg-slate-100 text-slate-900"
                     }`}
@@ -201,6 +213,12 @@ export const Official39Grid: React.FC<Official39GridProps> = ({
                       </td>
 
                       {/* Barcha Sinflar uchun Katakchalar */}
+                      {displayClasses.length === 0 && (
+                        <td className="border border-black px-4 py-1 text-center text-muted-foreground text-[10px] bg-slate-50/50">
+                          —
+                        </td>
+                      )}
+
                       {displayClasses.map((cls) => {
                         const cellLessons = cellLessonMap.get(`${cls.id}_${day.id}_${periodInfo.period}`) || [];
                         const lesson = cellLessons[0];
@@ -248,6 +266,11 @@ export const Official39Grid: React.FC<Official39GridProps> = ({
               <td colSpan={3} className="border border-black px-2 py-1 text-right">
                 Dars soati
               </td>
+              {displayClasses.length === 0 && (
+                <td className="border border-black px-2 py-1 text-center text-muted-foreground text-[10px]">
+                  0
+                </td>
+              )}
               {displayClasses.map((cls) => (
                 <td
                   key={`hours_${cls.id}`}
@@ -264,6 +287,11 @@ export const Official39Grid: React.FC<Official39GridProps> = ({
               <td colSpan={3} className="border border-black px-2 py-1 text-right font-black">
                 Sinf rahbar
               </td>
+              {displayClasses.length === 0 && (
+                <td className="border border-black px-2 py-1 text-center text-muted-foreground text-[10px]">
+                  —
+                </td>
+              )}
               {displayClasses.map((cls) => {
                 const homeroomTeacher = getHomeroomTeacher(cls);
                 const shortName = homeroomTeacher
