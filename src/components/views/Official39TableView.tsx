@@ -53,6 +53,7 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
   approvalDate = "2026-yil 28-mart",
 }) => {
   const {
+    branches: storeBranches,
     lockedClassIds,
     lockedTeacherIds,
     toggleLockClass,
@@ -60,6 +61,8 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
     lockPrimaryClasses,
     lockAllClasses,
   } = useSchoolStore();
+
+  const allBranches = (branches && branches.length > 0 ? branches : storeBranches) || [];
 
   const [filterScope, setFilterScopeState] = useState<FilterScope>("MAIN_ALL");
 
@@ -166,10 +169,33 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
 
   // Asosiy bino va Filial bo'yicha aniq filtrlangan va tartiblangan sinflar
   const displayClasses = useMemo(() => {
-    const isBranch = (c: SchoolClass) =>
-      c.branchId === "b39_2" ||
-      c.branchId?.includes("branch_2") ||
-      c.branchId?.includes("filial");
+    const isBranch = (c: SchoolClass) => {
+      // 1. Agar sinfning branchId si filial branchiga tegishli bo'lsa
+      const branch = allBranches.find((b) => b.id === c.branchId);
+      if (branch && (!branch.isMain || branch.name.toLowerCase().includes("filial"))) return true;
+
+      // 2. Agar branchId nomida yoki id sida filial so'zi bo'lsa yoki b39_2 bo'lsa
+      if (
+        c.branchId === "b39_2" ||
+        c.branchId?.toLowerCase().includes("branch_2") ||
+        c.branchId?.toLowerCase().includes("filial")
+      ) {
+        return true;
+      }
+
+      // 3. O'zbekiston maktablaridagi filial sinflari: harfi "D" bo'lgan barcha sinflar (masalan 1-D, 2-D, 3-D, 4-D)
+      const nameUpper = c.name.trim().toUpperCase();
+      if (
+        nameUpper.endsWith("D") ||
+        nameUpper.includes("-D") ||
+        nameUpper.includes(" D") ||
+        nameUpper.includes("D SINF")
+      ) {
+        return true;
+      }
+
+      return false;
+    };
 
     const isMain = (c: SchoolClass) => !isBranch(c);
 
@@ -200,7 +226,7 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
     }
 
     return sortClassesByName(list);
-  }, [classes, filterScope]);
+  }, [classes, filterScope, allBranches]);
 
   const isPrimaryOnly = filterScope === "MAIN_PRIMARY" || filterScope === "BRANCH_PRIMARY";
   const displayDays = useMemo(() => (isPrimaryOnly ? DAYS.slice(0, 5) : DAYS), [isPrimaryOnly]);

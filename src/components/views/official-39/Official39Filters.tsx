@@ -57,17 +57,13 @@ export const Official39Filters: React.FC<Official39FiltersProps> = ({
         <div className="flex items-center gap-0.5 bg-slate-200/80 p-0.5 rounded-xl text-xs font-bold shadow-inner">
           <button
             type="button"
-            onClick={() => {
-              if (filterScope === "BRANCH_PRIMARY") onFilterScopeChange("MAIN_PRIMARY");
-              else if (filterScope === "BRANCH_HIGH") onFilterScopeChange("MAIN_HIGH");
-              else onFilterScopeChange("MAIN_ALL");
-            }}
+            onClick={() => onFilterScopeChange("MAIN_ALL")}
             className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1 text-[11px] ${
               isMain
                 ? "bg-white text-indigo-700 shadow-sm font-extrabold"
                 : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/50"
             }`}
-            title="Asosiy maktab binosi"
+            title="Asosiy maktab binosi (barcha asosiy sinflar)"
           >
             <Building2 className="w-3.5 h-3.5 text-indigo-600" />
             <span>🏢 Asosiy Bino</span>
@@ -75,17 +71,13 @@ export const Official39Filters: React.FC<Official39FiltersProps> = ({
 
           <button
             type="button"
-            onClick={() => {
-              if (filterScope === "MAIN_PRIMARY") onFilterScopeChange("BRANCH_PRIMARY");
-              else if (filterScope === "MAIN_HIGH") onFilterScopeChange("BRANCH_HIGH");
-              else onFilterScopeChange("BRANCH_ALL");
-            }}
+            onClick={() => onFilterScopeChange("BRANCH_ALL")}
             className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1 text-[11px] ${
               isBranch
                 ? "bg-white text-amber-700 shadow-sm font-extrabold"
                 : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/50"
             }`}
-            title="Filial binosi (D sinflar)"
+            title="Filial binosi (barcha filial sinflari)"
           >
             <span>🏫 Filial</span>
           </button>
@@ -98,7 +90,7 @@ export const Official39Filters: React.FC<Official39FiltersProps> = ({
                 ? "bg-white text-purple-700 shadow-sm font-extrabold"
                 : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/50"
             }`}
-            title="Butun maktab: barcha filiallar"
+            title="Butun maktab: asosiy bino va barcha filiallar"
           >
             <span>🏛️ Butun Maktab</span>
           </button>
