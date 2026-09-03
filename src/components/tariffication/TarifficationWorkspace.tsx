@@ -9,7 +9,11 @@ import {
   Branch,
   ClassSubject,
 } from "@/types";
-import { generateStandardCurriculumForClass } from "@/lib/curriculum-templates";
+import {
+  generateStandardCurriculumForClass,
+  isKelajakOrSinfSoatiSubject,
+  isHomeroomPrimarySubject,
+} from "@/lib/curriculum-templates";
 import { TarifficationHeader, ViewMode } from "./TarifficationHeader";
 import { TarifficationByClassView } from "./TarifficationByClassView";
 import { TarifficationByTeacherView } from "./TarifficationByTeacherView";
@@ -133,12 +137,16 @@ export const TarifficationWorkspace: React.FC<TarifficationWorkspaceProps> = ({
       if (cls.isClosed) continue;
       for (const cs of cls.subjects || []) {
         if (cs.teacherId) {
-          map.set(cs.teacherId, (map.get(cs.teacherId) || 0) + cs.weeklyHours);
+          const sub = subjectMap.get(cs.subjectId);
+          // O'zbekiston standartida Kelajak soati (Sinf soati) o'qituvchining dars stavkasiga qo'shilmaydi
+          if (!isKelajakOrSinfSoatiSubject(cs.subjectId, sub?.name)) {
+            map.set(cs.teacherId, (map.get(cs.teacherId) || 0) + cs.weeklyHours);
+          }
         }
       }
     }
     return map;
-  }, [classesData]);
+  }, [classesData, subjectMap]);
 
   const filteredClasses = useMemo(() => {
     return classesData.filter((c) => {
@@ -211,22 +219,46 @@ export const TarifficationWorkspace: React.FC<TarifficationWorkspaceProps> = ({
   };
 
   const handleSetHomeroomTeacher = async (classId: string, teacherId: string) => {
+    const targetTeacher = teacherId ? teachers.find((t) => t.id === teacherId) : null;
     const updated = classesData.map((cls) => {
       if (cls.id !== classId) return cls;
-      const updatedSubjects = (cls.subjects || []).map((cs) => {
-        if (
-          cs.subjectId === "sub_sinf_soati" ||
-          cs.subjectId?.toLowerCase().includes("sinf_soati")
-        ) {
-          return { ...cs, teacherId };
+      let hasClassHour = false;
+      const isPrimary = cls.grade <= 4;
+      let updatedSubjects = (cls.subjects || []).map((cs) => {
+        const sub = subjectMap.get(cs.subjectId);
+        if (isKelajakOrSinfSoatiSubject(cs.subjectId, sub?.name)) {
+          hasClassHour = true;
+          return { ...cs, teacherId: teacherId || "" };
+        }
+        // Agar boshlang'ich sinf bo'lsa va sinf rahbari o'zgarsa, Ona tili, O'qish, Matematika ham sinxronlashadi
+        if (isPrimary && sub && isHomeroomPrimarySubject(sub, cls.grade)) {
+          return teacherId ? { ...cs, teacherId } : cs;
         }
         return cs;
       });
-      return { ...cls, homeroomTeacherId: teacherId, subjects: updatedSubjects };
+
+      // Agar sinfda hali Kelajak soati bo'lmasa va sinf rahbari tanlangan bo'lsa, uni avtomatik qo'shamiz
+      if (!hasClassHour && teacherId) {
+        const sinfSoatiSub = subjects.find((s) => isKelajakOrSinfSoatiSubject(s.id, s.name));
+        const finalSubId = sinfSoatiSub?.id || "sub_sinf_soati";
+        updatedSubjects.push({
+          classId: cls.id,
+          subjectId: finalSubId,
+          teacherId,
+          weeklyHours: 1,
+          groupType: "WHOLE",
+        });
+      }
+
+      return { ...cls, homeroomTeacherId: teacherId || undefined, subjects: updatedSubjects };
     });
     setClassesData(updated);
     await onSaveClassSubjects(updated);
-    showToast("👤 Sinf rahbari muvaffaqiyatli belgilandi va saqlandi!");
+    showToast(
+      teacherId
+        ? `👤 ${targetTeacher?.fullName || "Ustoz"} sinf rahbari etib belgilandi va Kelajak soati avtomatik biriktirildi!`
+        : "👤 Sinf rahbari olib tashlandi"
+    );
   };
 
   const handleRemoveSubject = async (classId: string, subjectId: string) => {

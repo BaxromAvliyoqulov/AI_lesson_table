@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { SchoolClass, Subject, Teacher } from "@/types";
+import { isKelajakOrSinfSoatiSubject } from "@/lib/curriculum-templates";
 import {
   Users,
   Search,
@@ -235,10 +236,15 @@ export const TarifficationByTeacherView: React.FC<TarifficationByTeacherViewProp
               .filter((cs) => cs.teacherId === activeTeacher.id && cs.weeklyHours > 0)
               .map((cs) => {
                 const sub = subjectMap.get(cs.subjectId);
+                const isClassHour = isKelajakOrSinfSoatiSubject(cs.subjectId, sub?.name);
                 return (
                   <div
                     key={`${cls.id}_${cs.subjectId}`}
-                    className="p-3 rounded-2xl border border-slate-200 bg-slate-50/80 hover:bg-slate-50 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 transition-colors"
+                    className={`p-3 rounded-2xl border transition-colors flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 ${
+                      isClassHour
+                        ? "border-indigo-300 bg-indigo-50/50 hover:bg-indigo-50"
+                        : "border-slate-200 bg-slate-50/80 hover:bg-slate-50"
+                    }`}
                   >
                     {/* Sinf va Fan */}
                     <div className="flex items-center gap-3">
@@ -246,12 +252,17 @@ export const TarifficationByTeacherView: React.FC<TarifficationByTeacherViewProp
                         {cls.name}
                       </span>
                       <div>
-                        <div className="font-bold text-xs text-slate-900 flex items-center gap-1.5">
+                        <div className="font-bold text-xs text-slate-900 flex items-center gap-1.5 flex-wrap">
                           <div
                             className="w-2.5 h-2.5 rounded-full"
                             style={{ backgroundColor: sub?.colorTag || "#6366F1" }}
                           />
                           <span>{sub?.name || "Fan"}</span>
+                          {isClassHour && (
+                            <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-indigo-100 text-indigo-700 border border-indigo-200">
+                              👤 Sinf rahbarligi (Stavkaga kirmaydi)
+                            </span>
+                          )}
                         </div>
                         <div className="text-[10px] text-slate-500">
                           {cls.isPrimary ? "Boshlang'ich sinf" : "Yuqori sinf"}

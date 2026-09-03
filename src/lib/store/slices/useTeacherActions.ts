@@ -1,6 +1,7 @@
 import { useCallback } from "react";
 import { Teacher, TeacherAvailability } from "@/types";
 import { upsertTeacherAction, deleteTeacherAction } from "@/lib/actions/school.actions";
+import { isKelajakOrSinfSoatiSubject, isHomeroomPrimarySubject } from "@/lib/curriculum-templates";
 import { storeState, updateStore, addAuditLog } from "../store-core";
 
 export function useTeacherActions() {
@@ -13,9 +14,40 @@ export function useTeacherActions() {
         const cId = teacher.homeroomClassId;
         updatedClasses = prev.classes.map((c) => {
           if (c.id === cId) {
-            const updatedSubs = c.subjects.map((s) =>
-              s.subjectId === "sub_sinf_soati" ? { ...s, teacherId: teacher.id } : s
-            );
+            let hasClassHour = false;
+            const isPrimary = (c.grade || 1) <= 4;
+            let updatedSubs = (c.subjects || []).map((s) => {
+              const sub = prev.subjects.find((subItem) => subItem.id === s.subjectId);
+              if (isKelajakOrSinfSoatiSubject(s.subjectId, sub?.name)) {
+                hasClassHour = true;
+                return { ...s, teacherId: teacher.id };
+              }
+              if (isPrimary && sub && isHomeroomPrimarySubject(sub, c.grade)) {
+                return { ...s, teacherId: teacher.id };
+              }
+              return s;
+            });
+
+            if (!hasClassHour) {
+              const sinfSoatiSub = prev.subjects.find((subItem) =>
+                isKelajakOrSinfSoatiSubject(subItem.id, subItem.name)
+              );
+              const finalSubId = sinfSoatiSub?.id || "sub_sinf_soati";
+              updatedSubs = [
+                ...updatedSubs,
+                {
+                  classId: c.id,
+                  subjectId: finalSubId,
+                  weeklyHours: 1,
+                  hoursPerWeek: 1,
+                  teacherId: teacher.id,
+                  canSplit: false,
+                  isMandatory: true,
+                  groupType: "WHOLE",
+                } as any,
+              ];
+            }
+
             return { ...c, homeroomTeacherId: teacher.id, subjects: updatedSubs };
           }
           return c;
@@ -64,13 +96,51 @@ export function useTeacherActions() {
 
       const updatedClasses = prev.classes.map((c) => {
         if (cId && c.id === cId) {
-          const updatedSubs = c.subjects.map((s) =>
-            s.subjectId === "sub_sinf_soati" ? { ...s, teacherId: teacher.id } : s
-          );
+          let hasClassHour = false;
+          const isPrimary = (c.grade || 1) <= 4;
+          let updatedSubs = (c.subjects || []).map((s) => {
+            const sub = prev.subjects.find((subItem) => subItem.id === s.subjectId);
+            if (isKelajakOrSinfSoatiSubject(s.subjectId, sub?.name)) {
+              hasClassHour = true;
+              return { ...s, teacherId: teacher.id };
+            }
+            if (isPrimary && sub && isHomeroomPrimarySubject(sub, c.grade)) {
+              return { ...s, teacherId: teacher.id };
+            }
+            return s;
+          });
+
+          if (!hasClassHour) {
+            const sinfSoatiSub = prev.subjects.find((subItem) =>
+              isKelajakOrSinfSoatiSubject(subItem.id, subItem.name)
+            );
+            const finalSubId = sinfSoatiSub?.id || "sub_sinf_soati";
+            updatedSubs = [
+              ...updatedSubs,
+              {
+                classId: c.id,
+                subjectId: finalSubId,
+                weeklyHours: 1,
+                hoursPerWeek: 1,
+                teacherId: teacher.id,
+                canSplit: false,
+                isMandatory: true,
+                groupType: "WHOLE",
+              } as any,
+            ];
+          }
+
           return { ...c, homeroomTeacherId: teacher.id, subjects: updatedSubs };
         }
         if (c.homeroomTeacherId === teacher.id && c.id !== cId) {
-          return { ...c, homeroomTeacherId: undefined };
+          const updatedSubs = (c.subjects || []).map((s) => {
+            const sub = prev.subjects.find((subItem) => subItem.id === s.subjectId);
+            if (isKelajakOrSinfSoatiSubject(s.subjectId, sub?.name)) {
+              return { ...s, teacherId: "" };
+            }
+            return s;
+          });
+          return { ...c, homeroomTeacherId: undefined, subjects: updatedSubs };
         }
         return c;
       });
@@ -79,9 +149,7 @@ export function useTeacherActions() {
         if (
           cId &&
           l.classId === cId &&
-          (l.subjectId === "sub_sinf_soati" ||
-            l.subjectId === "sub_kelajak" ||
-            l.subjectId.includes("sinf_soati") ||
+          (isKelajakOrSinfSoatiSubject(l.subjectId) ||
             (l.dayOfWeek === 1 && l.periodNumber === 1))
         ) {
           return { ...l, teacherId: teacher.id };

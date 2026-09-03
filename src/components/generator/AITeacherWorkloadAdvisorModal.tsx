@@ -21,6 +21,7 @@ import {
   Activity,
 } from "lucide-react";
 import { Teacher, SchoolClass, Subject, Branch, Shift, Lesson } from "@/types";
+import { isKelajakOrSinfSoatiSubject } from "@/lib/curriculum-templates";
 
 interface AITeacherWorkloadAdvisorModalProps {
   isOpen: boolean;
@@ -78,8 +79,10 @@ export const AITeacherWorkloadAdvisorModal: React.FC<AITeacherWorkloadAdvisorMod
       classes.forEach((cls) => {
         cls.subjects.forEach((cs) => {
           if (cs.teacherId === teacher.id) {
-            totalAssignedHours += cs.weeklyHours;
             const sub = subjectMap.get(cs.subjectId);
+            if (!isKelajakOrSinfSoatiSubject(cs.subjectId, sub?.name)) {
+              totalAssignedHours += cs.weeklyHours;
+            }
             classSubjectList.push({
               className: cls.name,
               subjectName: sub?.name || "Fan",

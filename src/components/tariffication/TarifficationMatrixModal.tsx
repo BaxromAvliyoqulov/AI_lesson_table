@@ -22,6 +22,7 @@ import {
   Branch,
   ClassSubject,
 } from "@/types";
+import { isKelajakOrSinfSoatiSubject } from "@/lib/curriculum-templates";
 
 interface TarifficationMatrixModalProps {
   isOpen: boolean;
@@ -88,19 +89,22 @@ export const TarifficationMatrixModal: React.FC<TarifficationMatrixModalProps> =
     );
   }, [subjects, searchQuery]);
 
-  // Real-time Teacher Assigned Hours Calculation
+  // Real-time Teacher Assigned Hours Calculation (Kelajak soati dars stavkasiga kirmaydi)
   const teacherAssignedHours = useMemo(() => {
     const map = new Map<string, number>();
     for (const cls of classesData) {
       if (cls.isClosed) continue;
       for (const cs of cls.subjects) {
         if (cs.teacherId) {
-          map.set(cs.teacherId, (map.get(cs.teacherId) || 0) + cs.weeklyHours);
+          const sub = subjectMap.get(cs.subjectId);
+          if (!isKelajakOrSinfSoatiSubject(cs.subjectId, sub?.name)) {
+            map.set(cs.teacherId, (map.get(cs.teacherId) || 0) + cs.weeklyHours);
+          }
         }
       }
     }
     return map;
-  }, [classesData]);
+  }, [classesData, subjectMap]);
 
   // Filtered and Sorted Teachers for Sidebar
   const filteredTeachers = useMemo(() => {

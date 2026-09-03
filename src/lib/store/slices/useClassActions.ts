@@ -9,7 +9,7 @@ import {
   saveTeacherWorkloadAction,
   syncFullSchoolDataAction,
 } from "@/lib/actions/school.actions";
-import { isHomeroomPrimarySubject } from "@/lib/curriculum-templates";
+import { isHomeroomPrimarySubject, isKelajakOrSinfSoatiSubject } from "@/lib/curriculum-templates";
 import { storeState, updateStore, addAuditLog } from "../store-core";
 import { triggerBackgroundAutoScheduler } from "./useLessonActions";
 
@@ -17,16 +17,49 @@ export function useClassActions() {
   const addClass = useCallback((cls: SchoolClass) => {
     updateStore((prev) => {
       let updatedTeachers = prev.teachers;
+      const finalCls = { ...cls };
+
       if (cls.homeroomTeacherId) {
         updatedTeachers = prev.teachers.map((t) => {
           if (t.id === cls.homeroomTeacherId) return { ...t, homeroomClassId: cls.id };
           if (t.homeroomClassId === cls.id) return { ...t, homeroomClassId: undefined };
           return t;
         });
+
+        let hasClassHour = false;
+        const hrId = cls.homeroomTeacherId || "";
+        const isPrimary = (cls.grade || 1) <= 4;
+        const updatedSubs: ClassSubject[] = (cls.subjects || []).map((s) => {
+          const sub = prev.subjects.find((subItem) => subItem.id === s.subjectId);
+          if (isKelajakOrSinfSoatiSubject(s.subjectId, sub?.name)) {
+            hasClassHour = true;
+            return { ...s, teacherId: hrId };
+          }
+          if (isPrimary && sub && isHomeroomPrimarySubject(sub, cls.grade)) {
+            return { ...s, teacherId: hrId };
+          }
+          return s;
+        });
+
+        if (!hasClassHour) {
+          const sinfSoatiSub = prev.subjects.find((subItem) =>
+            isKelajakOrSinfSoatiSubject(subItem.id, subItem.name)
+          );
+          const finalSubId = sinfSoatiSub?.id || "sub_sinf_soati";
+          updatedSubs.push({
+            classId: cls.id,
+            subjectId: finalSubId,
+            weeklyHours: 1,
+            teacherId: hrId,
+            groupType: "WHOLE",
+          });
+        }
+        finalCls.subjects = updatedSubs;
       }
+
       return {
         ...prev,
-        classes: sortClassesByName([...prev.classes, cls]),
+        classes: sortClassesByName([...prev.classes, finalCls]),
         teachers: updatedTeachers,
         syncStatus: "syncing",
       };
@@ -40,7 +73,40 @@ export function useClassActions() {
 
   const updateClass = useCallback((cls: SchoolClass) => {
     updateStore((prev) => {
-      const updatedClasses = prev.classes.map((c) => (c.id === cls.id ? cls : c));
+      const finalCls = { ...cls };
+      if (cls.homeroomTeacherId) {
+        let hasClassHour = false;
+        const hrId = cls.homeroomTeacherId || "";
+        const isPrimary = (cls.grade || 1) <= 4;
+        const updatedSubs: ClassSubject[] = (cls.subjects || []).map((s) => {
+          const sub = prev.subjects.find((subItem) => subItem.id === s.subjectId);
+          if (isKelajakOrSinfSoatiSubject(s.subjectId, sub?.name)) {
+            hasClassHour = true;
+            return { ...s, teacherId: hrId };
+          }
+          if (isPrimary && sub && isHomeroomPrimarySubject(sub, cls.grade)) {
+            return { ...s, teacherId: hrId };
+          }
+          return s;
+        });
+
+        if (!hasClassHour) {
+          const sinfSoatiSub = prev.subjects.find((subItem) =>
+            isKelajakOrSinfSoatiSubject(subItem.id, subItem.name)
+          );
+          const finalSubId = sinfSoatiSub?.id || "sub_sinf_soati";
+          updatedSubs.push({
+            classId: cls.id,
+            subjectId: finalSubId,
+            weeklyHours: 1,
+            teacherId: hrId,
+            groupType: "WHOLE",
+          });
+        }
+        finalCls.subjects = updatedSubs;
+      }
+
+      const updatedClasses = prev.classes.map((c) => (c.id === finalCls.id ? finalCls : c));
       const updatedTeachers = prev.teachers.map((t) => {
         if (cls.homeroomTeacherId && t.id === cls.homeroomTeacherId) {
           return { ...t, homeroomClassId: cls.id };
@@ -95,15 +161,11 @@ export function useClassActions() {
           const isPrimary = (c.grade || 1) <= 4;
           let updatedSubjects = (c.subjects || []).map((s) => {
             const sub = prev.subjects.find((subItem) => subItem.id === s.subjectId);
-            const isKelajak =
-              s.subjectId === "sub_sinf_soati" ||
-              s.subjectId === "sub_kelajak" ||
-              s.subjectId.includes("sinf_soati") ||
-              s.subjectId.includes("kelajak");
+            const isKelajak = isKelajakOrSinfSoatiSubject(s.subjectId, sub?.name);
 
             if (isKelajak) {
               hasKelajak = true;
-              return tid ? { ...s, teacherId: tid } : s;
+              return tid ? { ...s, teacherId: tid } : { ...s, teacherId: "" };
             }
 
             // Boshlang'ich sinfda Ona tili, O'qish, Matematika (va 1-sinfda Alifbe) ni sinf rahbariga biriktirish
@@ -116,15 +178,21 @@ export function useClassActions() {
 
           // Agar sinfda hali "Kelajak soati" o'quv rejasida bo'lmasa, uni avtomatik qo'shamiz
           if (!hasKelajak && tid) {
+            const sinfSoatiSub = prev.subjects.find((subItem) =>
+              isKelajakOrSinfSoatiSubject(subItem.id, subItem.name)
+            );
+            const finalSubId = sinfSoatiSub?.id || "sub_sinf_soati";
             updatedSubjects = [
               ...updatedSubjects,
               {
-                subjectId: "sub_sinf_soati",
+                classId: c.id,
+                subjectId: finalSubId,
                 hoursPerWeek: 1,
                 weeklyHours: 1,
                 teacherId: tid,
                 canSplit: false,
                 isMandatory: true,
+                groupType: "WHOLE",
               } as any,
             ];
           }

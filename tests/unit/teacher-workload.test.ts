@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { initialTeachers, initialClasses } from "@/lib/mock-data";
+import { isKelajakOrSinfSoatiSubject } from "@/lib/curriculum-templates";
 
 describe("Teacher Workload & Capacity Validation Engine", () => {
   it("should verify that each teacher has a non-negative weekly capacity and valid consecutive hours", () => {
@@ -37,5 +38,24 @@ describe("Teacher Workload & Capacity Validation Engine", () => {
         expect(loadRatio).toBeLessThanOrEqual(1.5);
       }
     }
+  });
+
+  it("should strictly exclude Kelajak soati / Sinf soati from teacher's pedagogical workload hours", () => {
+    // O'zbekiston xalq ta'limi standarti: Sinf rahbarligining 1 soatlik Kelajak soati
+    // o'qituvchining pedagogik dars stavkasi yuklamasiga QO'SHILMAYDI (10 + 1 = 10 soat stavka)
+    const sampleSubjects = [
+      { subjectId: "sub_ona", weeklyHours: 5, teacherId: "t_test" },
+      { subjectId: "sub_adabiyot", weeklyHours: 5, teacherId: "t_test" },
+      { subjectId: "sub_sinf_soati", weeklyHours: 1, teacherId: "t_test" },
+    ];
+
+    let totalWorkload = 0;
+    for (const cs of sampleSubjects) {
+      if (!isKelajakOrSinfSoatiSubject(cs.subjectId)) {
+        totalWorkload += cs.weeklyHours;
+      }
+    }
+
+    expect(totalWorkload).toBe(10); // 11 emas, qat'iyan 10 soat!
   });
 });

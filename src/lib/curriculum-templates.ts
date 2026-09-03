@@ -231,6 +231,38 @@ export const UZBEKISTAN_STANDARD_CURRICULUM: Record<number, GradeCurriculumItem[
 };
 
 /**
+ * Fanning "Kelajak soati" yoki "Sinf soati" ekanligini aniqlash
+ * O'zbekiston xalq ta'limi qoidalariga ko'ra sinf rahbarining ushbu soati
+ * dars jadvalida Dushanba 1-soatda o'tilsa-da, o'qituvchining umumiy
+ * pedagogik dars soati (stavkasi) yig'indisiga QO'SHILMAYDI (chunki unga alohida sinf rahbarlik ustamasi to'lanadi).
+ */
+export function isKelajakOrSinfSoatiSubject(
+  subjectOrId?: Subject | string | null,
+  subjectName?: string
+): boolean {
+  if (!subjectOrId && !subjectName) return false;
+  let id = "";
+  let name = "";
+  if (typeof subjectOrId === "object" && subjectOrId !== null) {
+    id = (subjectOrId.id || "").toLowerCase();
+    name = (subjectOrId.name || "").toLowerCase();
+  } else if (typeof subjectOrId === "string") {
+    id = subjectOrId.toLowerCase();
+  }
+  if (subjectName) {
+    name = subjectName.toLowerCase();
+  }
+  return (
+    id === "sub_sinf_soati" ||
+    id === "sub_kelajak" ||
+    id.includes("sinf_soati") ||
+    id.includes("kelajak") ||
+    name.includes("kelajak") ||
+    name.includes("sinf soati")
+  );
+}
+
+/**
  * Boshlang'ich sinflarda (1-4-sinflar) sinf rahbarining o'zi o'tadigan bazaviy fanlarni aniqlash:
  * 1. Ona tili (Ona tili, ona tili va o'qish savodxonligi, grammatika)
  * 2. O'qish savodxonligi / O'qish
@@ -267,12 +299,7 @@ export function isHomeroomPrimarySubject(subject: Subject, grade: number): boole
   }
 
   // 5. Sinf soati / Kelajak soati (har qanday sinfda sinf rahbariniki)
-  if (
-    sId === "sub_sinf_soati" ||
-    sId === "sub_kelajak" ||
-    sName.includes("sinf soati") ||
-    sName.includes("kelajak")
-  ) {
+  if (isKelajakOrSinfSoatiSubject(sId, sName)) {
     return true;
   }
 
@@ -329,13 +356,7 @@ export function generateStandardCurriculumForClass(
     }
 
     // Agar yuqori sinflarda (5-11) bu "Kelajak soati" yoki "Sinf soati" bo'lsa, sinf rahbarini biriktirish
-    if (
-      !assignedTeacherId &&
-      (matchedSubject.id === "sub_sinf_soati" ||
-        matchedSubject.id === "sub_kelajak" ||
-        matchedSubject.name.toLowerCase().includes("sinf soati") ||
-        matchedSubject.name.toLowerCase().includes("kelajak"))
-    ) {
+    if (!assignedTeacherId && isKelajakOrSinfSoatiSubject(matchedSubject)) {
       if (homeroomTeacherId) {
         assignedTeacherId = homeroomTeacherId;
       }
@@ -378,8 +399,8 @@ export function generateStandardCurriculumForClass(
       }
     }
 
-    // Tracker yuklamasini yangilash
-    if (assignedTeacherId) {
+    // Tracker yuklamasini yangilash (Kelajak soati dars stavkasiga kirmaydi!)
+    if (assignedTeacherId && !isKelajakOrSinfSoatiSubject(matchedSubject)) {
       const cur = localTracker.get(assignedTeacherId) || 0;
       localTracker.set(assignedTeacherId, cur + item.defaultHours);
     }

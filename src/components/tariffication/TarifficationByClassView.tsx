@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { SchoolClass, Subject, Teacher, Branch } from "@/types";
-import { isSubjectSuitableForGrade } from "@/lib/curriculum-templates";
+import { isSubjectSuitableForGrade, isKelajakOrSinfSoatiSubject } from "@/lib/curriculum-templates";
 import {
   GraduationCap,
   Search,
@@ -109,16 +109,12 @@ export const TarifficationByClassView: React.FC<TarifficationByClassViewProps> =
 
   // Sinf soati o'qituvchisi o'zgarsa yoki yuqoridan rahbar tanlansa sinxronlash
   const handleTeacherChange = (sub: Subject, teacherId: string, curHours: number) => {
-    onUpdateSubject(activeClass.id, sub.id, teacherId, curHours || (teacherId ? 2 : 0));
+    const isClassHour = isKelajakOrSinfSoatiSubject(sub);
+    const assignedHours = curHours > 0 ? curHours : isClassHour ? 1 : teacherId ? 2 : 0;
+    onUpdateSubject(activeClass.id, sub.id, teacherId, assignedHours);
 
     // Agar Sinf soati bo'lsa, avtomatik sinf rahbarini ham o'rnatamiz
-    if (
-      (sub.id === "sub_sinf_soati" ||
-        sub.name.toLowerCase().includes("sinf soati") ||
-        sub.name.toLowerCase().includes("kelajak")) &&
-      teacherId &&
-      onSetHomeroomTeacher
-    ) {
+    if (isClassHour && teacherId && onSetHomeroomTeacher) {
       onSetHomeroomTeacher(activeClass.id, teacherId);
     }
   };

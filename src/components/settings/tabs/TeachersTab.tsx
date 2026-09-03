@@ -4,6 +4,7 @@ import React, { useState, useMemo, useCallback } from "react";
 import { Teacher, Subject, SchoolClass } from "@/types";
 import { ClassSelectCombobox } from "../shared/ClassSelectCombobox";
 import { getEffectiveTeacherMethodDay } from "@/lib/constants/method-days";
+import { isKelajakOrSinfSoatiSubject } from "@/lib/curriculum-templates";
 import { ConfirmActionModal } from "@/components/modals/ConfirmActionModal";
 import {
   Users,
@@ -127,7 +128,7 @@ export const TeachersTab: React.FC<TeachersTabProps> = ({
     [classes, classMap]
   );
 
-  // 1. Calculate each teacher's assigned hours and class count
+  // 1. Calculate each teacher's assigned hours and class count (Kelajak soati dars stavkasiga kirmaydi)
   const teacherWorkloadMap = useMemo(() => {
     const map = new Map<string, { assignedHours: number; classCount: number }>();
     teachers.forEach((t) => {
@@ -136,7 +137,11 @@ export const TeachersTab: React.FC<TeachersTabProps> = ({
       classes.forEach((c) => {
         (c.subjects || []).forEach((cs) => {
           if (cs.teacherId === t.id) {
-            hours += Number(cs.weeklyHours) || 0;
+            const sub = subjectMap.get(cs.subjectId);
+            // Kelajak soati / Sinf soati o'qituvchining dars soatlari yig'indisiga qo'shilmaydi
+            if (!isKelajakOrSinfSoatiSubject(cs.subjectId, sub?.name)) {
+              hours += Number(cs.weeklyHours) || 0;
+            }
             classSet.add(c.id);
           }
         });
@@ -144,7 +149,7 @@ export const TeachersTab: React.FC<TeachersTabProps> = ({
       map.set(t.id, { assignedHours: hours, classCount: classSet.size });
     });
     return map;
-  }, [teachers, classes]);
+  }, [teachers, classes, subjectMap]);
 
   // 2. Global Aggregations for Top Status Bars
   const totalCapacityHours = useMemo(
