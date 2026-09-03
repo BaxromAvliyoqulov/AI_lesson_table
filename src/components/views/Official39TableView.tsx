@@ -17,7 +17,7 @@ import {
   Lesson,
 } from "@/types";
 import { CSPSolver } from "@/lib/solver/csp-solver";
-import { sortClassesByName } from "@/lib/utils";
+import { sortClassesByName, getCanonicalOrderedTeachers } from "@/lib/utils";
 import { CheckCircle2, AlertTriangle, Sparkles } from "lucide-react";
 import { FilterScope, Official39TableViewProps, DAYS, PERIOD_TIMES } from "./official-39/types";
 import { validateDropSlot } from "@/lib/solver/drag-validator";
@@ -324,27 +324,24 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
     return map;
   }, [lessons]);
 
+  // Butun maktab bo'yicha QAT'IY VA YAGONA tartib va raqamlash (1-A, 1-B, 1-D ... sinf rahbarlari birinchi!)
+  const { orderedTeachers: canonicalTeachers, teacherNumberMap } = useMemo(() => {
+    return getCanonicalOrderedTeachers(classes, teachers, (sId, sName) =>
+      isKelajakOrSinfSoatiSubject(sId, sName || subjectMap.get(sId)?.name)
+    );
+  }, [classes, teachers, subjectMap]);
+
+  // Tab bo'yicha ko'rsatiladigan o'qituvchilar (ammo № raqamlari butun maktab bo'yicha o'zgarmas qat'iy saqlanadi!)
   const displayTeachers = useMemo(() => {
-    if (filterScope === "ALL") return teachers;
+    if (filterScope === "ALL") return canonicalTeachers;
     const activeTeacherIds = new Set<string>();
     for (const cls of displayClasses) {
       if (cls.homeroomTeacherId) activeTeacherIds.add(cls.homeroomTeacherId);
       cls.subjects.forEach((s) => activeTeacherIds.add(s.teacherId));
     }
-    for (const l of lessons) {
-      if (displayClasses.some((c) => c.id === l.classId)) {
-        activeTeacherIds.add(l.teacherId);
-      }
-    }
-    const filtered = teachers.filter((t) => activeTeacherIds.has(t.id));
-    return filtered.length > 0 ? filtered : teachers;
-  }, [teachers, displayClasses, lessons, filterScope]);
-
-  const teacherNumberMap = useMemo(() => {
-    const map = new Map<string, number>();
-    displayTeachers.forEach((t, i) => map.set(t.id, i + 1));
-    return map;
-  }, [displayTeachers]);
+    const filtered = canonicalTeachers.filter((t) => activeTeacherIds.has(t.id));
+    return filtered.length > 0 ? filtered : canonicalTeachers;
+  }, [canonicalTeachers, displayClasses, filterScope]);
 
   // Yagona Haqiqat Manbai (Single Source of Truth) orqali barcha ziddiyatlarni aniqlash
   const conflictDetectionResult = useMemo(() => {

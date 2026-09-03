@@ -218,3 +218,59 @@ export function sortClassesByName<T extends { name: string; grade?: number }>(cl
     return keyA.rawSection.localeCompare(keyB.rawSection);
   });
 }
+
+/**
+ * O'qituvchilarni butun maktab bo'yicha qat'iy va yagona tartiblash va raqamlash:
+ * 1. Avval sinf rahbarlari: 1-A, 1-B, 1-D, 2-A, 2-B, 2-D ... 11-sinfgacha ketma-ketlikda (№1, №2, №3...)
+ * 2. Keyin qolgan fan o'qituvchilari: Alifbo tartibida (A-Z)
+ * Bu raqamlar butun maktab uchun yagona bo'lib, filtrlar yoki bo'limlar almashganda aslo o'zgarmaydi!
+ */
+export function getCanonicalOrderedTeachers<
+  T extends { id: string; fullName: string },
+  C extends { id: string; name: string; grade?: number; homeroomTeacherId?: string | null; subjects?: { subjectId: string; teacherId: string }[] }
+>(
+  classes: C[],
+  teachers: T[],
+  isKelajakOrSinfSoatiFn?: (subjectId: string, subjectName?: string) => boolean
+): { orderedTeachers: T[]; teacherNumberMap: Map<string, number> } {
+  const teacherMap = new Map(teachers.map((t) => [t.id, t]));
+  const sortedClasses = sortClassesByName(classes);
+
+  const orderedTeachers: T[] = [];
+  const seenIds = new Set<string>();
+
+  // 1-bosqich: Sinf rahbarlari (1-A, 1-B, 1-D ... ketma-ketligida)
+  for (const cls of sortedClasses) {
+    let homeroomTid = cls.homeroomTeacherId;
+    if (!homeroomTid && cls.subjects && isKelajakOrSinfSoatiFn) {
+      const ss = cls.subjects.find((s) => isKelajakOrSinfSoatiFn(s.subjectId));
+      if (ss?.teacherId) homeroomTid = ss.teacherId;
+    }
+
+    if (homeroomTid && !seenIds.has(homeroomTid)) {
+      const t = teacherMap.get(homeroomTid);
+      if (t) {
+        orderedTeachers.push(t);
+        seenIds.add(t.id);
+      }
+    }
+  }
+
+  // 2-bosqich: Qolgan o'qituvchilar (Alifbo tartibida)
+  const remainingTeachers = teachers
+    .filter((t) => !seenIds.has(t.id))
+    .sort((a, b) => a.fullName.localeCompare(b.fullName, "uz"));
+
+  for (const t of remainingTeachers) {
+    orderedTeachers.push(t);
+    seenIds.add(t.id);
+  }
+
+  // 3-bosqich: Butun maktab uchun yagona va qat'iy raqamlar xaritasi (№1, №2, №3...)
+  const teacherNumberMap = new Map<string, number>();
+  orderedTeachers.forEach((t, index) => {
+    teacherNumberMap.set(t.id, index + 1);
+  });
+
+  return { orderedTeachers, teacherNumberMap };
+}

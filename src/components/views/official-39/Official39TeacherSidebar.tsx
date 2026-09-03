@@ -35,7 +35,7 @@ export const Official39TeacherSidebar: React.FC<Official39TeacherSidebarProps> =
         </thead>
         <tbody>
           {teachers.map((teacher, tIdx) => {
-            const num = teacherNumberMap.get(teacher.id) || 1;
+            const num = teacherNumberMap.get(teacher.id) ?? (tIdx + 1);
             const isHovered = hoveredTeacherId === teacher.id;
             const isLocked = lockedTeacherIds?.includes(teacher.id);
             const subjectsStr = teacherSubjectsMap.get(teacher.id) || "—";

@@ -1,6 +1,7 @@
 import ExcelJS from "exceljs";
 import { Lesson, SchoolClass, Subject, Teacher, Room, Branch, Shift } from "@/types";
-import { sortClassesByName } from "@/lib/utils";
+import { sortClassesByName, getCanonicalOrderedTeachers } from "@/lib/utils";
+import { isKelajakOrSinfSoatiSubject } from "@/lib/curriculum-templates";
 
 export interface ExcelExportOptions {
   classes: SchoolClass[];
@@ -84,17 +85,17 @@ export async function exportScheduleToExcel(options: ExcelExportOptions) {
         }
       });
     }
-    for (const l of lessons) {
-      if (l.teacherId === t.id && l.subjectId !== "sub_sinf_soati") {
-        const s = subjectMap.get(l.subjectId);
-        if (s) subjectNames.add(s.shortName || s.name);
-      }
-    }
     teacherSubjectsMap.set(
       t.id,
       subjectNames.size === 0 ? "—" : Array.from(subjectNames).join(", ")
     );
   }
+
+  // Butun maktab bo'yicha QAT'IY VA YAGONA tartib va raqamlash (1-A, 1-B, 1-D ... sinf rahbarlari birinchi!)
+  const { orderedTeachers: canonicalTeachers, teacherNumberMap } =
+    getCanonicalOrderedTeachers(classes, teachers, (sId, sName) =>
+      isKelajakOrSinfSoatiSubject(sId, sName || subjectMap.get(sId)?.name)
+    );
 
   // Filiallar bo'yicha varaqlar (Sheets)
   const branchList =
@@ -108,7 +109,7 @@ export async function exportScheduleToExcel(options: ExcelExportOptions) {
     );
     if (branchClasses.length === 0) continue;
 
-    // Faol o'qituvchilar va 1..N ketma-ket raqamlash
+    // Faol o'qituvchilar (ammo raqamlari global teacherNumberMap dan olinadi!)
     const activeTeacherIds = new Set<string>();
     for (const cls of branchClasses) {
       if (cls.homeroomTeacherId) activeTeacherIds.add(cls.homeroomTeacherId);
@@ -119,13 +120,8 @@ export async function exportScheduleToExcel(options: ExcelExportOptions) {
         activeTeacherIds.add(l.teacherId);
       }
     }
-    const branchTeachers = teachers.filter((t) => activeTeacherIds.has(t.id));
-    const finalTeachers = branchTeachers.length > 0 ? branchTeachers : teachers;
-
-    const teacherNumberMap = new Map<string, number>();
-    finalTeachers.forEach((t, i) => {
-      teacherNumberMap.set(t.id, i + 1);
-    });
+    const branchTeachers = canonicalTeachers.filter((t) => activeTeacherIds.has(t.id));
+    const finalTeachers = branchTeachers.length > 0 ? branchTeachers : canonicalTeachers;
 
     const sheetTitle = branch.isMain ? "Asosiy maktab" : branch.name.slice(0, 25);
     
