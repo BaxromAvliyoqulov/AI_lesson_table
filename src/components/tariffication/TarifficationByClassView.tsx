@@ -78,9 +78,9 @@ export const TarifficationByClassView: React.FC<TarifficationByClassViewProps> =
     return c.name.toLowerCase().includes(searchClassQuery.toLowerCase().trim());
   });
 
-  // Hozirgi tanlangan sinfning me'yori va jami soatlari
-  const maxStandardHours = GRADE_STANDARD_LIMITS[activeClass.grade] || 25;
-  const currentTotalHours = (activeClass.subjects || []).reduce(
+  // Hozirgi tanlangan sinfning me'yori va jami soatlari (activeClass bo'sh bo'lishidan himoyalangan)
+  const maxStandardHours = activeClass ? (GRADE_STANDARD_LIMITS[activeClass.grade] || 25) : 25;
+  const currentTotalHours = (activeClass?.subjects || []).reduce(
     (sum, s) => sum + s.weeklyHours,
     0
   );
@@ -88,9 +88,11 @@ export const TarifficationByClassView: React.FC<TarifficationByClassViewProps> =
   const progressPercent = Math.min(100, Math.round((currentTotalHours / maxStandardHours) * 100));
 
   // Faol sinf rahbari
-  const activeHomeroomTeacher = sortedTeachers.find(
-    (t) => t.id === activeClass.homeroomTeacherId || t.homeroomClassId === activeClass.id
-  );
+  const activeHomeroomTeacher = activeClass
+    ? sortedTeachers.find(
+        (t) => t.id === activeClass.homeroomTeacherId || t.homeroomClassId === activeClass.id
+      )
+    : undefined;
 
   // Stepper [+] bosilganda limitni tekshirish
   const handleIncreaseHours = (subId: string, teacherId: string, currentHours: number) => {
@@ -120,6 +122,14 @@ export const TarifficationByClassView: React.FC<TarifficationByClassViewProps> =
       onSetHomeroomTeacher(activeClass.id, teacherId);
     }
   };
+
+  if (!activeClass) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center p-16 text-center bg-white rounded-2xl border border-slate-200 shadow-sm">
+        <p className="text-sm font-bold text-slate-600">Hech qanday sinf tanlanmagan yoki sinflar mavjud emas.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">

@@ -7,6 +7,8 @@ import { CSPSolver } from "@/lib/solver/csp-solver";
 
 import { saveAllClassesTarifficationAction } from "@/lib/actions/class.actions";
 
+export const dynamic = "force-dynamic";
+
 export default function TarifficationPage() {
   const store = useSchoolStore();
 
