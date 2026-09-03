@@ -403,10 +403,10 @@ export const TeacherWorkloadModal: React.FC<TeacherWorkloadModalProps> = ({
             <button
               type="button"
               onClick={handleAddAssignment}
-              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold bg-primary text-primary-foreground hover:bg-primary/90 transition-all shadow-xs cursor-pointer shrink-0"
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white transition-all shadow-xs cursor-pointer shrink-0"
             >
               <Plus className="w-3.5 h-3.5" />
-              <span>Qatorda qo'shish</span>
+              <span>+ Sinf biriktirish</span>
             </button>
           </div>
         </div>
