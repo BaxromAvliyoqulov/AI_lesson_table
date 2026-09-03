@@ -585,7 +585,7 @@ export const TeachersTab: React.FC<TeachersTabProps> = ({
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3.5 min-w-0">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-4 gap-4 min-w-0">
           {filteredTeachers.map((teacher) => {
             const teacherSubs = teacher.subjectIds
               .map((id) => subjectMap.get(id))
@@ -610,20 +610,20 @@ export const TeachersTab: React.FC<TeachersTabProps> = ({
                 <div className="min-w-0">
                   {/* Top card header: Avatar + Name + Phone + Action buttons */}
                   <div className="flex items-start justify-between gap-2 mb-2.5 min-w-0">
-                    <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                      <div className="w-10 h-10 rounded-2xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-extrabold text-sm shadow-inner shrink-0">
+                    <div className="flex items-start gap-2.5 min-w-0 flex-1">
+                      <div className="w-10 h-10 rounded-2xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-extrabold text-sm shadow-inner shrink-0 mt-0.5">
                         {teacher.fullName.charAt(0)}
                       </div>
                       <div className="min-w-0 flex-1">
                         <h4
-                          className="font-bold text-foreground text-sm truncate"
+                          className="font-bold text-foreground text-sm leading-snug break-words"
                           title={teacher.fullName}
                         >
                           {teacher.fullName}
                         </h4>
-                        <p className="text-[11px] text-muted-foreground flex items-center gap-1 truncate">
+                        <p className="text-[11px] text-muted-foreground flex items-center gap-1 mt-0.5">
                           <Phone className="w-3 h-3 shrink-0" />
-                          <span className="truncate">{teacher.phone || "Telefon yo'q"}</span>
+                          <span className="break-all">{teacher.phone || "Telefon yo'q"}</span>
                         </p>
                       </div>
                     </div>

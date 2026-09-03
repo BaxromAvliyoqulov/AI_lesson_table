@@ -64,7 +64,7 @@ export const Official39TeacherSidebar: React.FC<Official39TeacherSidebarProps> =
                 </td>
                 <td className="border border-black p-1 font-bold text-slate-900">
                   <div className="flex items-center justify-between gap-1">
-                    <span className="truncate max-w-[110px]">{teacher.fullName}</span>
+                    <span className="leading-tight break-words max-w-[150px]">{teacher.fullName}</span>
                     <button
                       type="button"
                       onClick={(e) => {
