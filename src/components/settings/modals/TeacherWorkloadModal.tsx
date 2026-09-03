@@ -70,10 +70,10 @@ export const TeacherWorkloadModal: React.FC<TeacherWorkloadModalProps> = ({
 
   const defaultSubjectId = teacherSubjects[0]?.id || subjects[0]?.id || "";
 
-  // Tezkor ommaviy sinf qo'shish paneli uchun state
+  // Tezkor ommaviy sinf qo'shish paneli uchun state (odatiy holatda yopiq, darslar ro'yxatiga to'siq bo'lmasligi uchun)
   const [batchSubjectId, setBatchSubjectId] = useState<string>(defaultSubjectId);
   const [batchHours, setBatchHours] = useState<number>(4);
-  const [isBatchOpen, setIsBatchOpen] = useState<boolean>(true);
+  const [isBatchOpen, setIsBatchOpen] = useState<boolean>(false);
 
   // Collect all existing assignments for this teacher across all classes ONLY on open or teacher change
   useEffect(() => {
@@ -91,28 +91,29 @@ export const TeacherWorkloadModal: React.FC<TeacherWorkloadModalProps> = ({
       classes.forEach((cls) => {
         (cls.subjects || []).forEach((s) => {
           if (s.teacherId === teacher.id) {
-            const isSplit = s.groupType === "GROUP_1" || s.groupType === "GROUP_2";
-            let secondTeacherId: string | undefined = undefined;
+            // AVTOMATIK GURUH SEZISH:
+            // Ushbu sinfda ayni shu fanni o'tadigan boshqa o'qituvchini qidiramiz
+            const otherTeacherSub = (cls.subjects || []).find(
+              (other) =>
+                other.subjectId === s.subjectId &&
+                other.teacherId !== teacher.id &&
+                Number(other.weeklyHours) > 0
+            );
 
-            if (isSplit) {
-              // Ushbu sinfdagi ayni shu fanning boshqa guruh o'qituvchisini topamiz
-              const otherGroup = (cls.subjects || []).find(
-                (other) =>
-                  other.subjectId === s.subjectId &&
-                  other.teacherId !== teacher.id &&
-                  (other.groupType === "GROUP_1" || other.groupType === "GROUP_2")
-              );
-              if (otherGroup) {
-                secondTeacherId = otherGroup.teacherId;
-              }
-            }
+            // Agar guruh tipi GROUP_1/GROUP_2 bo'lsa YOKI sinfda ikkita o'qituvchi ayni fanni o'tsa -> AVTOMATIK SPLIT!
+            const isSplit =
+              s.groupType === "GROUP_1" ||
+              s.groupType === "GROUP_2" ||
+              Boolean(otherTeacherSub);
+
+            const secondTeacherId = otherTeacherSub ? otherTeacherSub.teacherId : undefined;
 
             currentList.push({
               classId: cls.id,
               subjectId: s.subjectId,
               weeklyHours: Number(s.weeklyHours) || 2,
               isSplit: isSplit,
-              groupType: s.groupType || "WHOLE",
+              groupType: isSplit ? (s.groupType || "GROUP_1") : "WHOLE",
               secondTeacherId,
             });
           }
@@ -198,6 +199,7 @@ export const TeacherWorkloadModal: React.FC<TeacherWorkloadModalProps> = ({
   }, [classes, subjectMap, subjects]);
 
   const handleToggleClassAssignment = (classId: string) => {
+    if (!teacher) return;
     const targetSubjectId = batchSubjectId || defaultSubjectId;
     const existingIndex = assignments.findIndex(
       (a) => a.classId === classId && a.subjectId === targetSubjectId
@@ -211,14 +213,25 @@ export const TeacherWorkloadModal: React.FC<TeacherWorkloadModalProps> = ({
       const cls = classMap.get(classId);
       const standardHours = batchHours || (cls && cls.grade >= 5 ? 3 : 4);
 
+      // AVTOMATIK GURUH SEZISH: bu sinfda bu fanni o'tayotgan boshqa ustoz bormi?
+      const otherTeacherSub = (cls?.subjects || []).find(
+        (s) =>
+          s.subjectId === targetSubjectId &&
+          s.teacherId !== teacher.id &&
+          Number(s.weeklyHours) > 0
+      );
+      const isSplit = Boolean(otherTeacherSub);
+      const hours = otherTeacherSub ? Number(otherTeacherSub.weeklyHours) || standardHours : standardHours;
+
       setAssignments((prev) => [
         ...prev,
         {
           classId,
           subjectId: targetSubjectId,
-          weeklyHours: standardHours,
-          isSplit: false,
-          groupType: "WHOLE",
+          weeklyHours: hours,
+          isSplit,
+          groupType: isSplit ? "GROUP_2" : "WHOLE",
+          secondTeacherId: otherTeacherSub ? otherTeacherSub.teacherId : undefined,
         },
       ]);
     }
@@ -226,6 +239,7 @@ export const TeacherWorkloadModal: React.FC<TeacherWorkloadModalProps> = ({
 
   // Guruhlangan sinflarni ommaviy tanlash (masalan 5-sinflar yoki 8-sinflar)
   const handleBulkSelectGrade = (grade: number) => {
+    if (!teacher) return;
     const targetSubjectId = batchSubjectId || defaultSubjectId;
     const gradeClasses = classes.filter((c) => c.grade === grade);
     if (gradeClasses.length === 0) return;
@@ -246,12 +260,22 @@ export const TeacherWorkloadModal: React.FC<TeacherWorkloadModalProps> = ({
       const newItems: TeacherClassAssignment[] = [];
       gradeClasses.forEach((c) => {
         if (!assignments.some((a) => a.classId === c.id && a.subjectId === targetSubjectId)) {
+          const otherTeacherSub = (c.subjects || []).find(
+            (s) =>
+              s.subjectId === targetSubjectId &&
+              s.teacherId !== teacher.id &&
+              Number(s.weeklyHours) > 0
+          );
+          const isSplit = Boolean(otherTeacherSub);
+          const hours = otherTeacherSub ? Number(otherTeacherSub.weeklyHours) || (batchHours || 3) : (batchHours || 3);
+
           newItems.push({
             classId: c.id,
             subjectId: targetSubjectId,
-            weeklyHours: batchHours || 3,
-            isSplit: false,
-            groupType: "WHOLE",
+            weeklyHours: hours,
+            isSplit,
+            groupType: isSplit ? "GROUP_2" : "WHOLE",
+            secondTeacherId: otherTeacherSub ? otherTeacherSub.teacherId : undefined,
           });
         }
       });
@@ -388,7 +412,7 @@ export const TeacherWorkloadModal: React.FC<TeacherWorkloadModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-150">
-      <div className="bg-card border border-border w-full max-w-4xl rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-150 max-h-[94vh] flex flex-col min-w-0">
+      <div className="bg-card border border-border w-full max-w-6xl rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-150 max-h-[94vh] flex flex-col min-w-0">
         {/* ── HEADER ──────────────────────────────────────────────────────── */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-border/80 bg-muted/20 shrink-0">
           <div className="flex items-center gap-3 min-w-0">
@@ -472,7 +496,7 @@ export const TeacherWorkloadModal: React.FC<TeacherWorkloadModalProps> = ({
 
         {/* ── ⚡ TEZKOR SINF TANLASH PANELI (SINF QO'SHISH GA O'XSHASH OSON) ──── */}
         {isBatchOpen && (
-          <div className="bg-indigo-500/5 dark:bg-indigo-950/20 border-b border-indigo-500/20 px-6 py-3.5 space-y-3 shrink-0">
+          <div className="bg-indigo-500/5 dark:bg-indigo-950/20 border-b border-indigo-500/20 px-6 py-3 space-y-2.5 shrink-0 max-h-[32vh] overflow-y-auto custom-scrollbar">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex flex-wrap items-center gap-3">
                 <div className="flex items-center gap-2">
@@ -705,10 +729,10 @@ export const TeacherWorkloadModal: React.FC<TeacherWorkloadModalProps> = ({
               {/* Header labels */}
               <div className="hidden sm:flex items-center gap-3 px-3 text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
                 <div className="w-[28%]">Biriktirilgan sinf</div>
-                <div className="w-[32%]">Fan</div>
-                <div className="w-32 text-center">Haftalik soat</div>
-                <div className="flex-1 text-center">Guruhga bo'lish</div>
-                <div className="w-8 shrink-0 text-center">O'chirish</div>
+                <div className="w-[30%]">Fan</div>
+                <div className="w-28 text-center">Haftalik soat</div>
+                <div className="w-52 text-center">Guruhga bo&apos;lish</div>
+                <div className="w-8 shrink-0 text-center">O&apos;chirish</div>
               </div>
 
               {assignments.map((item, index) => {
@@ -753,7 +777,7 @@ export const TeacherWorkloadModal: React.FC<TeacherWorkloadModalProps> = ({
                       </div>
 
                       {/* 2. Fan tanlash */}
-                      <div className="w-full sm:w-[32%] min-w-0">
+                      <div className="w-full sm:w-[30%] min-w-0">
                         {(() => {
                           const targetGrade = cls?.grade || 5;
                           const isPrimaryClass = targetGrade <= 4;
@@ -763,9 +787,7 @@ export const TeacherWorkloadModal: React.FC<TeacherWorkloadModalProps> = ({
                           const suitableAllSubs = subjects.filter((s) =>
                             isSubjectSuitableForGrade(s, targetGrade)
                           );
-                          const otherAllSubs = subjects.filter(
-                            (s) => !isSubjectSuitableForGrade(s, targetGrade)
-                          );
+                          const otherAllSubs = subjects.filter((s) => !isSubjectSuitableForGrade(s, targetGrade));
 
                           return (
                             <select
@@ -776,13 +798,7 @@ export const TeacherWorkloadModal: React.FC<TeacherWorkloadModalProps> = ({
                               className="w-full px-3 py-2 text-xs font-semibold rounded-xl border border-border bg-background focus:ring-2 focus:ring-primary/20 focus:border-primary cursor-pointer truncate"
                             >
                               {suitableTeacherSubs.length > 0 && (
-                                <optgroup
-                                  label={
-                                    isPrimaryClass
-                                      ? "🧒 O'qituvchining boshlang'ich fanlari:"
-                                      : "🧑‍🎓 O'qituvchining asosiy fanlari:"
-                                  }
-                                >
+                                <optgroup label="⭐ Mutaxassislik fanlari:">
                                   {suitableTeacherSubs.map((s) => (
                                     <option key={s.id} value={s.id}>
                                       ⭐ {s.name}
@@ -794,9 +810,7 @@ export const TeacherWorkloadModal: React.FC<TeacherWorkloadModalProps> = ({
                               {isPrimaryClass ? (
                                 <optgroup label="🧒 Boshlang'ichga mos boshqa fanlar (1-4):">
                                   {suitableAllSubs
-                                    .filter(
-                                      (s) => !suitableTeacherSubs.some((ts) => ts.id === s.id)
-                                    )
+                                    .filter((s) => !suitableTeacherSubs.some((ts) => ts.id === s.id))
                                     .map((s) => (
                                       <option key={s.id} value={s.id}>
                                         {s.name}
@@ -806,9 +820,7 @@ export const TeacherWorkloadModal: React.FC<TeacherWorkloadModalProps> = ({
                               ) : (
                                 <optgroup label="🧑‍🎓 Yuqori sinfga mos boshqa fanlar (5-11):">
                                   {suitableAllSubs
-                                    .filter(
-                                      (s) => !suitableTeacherSubs.some((ts) => ts.id === s.id)
-                                    )
+                                    .filter((s) => !suitableTeacherSubs.some((ts) => ts.id === s.id))
                                     .map((s) => (
                                       <option key={s.id} value={s.id}>
                                         {s.name}
@@ -832,7 +844,7 @@ export const TeacherWorkloadModal: React.FC<TeacherWorkloadModalProps> = ({
                       </div>
 
                       {/* 3. Haftalik soat STEPPER (+ / -) */}
-                      <div className="flex items-center justify-between sm:justify-center gap-1 w-full sm:w-32 shrink-0 bg-muted/40 sm:bg-transparent p-1 sm:p-0 rounded-xl">
+                      <div className="flex items-center justify-between sm:justify-center gap-1 w-full sm:w-28 shrink-0 bg-muted/40 sm:bg-transparent p-1 sm:p-0 rounded-xl">
                         <span className="sm:hidden text-xs text-muted-foreground font-semibold pl-2">
                           Haftalik soat:
                         </span>
@@ -876,7 +888,7 @@ export const TeacherWorkloadModal: React.FC<TeacherWorkloadModalProps> = ({
                       </div>
 
                       {/* 4. 👥 GURUHGA BO'LISH TOGGLE TUGMASI */}
-                      <div className="w-full sm:flex-1 flex items-center justify-center sm:justify-start">
+                      <div className="w-full sm:w-52 flex items-center justify-center sm:justify-start shrink-0">
                         <button
                           type="button"
                           onClick={() => handleToggleSplit(index)}
