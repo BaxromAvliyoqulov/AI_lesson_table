@@ -146,6 +146,8 @@ export function getOfficialMethodDayForSubject(subjectNameOrId: string): number 
     lower === "sub_tar" ||
     lower === "sub_ozb_tar" ||
     lower === "sub_jahon_tar" ||
+    lower === "sub_tarixdan_hikoyalar" ||
+    lower === "sub_qadimgi_dunyo" ||
     lower === "sub_geo" ||
     lower === "sub_huquq" ||
     lower === "sub_tarbiya" ||
@@ -162,7 +164,8 @@ export function getOfficialMethodDayForSubject(subjectNameOrId: string): number 
     lower.includes("chet tili") ||
     lower === "sub_ing" ||
     lower === "sub_nemis" ||
-    lower === "sub_fransuz"
+    lower === "sub_fransuz" ||
+    lower === "sub_chet_tili"
   ) {
     return 5;
   }
@@ -179,6 +182,7 @@ export function getOfficialMethodDayForSubject(subjectNameOrId: string): number 
     lower.includes("chizmachilik") ||
     lower.includes("jismoniy") ||
     lower.includes("chqbt") ||
+    lower.includes("chaqiruv") ||
     lower.includes("astronomiya") ||
     lower === "sub_fiz" ||
     lower === "sub_kim" ||

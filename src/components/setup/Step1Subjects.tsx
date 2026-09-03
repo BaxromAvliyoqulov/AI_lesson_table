@@ -11,11 +11,11 @@ type Subject = SetupData["subjects"][0];
 const COLORS = ["#6366F1","#8B5CF6","#EC4899","#EF4444","#F97316","#EAB308","#22C55E","#10B981","#14B8A6","#06B6D4","#3B82F6","#64748B"];
 
 const DEFAULT_SUBJECTS = [
-  "Matematika","Algebra","Geometriya","Ona tili","Adabiyot","Rus tili","Ingliz tili",
-  "Tarix","Jahon tarixi","O'zbekiston tarixi","Geografiya","Biologiya","Fizika","Kimyo",
-  "Informatika","Tabiiy fan","Texnologiya","Tasviriy san'at","Musiqa","Jismoniy tarbiya",
-  "Chizmachilik","Huquq","Iqtisod","Tadbirkorlik asoslari","Astronomiya","Tarbiya",
-  "CHQBT","Kelajak soati",
+  "Ona tili", "O'qish savodxonligi", "Adabiyot", "Rus tili", "Chet tili", "Ingliz tili",
+  "Tarixdan hikoyalar", "Qadimgi dunyo tarixi", "O'zbekiston tarixi", "Jahon tarixi", "Davlat va huquq asoslari", "Tarbiya",
+  "Matematika", "Algebra", "Geometriya", "Informatika va axborot texnologiyalari",
+  "Fizika", "Astronomiya", "Kimyo", "Biologiya", "Geografiya", "Iqtisodiy bilim asoslari", "Tadbirkorlik asoslari", "Tabiiy fan (Science)",
+  "Musiqa madaniyati", "Tasviriy san'at", "Chizmachilik", "Texnologiya", "Jismoniy tarbiya", "Chaqiruvga qadar boshlang'ich tayyorgarlik (CHQBT)", "Kelajak soati",
 ];
 
 const makeSubject = (name: string, i: number): Subject => ({

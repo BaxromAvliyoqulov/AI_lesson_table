@@ -423,13 +423,44 @@ export const initialSubjects: Subject[] = [
     "methodDayOfWeek": 6
   },
   {
+    "id": "sub_tarixdan_hikoyalar",
+    "schoolId": "school_39",
+    "name": "Tarixdan hikoyalar",
+    "shortName": "Tarixdan hik.",
+    "colorTag": "#EA580C",
+    "difficultyScore": 6,
+    "allowDoubleLesson": false,
+    "methodDayOfWeek": 4
+  },
+  {
+    "id": "sub_qadimgi_dunyo",
+    "schoolId": "school_39",
+    "name": "Qadimgi dunyo tarixi",
+    "shortName": "Qadimgi tarix",
+    "colorTag": "#C2410C",
+    "difficultyScore": 7,
+    "allowDoubleLesson": false,
+    "methodDayOfWeek": 4
+  },
+  {
+    "id": "sub_chet_tili",
+    "schoolId": "school_39",
+    "name": "Chet tili",
+    "shortName": "Chet tili",
+    "colorTag": "#8B5CF6",
+    "difficultyScore": 8,
+    "allowDoubleLesson": false,
+    "methodDayOfWeek": 5
+  },
+  {
     "id": "sub_sinf_soati",
     "schoolId": "school_39",
     "name": "Kelajak soati",
     "shortName": "Kelajak s.",
     "colorTag": "#8B5CF6",
     "difficultyScore": 1,
-    "allowDoubleLesson": false
+    "allowDoubleLesson": false,
+    "methodDayOfWeek": 1
   }
 ];
 

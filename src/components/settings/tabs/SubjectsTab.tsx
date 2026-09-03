@@ -30,38 +30,53 @@ export const STANDARD_UZBEK_SUBJECTS: Array<{
   allowDoubleLesson: boolean;
   requiresRoomType?: "LAB" | "COMP_LAB" | "GYM" | "GENERAL" | null;
   methodDayOfWeek: number | null;
+  category?: string;
 }> = [
-  { id: "sub_ona", name: "Ona tili", shortName: "Ona tili", colorTag: "#EC4899", difficultyScore: 9, allowDoubleLesson: false, methodDayOfWeek: 2 },
-  { id: "sub_adab", name: "Adabiyot", shortName: "Adabiyot", colorTag: "#DB2777", difficultyScore: 8, allowDoubleLesson: false, methodDayOfWeek: 2 },
-  { id: "sub_oqish", name: "O'qish savodxonligi", shortName: "O'qish", colorTag: "#F43F5E", difficultyScore: 7, allowDoubleLesson: false, methodDayOfWeek: 2 },
-  { id: "sub_mat", name: "Matematika", shortName: "Matematika", colorTag: "#3B82F6", difficultyScore: 11, allowDoubleLesson: false, methodDayOfWeek: 3 },
-  { id: "sub_alg", name: "Algebra", shortName: "Algebra", colorTag: "#2563EB", difficultyScore: 12, allowDoubleLesson: false, methodDayOfWeek: 3 },
-  { id: "sub_geom", name: "Geometriya", shortName: "Geometriya", colorTag: "#1D4ED8", difficultyScore: 10, allowDoubleLesson: false, methodDayOfWeek: 3 },
-  { id: "sub_ing", name: "Ingliz tili", shortName: "Ingliz tili", colorTag: "#8B5CF6", difficultyScore: 8, allowDoubleLesson: false, methodDayOfWeek: 5 },
-  { id: "sub_rus", name: "Rus tili", shortName: "Rus tili", colorTag: "#A855F7", difficultyScore: 8, allowDoubleLesson: false, methodDayOfWeek: 2 },
-  { id: "sub_nemis", name: "Nemis tili", shortName: "Nemis tili", colorTag: "#9333EA", difficultyScore: 8, allowDoubleLesson: false, methodDayOfWeek: 5 },
-  { id: "sub_fransuz", name: "Fransuz tili", shortName: "Fransuz tili", colorTag: "#7C3AED", difficultyScore: 8, allowDoubleLesson: false, methodDayOfWeek: 5 },
-  { id: "sub_tabiiy", name: "Tabiiy fan (Science)", shortName: "Tabiiy fan", colorTag: "#059669", difficultyScore: 7, allowDoubleLesson: false, methodDayOfWeek: 6 },
-  { id: "sub_fiz", name: "Fizika", shortName: "Fizika", colorTag: "#06B6D4", difficultyScore: 10, allowDoubleLesson: false, requiresRoomType: "LAB", methodDayOfWeek: 6 },
-  { id: "sub_kim", name: "Kimyo", shortName: "Kimyo", colorTag: "#10B981", difficultyScore: 10, allowDoubleLesson: false, requiresRoomType: "LAB", methodDayOfWeek: 6 },
-  { id: "sub_bio", name: "Biologiya", shortName: "Biologiya", colorTag: "#84CC16", difficultyScore: 7, allowDoubleLesson: false, methodDayOfWeek: 6 },
-  { id: "sub_geo", name: "Geografiya", shortName: "Geografiya", colorTag: "#14B8A6", difficultyScore: 6, allowDoubleLesson: false, methodDayOfWeek: 4 },
-  { id: "sub_tar", name: "Tarix", shortName: "Tarix", colorTag: "#F59E0B", difficultyScore: 7, allowDoubleLesson: false, methodDayOfWeek: 4 },
-  { id: "sub_ozb_tar", name: "O'zbekiston tarixi", shortName: "O'zb. Tarixi", colorTag: "#D97706", difficultyScore: 7, allowDoubleLesson: false, methodDayOfWeek: 4 },
-  { id: "sub_jahon_tar", name: "Jahon tarixi", shortName: "Jahon tarixi", colorTag: "#B45309", difficultyScore: 7, allowDoubleLesson: false, methodDayOfWeek: 4 },
-  { id: "sub_inf", name: "Informatika va AT", shortName: "Informatika", colorTag: "#6366F1", difficultyScore: 8, allowDoubleLesson: false, requiresRoomType: "COMP_LAB", methodDayOfWeek: 3 },
-  { id: "sub_jism", name: "Jismoniy tarbiya", shortName: "Jismoniy", colorTag: "#EF4444", difficultyScore: 2, allowDoubleLesson: false, requiresRoomType: "GYM", methodDayOfWeek: 6 },
-  { id: "sub_sanat", name: "Tasviriy san'at", shortName: "Tasviriy san'at", colorTag: "#D946EF", difficultyScore: 1, allowDoubleLesson: false, methodDayOfWeek: 6 },
-  { id: "sub_chiz", name: "Chizmachilik", shortName: "Chizmachilik", colorTag: "#C026D3", difficultyScore: 3, allowDoubleLesson: false, methodDayOfWeek: 6 },
-  { id: "sub_musiqa", name: "Musiqa madaniyati", shortName: "Musiqa", colorTag: "#F43F5E", difficultyScore: 1, allowDoubleLesson: false, methodDayOfWeek: 6 },
-  { id: "sub_texno", name: "Texnologiya (Mehnat)", shortName: "Texnologiya", colorTag: "#EA580C", difficultyScore: 3, allowDoubleLesson: false, methodDayOfWeek: 6 },
-  { id: "sub_tarbiya", name: "Tarbiya", shortName: "Tarbiya", colorTag: "#F97316", difficultyScore: 3, allowDoubleLesson: false, methodDayOfWeek: 4 },
-  { id: "sub_iqtisod", name: "Iqtisodiy bilim asoslari", shortName: "Iqtisod", colorTag: "#10B981", difficultyScore: 4, allowDoubleLesson: false, methodDayOfWeek: 4 },
-  { id: "sub_huquq", name: "Davlat va huquq asoslari", shortName: "Huquq", colorTag: "#64748B", difficultyScore: 5, allowDoubleLesson: false, methodDayOfWeek: 4 },
-  { id: "sub_tadbirkor", name: "Tadbirkorlik asoslari", shortName: "Tadbirkorlik", colorTag: "#0D9488", difficultyScore: 4, allowDoubleLesson: false, methodDayOfWeek: 4 },
-  { id: "sub_chqbt", name: "CHQBT (Harbiy tayyorgarlik)", shortName: "CHQBT", colorTag: "#475569", difficultyScore: 3, allowDoubleLesson: false, methodDayOfWeek: 6 },
-  { id: "sub_astronomiya", name: "Astronomiya", shortName: "Astronomiya", colorTag: "#0284C7", difficultyScore: 6, allowDoubleLesson: false, methodDayOfWeek: 6 },
-  { id: "sub_sinf_soati", name: "Kelajak soati", shortName: "Kelajak s.", colorTag: "#8B5CF6", difficultyScore: 1, allowDoubleLesson: false, methodDayOfWeek: 1 },
+  // ── I. FILOLOGIYA FANLARI ──────────────────────────────────
+  { id: "sub_ona", name: "Ona tili", shortName: "Ona tili", colorTag: "#EC4899", difficultyScore: 9, allowDoubleLesson: false, methodDayOfWeek: 2, category: "Filologiya fanlari" },
+  { id: "sub_oqish", name: "O'qish savodxonligi", shortName: "O'qish", colorTag: "#F43F5E", difficultyScore: 7, allowDoubleLesson: false, methodDayOfWeek: 2, category: "Filologiya fanlari" },
+  { id: "sub_adab", name: "Adabiyot", shortName: "Adabiyot", colorTag: "#DB2777", difficultyScore: 8, allowDoubleLesson: false, methodDayOfWeek: 2, category: "Filologiya fanlari" },
+  { id: "sub_rus", name: "Rus tili", shortName: "Rus tili", colorTag: "#A855F7", difficultyScore: 8, allowDoubleLesson: false, methodDayOfWeek: 2, category: "Filologiya fanlari" },
+  { id: "sub_chet_tili", name: "Chet tili", shortName: "Chet tili", colorTag: "#8B5CF6", difficultyScore: 8, allowDoubleLesson: false, methodDayOfWeek: 5, category: "Filologiya fanlari" },
+  { id: "sub_ing", name: "Ingliz tili", shortName: "Ingliz tili", colorTag: "#7C3AED", difficultyScore: 8, allowDoubleLesson: false, methodDayOfWeek: 5, category: "Filologiya fanlari" },
+  { id: "sub_nemis", name: "Nemis tili", shortName: "Nemis tili", colorTag: "#9333EA", difficultyScore: 8, allowDoubleLesson: false, methodDayOfWeek: 5, category: "Filologiya fanlari" },
+  { id: "sub_fransuz", name: "Fransuz tili", shortName: "Fransuz tili", colorTag: "#6D28D9", difficultyScore: 8, allowDoubleLesson: false, methodDayOfWeek: 5, category: "Filologiya fanlari" },
+
+  // ── II. IJTIMOIY FANLAR ────────────────────────────────────
+  { id: "sub_tarixdan_hikoyalar", name: "Tarixdan hikoyalar", shortName: "Tarixdan hik.", colorTag: "#EA580C", difficultyScore: 6, allowDoubleLesson: false, methodDayOfWeek: 4, category: "Ijtimoiy fanlar" },
+  { id: "sub_qadimgi_dunyo", name: "Qadimgi dunyo tarixi", shortName: "Qadimgi tarix", colorTag: "#C2410C", difficultyScore: 7, allowDoubleLesson: false, methodDayOfWeek: 4, category: "Ijtimoiy fanlar" },
+  { id: "sub_ozb_tar", name: "O'zbekiston tarixi", shortName: "O'zb. Tarixi", colorTag: "#D97706", difficultyScore: 7, allowDoubleLesson: false, methodDayOfWeek: 4, category: "Ijtimoiy fanlar" },
+  { id: "sub_jahon_tar", name: "Jahon tarixi", shortName: "Jahon tarixi", colorTag: "#B45309", difficultyScore: 7, allowDoubleLesson: false, methodDayOfWeek: 4, category: "Ijtimoiy fanlar" },
+  { id: "sub_tar", name: "Tarix", shortName: "Tarix", colorTag: "#F59E0B", difficultyScore: 7, allowDoubleLesson: false, methodDayOfWeek: 4, category: "Ijtimoiy fanlar" },
+  { id: "sub_huquq", name: "Davlat va huquq asoslari", shortName: "Huquq", colorTag: "#64748B", difficultyScore: 5, allowDoubleLesson: false, methodDayOfWeek: 4, category: "Ijtimoiy fanlar" },
+  { id: "sub_tarbiya", name: "Tarbiya", shortName: "Tarbiya", colorTag: "#F97316", difficultyScore: 3, allowDoubleLesson: false, methodDayOfWeek: 4, category: "Ijtimoiy fanlar" },
+
+  // ── III. ANIQ FANLAR ───────────────────────────────────────
+  { id: "sub_mat", name: "Matematika", shortName: "Matematika", colorTag: "#3B82F6", difficultyScore: 11, allowDoubleLesson: false, methodDayOfWeek: 3, category: "Aniq fanlar" },
+  { id: "sub_alg", name: "Algebra", shortName: "Algebra", colorTag: "#2563EB", difficultyScore: 12, allowDoubleLesson: false, methodDayOfWeek: 3, category: "Aniq fanlar" },
+  { id: "sub_geom", name: "Geometriya", shortName: "Geometriya", colorTag: "#1D4ED8", difficultyScore: 10, allowDoubleLesson: false, methodDayOfWeek: 3, category: "Aniq fanlar" },
+  { id: "sub_inf", name: "Informatika va axborot texnologiyalari", shortName: "Informatika", colorTag: "#6366F1", difficultyScore: 8, allowDoubleLesson: false, requiresRoomType: "COMP_LAB", methodDayOfWeek: 3, category: "Aniq fanlar" },
+
+  // ── IV. TABIIY VA IQTISODIY FANLAR ─────────────────────────
+  { id: "sub_fiz", name: "Fizika", shortName: "Fizika", colorTag: "#06B6D4", difficultyScore: 10, allowDoubleLesson: false, requiresRoomType: "LAB", methodDayOfWeek: 6, category: "Tabiiy va iqtisodiy fanlar" },
+  { id: "sub_astronomiya", name: "Astronomiya", shortName: "Astronomiya", colorTag: "#0284C7", difficultyScore: 6, allowDoubleLesson: false, methodDayOfWeek: 6, category: "Tabiiy va iqtisodiy fanlar" },
+  { id: "sub_kim", name: "Kimyo", shortName: "Kimyo", colorTag: "#10B981", difficultyScore: 10, allowDoubleLesson: false, requiresRoomType: "LAB", methodDayOfWeek: 6, category: "Tabiiy va iqtisodiy fanlar" },
+  { id: "sub_bio", name: "Biologiya", shortName: "Biologiya", colorTag: "#84CC16", difficultyScore: 7, allowDoubleLesson: false, methodDayOfWeek: 6, category: "Tabiiy va iqtisodiy fanlar" },
+  { id: "sub_geo", name: "Geografiya", shortName: "Geografiya", colorTag: "#14B8A6", difficultyScore: 6, allowDoubleLesson: false, methodDayOfWeek: 4, category: "Tabiiy va iqtisodiy fanlar" },
+  { id: "sub_iqtisod", name: "Iqtisodiy bilim asoslari", shortName: "Iqtisod", colorTag: "#059669", difficultyScore: 4, allowDoubleLesson: false, methodDayOfWeek: 4, category: "Tabiiy va iqtisodiy fanlar" },
+  { id: "sub_tadbirkor", name: "Tadbirkorlik asoslari", shortName: "Tadbirkorlik", colorTag: "#0D9488", difficultyScore: 4, allowDoubleLesson: false, methodDayOfWeek: 4, category: "Tabiiy va iqtisodiy fanlar" },
+  { id: "sub_tabiiy", name: "Tabiiy fan (Science)", shortName: "Tabiiy fan", colorTag: "#10B981", difficultyScore: 7, allowDoubleLesson: false, methodDayOfWeek: 6, category: "Tabiiy va iqtisodiy fanlar" },
+
+  // ── V. AMALIY FANLAR ───────────────────────────────────────
+  { id: "sub_musiqa", name: "Musiqa madaniyati", shortName: "Musiqa", colorTag: "#F43F5E", difficultyScore: 1, allowDoubleLesson: false, methodDayOfWeek: 6, category: "Amaliy fanlar" },
+  { id: "sub_sanat", name: "Tasviriy san'at", shortName: "Tasviriy san'at", colorTag: "#D946EF", difficultyScore: 1, allowDoubleLesson: false, methodDayOfWeek: 6, category: "Amaliy fanlar" },
+  { id: "sub_chiz", name: "Chizmachilik", shortName: "Chizmachilik", colorTag: "#C026D3", difficultyScore: 3, allowDoubleLesson: false, methodDayOfWeek: 6, category: "Amaliy fanlar" },
+  { id: "sub_texno", name: "Texnologiya", shortName: "Texnologiya", colorTag: "#EA580C", difficultyScore: 3, allowDoubleLesson: false, methodDayOfWeek: 6, category: "Amaliy fanlar" },
+  { id: "sub_jism", name: "Jismoniy tarbiya", shortName: "Jismoniy", colorTag: "#EF4444", difficultyScore: 2, allowDoubleLesson: false, requiresRoomType: "GYM", methodDayOfWeek: 6, category: "Amaliy fanlar" },
+  { id: "sub_chqbt", name: "Chaqiruvga qadar boshlang'ich tayyorgarlik", shortName: "CHQBT", colorTag: "#475569", difficultyScore: 3, allowDoubleLesson: false, methodDayOfWeek: 6, category: "Amaliy fanlar" },
+
+  // ── MAJBURIY TARBIYAVIY SOAT ────────────────────────────────
+  { id: "sub_sinf_soati", name: "Kelajak soati", shortName: "Kelajak s.", colorTag: "#8B5CF6", difficultyScore: 1, allowDoubleLesson: false, methodDayOfWeek: 1, category: "Majburiy" },
 ];
 
 interface SubjectsTabProps {
@@ -159,6 +174,24 @@ export const SubjectsTab: React.FC<SubjectsTabProps> = ({
     setSelectedPresetId("");
   };
 
+  const handleAddAllMissingPresets = () => {
+    if (!onAddPresetSubject || missingPresets.length === 0) return;
+    missingPresets.forEach((preset, idx) => {
+      onAddPresetSubject({
+        id: `${preset.id}_${Date.now()}_${idx}`,
+        name: preset.name,
+        shortName: preset.shortName,
+        colorTag: preset.colorTag,
+        difficultyScore: preset.difficultyScore,
+        allowDoubleLesson: preset.allowDoubleLesson,
+        requiresRoomType: preset.requiresRoomType || null,
+        methodDayOfWeek: preset.methodDayOfWeek,
+        isActive: true,
+      });
+    });
+    showToast(`${missingPresets.length} ta rasmiy fan muvaffaqiyatli qo'shildi!`, "success");
+  };
+
   return (
     <div className="space-y-4">
       {/* ── TOP TOOLBAR ──────────────────────────────────────────────────────── */}
@@ -243,6 +276,16 @@ export const SubjectsTab: React.FC<SubjectsTabProps> = ({
               >
                 <Sparkles className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
                 <span>Qo'shish</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleAddAllMissingPresets}
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold bg-blue-500/15 text-blue-700 dark:text-blue-300 border border-blue-500/30 hover:bg-blue-500/25 transition-all cursor-pointer shrink-0"
+                title="MMTV rasmiy jadvalidagi barcha yetishmayotgan fanlarni maktabga qo'shish"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                <span>Barchasini to&apos;ldirish ({missingPresets.length})</span>
               </button>
             </div>
           )}
