@@ -5,6 +5,7 @@ import { SchoolClass, Subject, Teacher, ClassSubject } from "@/types";
 import {
   generateStandardCurriculumForClass,
   isSubjectSuitableForGrade,
+  isHomeroomPrimarySubject,
   UZBEKISTAN_STANDARD_CURRICULUM,
 } from "@/lib/curriculum-templates";
 import { ConfirmActionModal } from "@/components/modals/ConfirmActionModal";
@@ -311,6 +312,35 @@ export const CurriculumModal: React.FC<CurriculumModalProps> = ({
     }
 
     setSubjectsList(generated);
+    if (targetClass.grade <= 4) {
+      showToast(`✅ ${targetClass.grade}-sinf standart rejasi yuklandi! Ona tili, O'qish va Matematika sinf rahbariga biriktirildi.`);
+    } else {
+      showToast(`✅ ${targetClass.grade}-sinf davlat standart o'quv rejasi yuklandi!`);
+    }
+  };
+
+  // Boshlang'ich sinf qoidasi: Ona tili, O'qish, Matematika (va 1-sinfda Alifbe) -> Sinf rahbariga
+  const handleApplyPrimaryHomeroomRule = () => {
+    if (!targetClass.homeroomTeacherId) {
+      showToast("Avval ushbu sinfga sinf rahbarini tayinlang!");
+      return;
+    }
+    const hrId = targetClass.homeroomTeacherId;
+    let updatedCount = 0;
+
+    const updated = subjectsList.map((item) => {
+      const sub = subjectMap.get(item.subjectId);
+      if (!sub) return item;
+      const isCore = isHomeroomPrimarySubject(sub, targetClass.grade);
+      if (isCore && item.teacherId !== hrId) {
+        updatedCount++;
+        return { ...item, teacherId: hrId };
+      }
+      return item;
+    });
+
+    setSubjectsList(updated);
+    showToast(`✅ Boshlang'ich qoida qo'llandi: Ona tili, O'qish va Matematika sinf rahbariga biriktirildi!`);
   };
 
   // Boshqa sinfdan o'quv rejasini ko'chirib olish
@@ -606,6 +636,19 @@ export const CurriculumModal: React.FC<CurriculumModalProps> = ({
               <Sparkles className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 animate-pulse" />
               <span>⚡ Standart Rejani Yuklash</span>
             </button>
+
+            {/* Boshlang'ich sinf qoidasi (1-4-sinflar): Ona tili, O'qish, Matematika -> Sinf rahbariga */}
+            {targetClass.grade <= 4 && (
+              <button
+                type="button"
+                onClick={handleApplyPrimaryHomeroomRule}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 border border-indigo-500/35 hover:bg-indigo-500/25 transition-all shadow-xs cursor-pointer"
+                title="Boshlang'ich sinf qoidasi: Ona tili, O'qish va Matematika (1-sinfda Alifbe) hamda Kelajak soatini sinf rahbariga biriktirish"
+              >
+                <GraduationCap className="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0" />
+                <span>🎯 Boshlang'ich qoida (Ona tili, O'qish, Matematika)</span>
+              </button>
+            )}
 
             {/* Boshqa sinfdan nusxa olish */}
             {copyableClasses.length > 0 && (

@@ -9,6 +9,7 @@ import {
   saveTeacherWorkloadAction,
   syncFullSchoolDataAction,
 } from "@/lib/actions/school.actions";
+import { isHomeroomPrimarySubject } from "@/lib/curriculum-templates";
 import { storeState, updateStore, addAuditLog } from "../store-core";
 import { triggerBackgroundAutoScheduler } from "./useLessonActions";
 
@@ -91,16 +92,25 @@ export function useClassActions() {
       const updatedClasses = prev.classes.map((c) => {
         if (c.id === classId) {
           let hasKelajak = false;
+          const isPrimary = (c.grade || 1) <= 4;
           let updatedSubjects = (c.subjects || []).map((s) => {
-            if (
+            const sub = prev.subjects.find((subItem) => subItem.id === s.subjectId);
+            const isKelajak =
               s.subjectId === "sub_sinf_soati" ||
               s.subjectId === "sub_kelajak" ||
               s.subjectId.includes("sinf_soati") ||
-              s.subjectId.includes("kelajak")
-            ) {
+              s.subjectId.includes("kelajak");
+
+            if (isKelajak) {
               hasKelajak = true;
               return tid ? { ...s, teacherId: tid } : s;
             }
+
+            // Boshlang'ich sinfda Ona tili, O'qish, Matematika (va 1-sinfda Alifbe) ni sinf rahbariga biriktirish
+            if (isPrimary && sub && isHomeroomPrimarySubject(sub, c.grade)) {
+              return tid ? { ...s, teacherId: tid } : s;
+            }
+
             return s;
           });
 

@@ -16,7 +16,7 @@ export const UZBEKISTAN_STANDARD_CURRICULUM: Record<number, GradeCurriculumItem[
   // 1-sinf: Jami 21 soat (+ 1 soat Kelajak soati)
   1: [
     { subjectName: "Ona tili", searchAliases: ["ona tili", "grammatika"], defaultHours: 4, prioritySubjectId: "sub_ona" },
-    { subjectName: "O'qish savodxonligi", searchAliases: ["o'qish savodxonligi", "o'qish", "savodxonlik"], defaultHours: 4, prioritySubjectId: "sub_oqish" },
+    { subjectName: "O'qish savodxonligi", searchAliases: ["o'qish savodxonligi", "o'qish", "savodxonlik", "alifbe", "savod o'rgatish", "savod"], defaultHours: 4, prioritySubjectId: "sub_oqish" },
     { subjectName: "Chet tili", searchAliases: ["chet tili", "ingliz", "english"], defaultHours: 1, prioritySubjectId: "sub_ing" },
     { subjectName: "Tarbiya", searchAliases: ["tarbiya", "odobnoma"], defaultHours: 1, prioritySubjectId: "sub_tarbiya" },
     { subjectName: "Matematika", searchAliases: ["matematika", "hisob"], defaultHours: 5, prioritySubjectId: "sub_mat" },
@@ -231,6 +231,55 @@ export const UZBEKISTAN_STANDARD_CURRICULUM: Record<number, GradeCurriculumItem[
 };
 
 /**
+ * Boshlang'ich sinflarda (1-4-sinflar) sinf rahbarining o'zi o'tadigan bazaviy fanlarni aniqlash:
+ * 1. Ona tili (Ona tili, ona tili va o'qish savodxonligi, grammatika)
+ * 2. O'qish savodxonligi / O'qish
+ * 3. Matematika (Hisob)
+ * 4. 1-sinfda: Alifbe / Savod o'rgatish
+ * 5. Kelajak soati / Sinf soati (barcha sinflarda sinf rahbariga tegishli)
+ * 
+ * Qolgan barcha fanlarni (Tabiiy fan, Tarbiya, Tasviriy san'at, Texnologiya, Chet tili, Rus tili, Musiqa, Jismoniy tarbiya, Informatika)
+ * maktabdagi boshqa mutaxassis/fan o'qituvchilari o'tadi.
+ */
+export function isHomeroomPrimarySubject(subject: Subject, grade: number): boolean {
+  const sName = (subject.name || "").toLowerCase();
+  const sId = (subject.id || "").toLowerCase();
+
+  // 1. Ona tili
+  if (sName.includes("ona tili") || sId.includes("ona")) return true;
+
+  // 2. O'qish savodxonligi / O'qish
+  if (
+    sName.includes("o'qish") ||
+    sName.includes("oqish") ||
+    sId.includes("oqish") ||
+    sId.includes("o'qish")
+  ) {
+    return true;
+  }
+
+  // 3. Matematika
+  if (sName.includes("matematika") || sName.includes("hisob") || sId.includes("mat")) return true;
+
+  // 4. 1-sinf uchun: Alifbe / Savod o'rgatish
+  if (grade === 1 && (sName.includes("alifbe") || sName.includes("savod") || sId.includes("alifbe"))) {
+    return true;
+  }
+
+  // 5. Sinf soati / Kelajak soati (har qanday sinfda sinf rahbariniki)
+  if (
+    sId === "sub_sinf_soati" ||
+    sId === "sub_kelajak" ||
+    sName.includes("sinf soati") ||
+    sName.includes("kelajak")
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
+/**
  * Maktabdagi mavjud fanlar va o'qituvchilar asosida
  * berilgan sinf uchun standart o'quv rejasini (ClassSubject[]) shakllantiradi
  */
@@ -271,31 +320,15 @@ export function generateStandardCurriculumForClass(
     // 2. O'qituvchini topish
     let assignedTeacherId = "";
 
-    const isSpecialistSubject = (sub: Subject) => {
-      const sName = sub.name.toLowerCase();
-      const sId = sub.id.toLowerCase();
-      return (
-        sId.includes("ing") ||
-        sId.includes("rus") ||
-        sId.includes("jism") ||
-        sId.includes("inf") ||
-        sName.includes("ingliz") ||
-        sName.includes("chet tili") ||
-        sName.includes("rus tili") ||
-        sName.includes("jismoniy") ||
-        sName.includes("sport") ||
-        sName.includes("informatika")
-      );
-    };
-
-    // Boshlang'ich sinflarda (1-4) mutaxassis fanlardan (Chet tili, Rus tili, Jismoniy tarbiya, Informatika)
-    // tashqari barcha asosiy fanlarni (Ona tili, Matematika, Tabiiy fan, Rasm, Musiqa, Texnologiya, Tarbiya, Kelajak soati)
-    // sinf rahbarining o'zi o'tadi
-    if (normalizedGrade <= 4 && homeroomTeacherId && !isSpecialistSubject(matchedSubject)) {
+    // Boshlang'ich sinflarda (1-4) qat'iy qoida:
+    // Faqat: Ona tili, O'qish savodxonligi, Matematika, (1-sinfda) Alifbe va Kelajak soatini
+    // sinf rahbarining o'zi o'tadi. Qolgan barcha fanlarni (Tabiiy fan, Tarbiya, Rasm, Musiqa, Texnologiya...)
+    // maktabdagi boshqa fan o'qituvchilari o'tadi.
+    if (normalizedGrade <= 4 && homeroomTeacherId && isHomeroomPrimarySubject(matchedSubject, normalizedGrade)) {
       assignedTeacherId = homeroomTeacherId;
     }
 
-    // Agar bu "Kelajak soati" yoki "Sinf soati" bo'lsa (har qanday sinfda), sinf rahbarini biriktirish
+    // Agar yuqori sinflarda (5-11) bu "Kelajak soati" yoki "Sinf soati" bo'lsa, sinf rahbarini biriktirish
     if (
       !assignedTeacherId &&
       (matchedSubject.id === "sub_sinf_soati" ||
@@ -308,14 +341,20 @@ export function generateStandardCurriculumForClass(
       }
     }
 
-    // Mos fanni o'tadigan o'qituvchini dinamik (Least-Loaded Dynamic Balancing) usulida topish
+    // Mos fanni o'tadigan boshqa o'qituvchini dinamik (Least-Loaded Dynamic Balancing) usulida topish
     if (!assignedTeacherId && allTeachers.length > 0) {
       // 1-navbatda: fanni o'tadigan mutaxassis ustozlar
       const suitableTeachers = allTeachers.filter((t) =>
         t.subjectIds?.includes(matchedSubject!.id)
       );
 
-      const candidatePool = suitableTeachers.length > 0 ? suitableTeachers : allTeachers;
+      const pool = suitableTeachers.length > 0 ? suitableTeachers : allTeachers;
+
+      // Boshlang'ich sinfda qolgan fanlarga sinf rahbarini emas, boshqa ustozlarni tanlash
+      const nonHomeroomPool = normalizedGrade <= 4 && homeroomTeacherId
+        ? pool.filter((t) => t.id !== homeroomTeacherId)
+        : pool;
+      const candidatePool = nonHomeroomPool.length > 0 ? nonHomeroomPool : pool;
 
       // Eng kam yuklama olgan va stavkasidan (20 soat) oshmagan ustozni tanlash
       let bestTeacher = candidatePool[0];
@@ -334,7 +373,9 @@ export function generateStandardCurriculumForClass(
         }
       }
 
-      assignedTeacherId = bestTeacher.id;
+      if (bestTeacher) {
+        assignedTeacherId = bestTeacher.id;
+      }
     }
 
     // Tracker yuklamasini yangilash
