@@ -42,9 +42,44 @@ type SettingTab =
   | "BELLS"
   | "SCHOOL_INFO";
 
+const VALID_TABS: SettingTab[] = [
+  "CLASSES",
+  "TEACHERS",
+  "AVAILABILITY",
+  "SUBJECTS",
+  "ROOMS",
+  "BELLS",
+  "SCHOOL_INFO",
+];
+
 export default function SettingsPage() {
   const store = useSchoolStore();
-  const [activeTab, setActiveTab] = useState<SettingTab>("CLASSES");
+  const [activeTab, setActiveTabState] = useState<SettingTab>("CLASSES");
+
+  // F5 va sahifa yangilanishida tabni saqlash (URL query + localStorage)
+  React.useEffect(() => {
+    if (typeof window !== "undefined") {
+      const urlTab = new URLSearchParams(window.location.search).get("tab")?.toUpperCase();
+      if (urlTab && VALID_TABS.includes(urlTab as SettingTab)) {
+        setActiveTabState(urlTab as SettingTab);
+        return;
+      }
+      const saved = localStorage.getItem("settings_active_tab") as SettingTab;
+      if (saved && VALID_TABS.includes(saved)) {
+        setActiveTabState(saved);
+      }
+    }
+  }, []);
+
+  const setActiveTab = (tab: SettingTab) => {
+    setActiveTabState(tab);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("settings_active_tab", tab);
+      const url = new URL(window.location.href);
+      url.searchParams.set("tab", tab.toLowerCase());
+      window.history.replaceState({}, "", url.toString());
+    }
+  };
 
   // Modal states
   const [isClassModalOpen, setIsClassModalOpen] = useState(false);

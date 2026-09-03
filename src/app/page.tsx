@@ -199,6 +199,25 @@ export default function HomePage() {
     showToast("O'rinbosar o'qituvchi muvaffaqiyatli biriktirildi!");
   };
 
+  // F5 va sahifa yangilanishida dars jadvali rejimini saqlash (URL ?view=...)
+  React.useEffect(() => {
+    if (typeof window !== "undefined") {
+      const urlView = new URLSearchParams(window.location.search).get("view")?.toUpperCase();
+      if (urlView && ["OFFICIAL_39", "MASTER", "CLASS", "TEACHER"].includes(urlView)) {
+        store.setViewMode(urlView as any);
+      }
+    }
+  }, []);
+
+  const handleSwitchViewMode = (mode: "OFFICIAL_39" | "MASTER" | "CLASS" | "TEACHER") => {
+    store.setViewMode(mode);
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      url.searchParams.set("view", mode.toLowerCase());
+      window.history.replaceState({}, "", url.toString());
+    }
+  };
+
   return (
     <div className="flex min-h-screen flex-col bg-background text-foreground font-sans">
       {/* Top Navbar */}
@@ -247,7 +266,7 @@ export default function HomePage() {
         {/* 4 ta Asosiy Dars Jadvali Ko'rinish Rejimi */}
         <div className="flex items-center gap-1.5 bg-muted/40 p-1 rounded-xl border border-border/60">
           <button
-            onClick={() => store.setViewMode("OFFICIAL_39")}
+            onClick={() => handleSwitchViewMode("OFFICIAL_39")}
             className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-bold transition-all cursor-pointer ${
               store.viewMode === "OFFICIAL_39"
                 ? "bg-emerald-600 text-white shadow-md shadow-emerald-600/25 ring-1 ring-emerald-400/40"
@@ -259,7 +278,7 @@ export default function HomePage() {
           </button>
 
           <button
-            onClick={() => store.setViewMode("MASTER")}
+            onClick={() => handleSwitchViewMode("MASTER")}
             className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-bold transition-all cursor-pointer ${
               store.viewMode === "MASTER"
                 ? "bg-primary text-primary-foreground shadow-md shadow-primary/20"
@@ -271,7 +290,7 @@ export default function HomePage() {
           </button>
 
           <button
-            onClick={() => store.setViewMode("CLASS")}
+            onClick={() => handleSwitchViewMode("CLASS")}
             className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-bold transition-all cursor-pointer ${
               store.viewMode === "CLASS"
                 ? "bg-primary text-primary-foreground shadow-md shadow-primary/20"
@@ -283,7 +302,7 @@ export default function HomePage() {
           </button>
 
           <button
-            onClick={() => store.setViewMode("TEACHER")}
+            onClick={() => handleSwitchViewMode("TEACHER")}
             className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-bold transition-all cursor-pointer ${
               store.viewMode === "TEACHER"
                 ? "bg-primary text-primary-foreground shadow-md shadow-primary/20"

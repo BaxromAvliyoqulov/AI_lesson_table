@@ -38,12 +38,60 @@ export const TarifficationWorkspace: React.FC<TarifficationWorkspaceProps> = ({
 }) => {
   const router = useRouter();
   const [classesData, setClassesData] = useState<SchoolClass[]>(initialClasses);
-  const [viewMode, setViewMode] = useState<ViewMode>("BY_CLASS");
-  const [selectedBranchId, setSelectedBranchId] = useState<string>("ALL");
-  const [stageFilter, setStageFilter] = useState<"ALL" | "PRIMARY" | "HIGH">("ALL");
+  const [viewMode, setViewModeState] = useState<ViewMode>("BY_CLASS");
+  const [selectedBranchId, setSelectedBranchIdState] = useState<string>("ALL");
+  const [stageFilter, setStageFilterState] = useState<"ALL" | "PRIMARY" | "HIGH">("ALL");
 
   const [activeClassId, setActiveClassId] = useState<string>(initialClasses[0]?.id || "");
   const [activeTeacherId, setActiveTeacherId] = useState<string>(teachers[0]?.id || "");
+
+  // F5 va sahifa yangilanishida rejim va filtrlarni saqlash
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const urlParams = new URLSearchParams(window.location.search);
+      const urlMode = urlParams.get("mode")?.toUpperCase();
+      if (urlMode && ["BY_CLASS", "BY_TEACHER", "MATRIX"].includes(urlMode)) {
+        setViewModeState(urlMode as ViewMode);
+      } else {
+        const savedMode = localStorage.getItem("tariffication_view_mode") as ViewMode;
+        if (savedMode && ["BY_CLASS", "BY_TEACHER", "MATRIX"].includes(savedMode)) {
+          setViewModeState(savedMode);
+        }
+      }
+
+      const savedBranch = localStorage.getItem("tariffication_branch");
+      if (savedBranch) setSelectedBranchIdState(savedBranch);
+
+      const savedStage = localStorage.getItem("tariffication_stage") as any;
+      if (savedStage && ["ALL", "PRIMARY", "HIGH"].includes(savedStage)) {
+        setStageFilterState(savedStage);
+      }
+    }
+  }, []);
+
+  const setViewMode = (mode: ViewMode) => {
+    setViewModeState(mode);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("tariffication_view_mode", mode);
+      const url = new URL(window.location.href);
+      url.searchParams.set("mode", mode.toLowerCase());
+      window.history.replaceState({}, "", url.toString());
+    }
+  };
+
+  const setSelectedBranchId = (branchId: string) => {
+    setSelectedBranchIdState(branchId);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("tariffication_branch", branchId);
+    }
+  };
+
+  const setStageFilter = (stage: "ALL" | "PRIMARY" | "HIGH") => {
+    setStageFilterState(stage);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("tariffication_stage", stage);
+    }
+  };
 
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" | "info" } | null>(null);
   const showToast = (message: string, type: "success" | "error" | "info" = "success") => {

@@ -61,7 +61,41 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
     lockAllClasses,
   } = useSchoolStore();
 
-  const [filterScope, setFilterScope] = useState<FilterScope>("MAIN_HIGH");
+  const [filterScope, setFilterScopeState] = useState<FilterScope>("MAIN_ALL");
+
+  // F5 va sahifa yangilanishida filtrni saqlash (URL ?scope=... + localStorage)
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const urlScope = new URLSearchParams(window.location.search).get("scope")?.toUpperCase();
+      const validScopes: FilterScope[] = [
+        "MAIN_ALL",
+        "MAIN_PRIMARY",
+        "MAIN_HIGH",
+        "BRANCH_ALL",
+        "BRANCH_PRIMARY",
+        "BRANCH_HIGH",
+        "ALL",
+      ];
+      if (urlScope && validScopes.includes(urlScope as FilterScope)) {
+        setFilterScopeState(urlScope as FilterScope);
+        return;
+      }
+      const savedScope = localStorage.getItem("official39_filter_scope") as FilterScope;
+      if (savedScope && validScopes.includes(savedScope)) {
+        setFilterScopeState(savedScope);
+      }
+    }
+  }, []);
+
+  const setFilterScope = (scope: FilterScope) => {
+    setFilterScopeState(scope);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("official39_filter_scope", scope);
+      const url = new URL(window.location.href);
+      url.searchParams.set("scope", scope.toLowerCase());
+      window.history.replaceState({}, "", url.toString());
+    }
+  };
   const [hoveredTeacherId, setHoveredTeacherId] = useState<string | null>(null);
   const [activeDragLesson, setActiveDragLesson] = useState<Lesson | null>(null);
   const [isFixingConflicts, setIsFixingConflicts] = useState<boolean>(false);
