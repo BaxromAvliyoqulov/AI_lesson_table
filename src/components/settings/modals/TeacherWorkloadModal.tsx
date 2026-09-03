@@ -2,7 +2,11 @@
 
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import { Teacher, Subject, SchoolClass } from "@/types";
-import { isSubjectSuitableForGrade, isKelajakOrSinfSoatiSubject } from "@/lib/curriculum-templates";
+import {
+  isSubjectSuitableForGrade,
+  isKelajakOrSinfSoatiSubject,
+  isSubjectEligibleForSplit,
+} from "@/lib/curriculum-templates";
 import {
   X,
   Plus,
@@ -126,7 +130,14 @@ export const TeacherWorkloadModal: React.FC<TeacherWorkloadModalProps> = ({
     assignments.forEach((item) => {
       const sub = subjectMap.get(item.subjectId) || subjects.find((s) => s.id === item.subjectId);
       const hours = Number(item.weeklyHours) || 0;
-      if (isKelajakOrSinfSoatiSubject(item.subjectId, sub?.name)) {
+      // Faqat o'qituvchi o'zi sinf rahbari bo'lgan sinfdagi (teacher.homeroomClassId === item.classId)
+      // 1 soatlik Kelajak/Sinf soatigina dars stavkasidan chegiriladi!
+      // Boshqa sinflardagi darslar (masalan 9A) stavkadan chegirilmaydi!
+      const isHomeroomClassHour =
+        isKelajakOrSinfSoatiSubject(item.subjectId, sub?.name) &&
+        teacher?.homeroomClassId === item.classId;
+
+      if (isHomeroomClassHour) {
         homeroom += hours;
       } else {
         assigned += hours;
@@ -836,9 +847,27 @@ export const TeacherWorkloadModal: React.FC<TeacherWorkloadModalProps> = ({
                     </div>
 
                     {/* SINF SOATI BO'LSA — NISHON */}
-                    {isKelajak && (
+                    {isKelajak && teacher.homeroomClassId === item.classId && (
                       <div className="text-[11px] font-semibold text-purple-700 dark:text-purple-300 bg-purple-100/70 dark:bg-purple-950/40 px-3 py-1 rounded-xl flex items-center gap-1.5 border border-purple-200 dark:border-purple-800">
-                        <span>👤 Sinf rahbarligi yuki — haftalik pedagogik dars stavkasiga qo'shilmaydi</span>
+                        <span>👤 {cls?.name} sinf rahbarligi — 1 soatlik Kelajak soati dars stavkasiga qo&apos;shilmaydi</span>
+                      </div>
+                    )}
+
+                    {/* AGAR BOSHQA SINFDA ADASHIB SINF SOATI TANLANGAN BO'LSA */}
+                    {isKelajak && teacher.homeroomClassId !== item.classId && (
+                      <div className="text-[11px] font-medium text-amber-800 dark:text-amber-200 bg-amber-500/10 px-3 py-1.5 rounded-xl flex flex-wrap items-center justify-between gap-2 border border-amber-500/30">
+                        <span className="flex items-center gap-1.5">
+                          ⚠️ Siz faqat {classMap.get(teacher.homeroomClassId || "")?.name || "o'z sinfingiz"} rahbari hisoblanasiz. {cls?.name} sinfida &quot;Sinf soati&quot; o&apos;rniga asosiy mutaxassislik fanni tanlang.
+                        </span>
+                        {teacherSubjects[0] && (
+                          <button
+                            type="button"
+                            onClick={() => handleUpdateAssignment(index, "subjectId", teacherSubjects[0].id)}
+                            className="px-2.5 py-1 rounded-lg bg-amber-600 text-white font-bold text-[10.5px] hover:bg-amber-700 shrink-0 cursor-pointer shadow-xs"
+                          >
+                            ⚡ {teacherSubjects[0].name} ga almashtirish
+                          </button>
+                        )}
                       </div>
                     )}
 

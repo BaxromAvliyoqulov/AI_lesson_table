@@ -236,7 +236,9 @@ export const TarifficationByTeacherView: React.FC<TarifficationByTeacherViewProp
               .filter((cs) => cs.teacherId === activeTeacher.id && cs.weeklyHours > 0)
               .map((cs) => {
                 const sub = subjectMap.get(cs.subjectId);
-                const isClassHour = isKelajakOrSinfSoatiSubject(cs.subjectId, sub?.name);
+                const isClassHour =
+                  isKelajakOrSinfSoatiSubject(cs.subjectId, sub?.name) &&
+                  activeTeacher.homeroomClassId === cls.id;
                 return (
                   <div
                     key={`${cls.id}_${cs.subjectId}`}

@@ -97,14 +97,18 @@ export const TarifficationMatrixModal: React.FC<TarifficationMatrixModalProps> =
       for (const cs of cls.subjects) {
         if (cs.teacherId) {
           const sub = subjectMap.get(cs.subjectId);
-          if (!isKelajakOrSinfSoatiSubject(cs.subjectId, sub?.name)) {
+          const teacherObj = teacherMap.get(cs.teacherId);
+          const isHomeroomClassHour =
+            isKelajakOrSinfSoatiSubject(cs.subjectId, sub?.name) &&
+            teacherObj?.homeroomClassId === cls.id;
+          if (!isHomeroomClassHour) {
             map.set(cs.teacherId, (map.get(cs.teacherId) || 0) + cs.weeklyHours);
           }
         }
       }
     }
     return map;
-  }, [classesData, subjectMap]);
+  }, [classesData, subjectMap, teacherMap]);
 
   // Filtered and Sorted Teachers for Sidebar
   const filteredTeachers = useMemo(() => {

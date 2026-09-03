@@ -263,6 +263,49 @@ export function isKelajakOrSinfSoatiSubject(
 }
 
 /**
+ * O'zbekiston umumta'lim maktablarida sinfni 2 ta guruhga bo'lib o'tishga ruxsat etilgan fanlar:
+ * - Chet tillari (Ingliz tili, Nemis tili, Fransuz tili)
+ * - Informatika va axborot texnologiyalari
+ * - Rus tili / O'zbek tili (ikkinchi til sifatida)
+ * - Texnologiya (Mehnat ta'limi: o'g'il bolalar / qiz bolalar)
+ * - Jismoniy tarbiya (yuqori sinflar)
+ * - Davlat tili
+ */
+export function isSubjectEligibleForSplit(
+  subjectOrName?: Subject | string | null,
+  subjectName?: string
+): boolean {
+  let name = "";
+  if (typeof subjectOrName === "object" && subjectOrName !== null) {
+    name = (subjectOrName.name || "").toLowerCase();
+  } else if (typeof subjectOrName === "string") {
+    name = subjectOrName.toLowerCase();
+  }
+  if (subjectName) {
+    name = (name + " " + subjectName).toLowerCase();
+  }
+
+  return (
+    name.includes("ingliz") ||
+    name.includes("chet tili") ||
+    name.includes("nemis") ||
+    name.includes("fransuz") ||
+    name.includes("english") ||
+    name.includes("informatika") ||
+    name.includes("axborot") ||
+    name.includes("it") ||
+    name.includes("kompyuter") ||
+    name.includes("rus tili") ||
+    name.includes("o'zbek tili") ||
+    name.includes("davlat tili") ||
+    name.includes("texnologiya") ||
+    name.includes("mehnat") ||
+    name.includes("jismoniy") ||
+    name.includes("sport")
+  );
+}
+
+/**
  * Boshlang'ich sinflarda (1-4-sinflar) sinf rahbarining o'zi o'tadigan bazaviy fanlarni aniqlash:
  * 1. Ona tili (Ona tili, ona tili va o'qish savodxonligi, grammatika)
  * 2. O'qish savodxonligi / O'qish

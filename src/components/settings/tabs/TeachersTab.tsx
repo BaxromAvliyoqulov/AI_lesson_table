@@ -138,8 +138,12 @@ export const TeachersTab: React.FC<TeachersTabProps> = ({
         (c.subjects || []).forEach((cs) => {
           if (cs.teacherId === t.id) {
             const sub = subjectMap.get(cs.subjectId);
-            // Kelajak soati / Sinf soati o'qituvchining dars soatlari yig'indisiga qo'shilmaydi
-            if (!isKelajakOrSinfSoatiSubject(cs.subjectId, sub?.name)) {
+            const isHomeroomClassHour =
+              isKelajakOrSinfSoatiSubject(cs.subjectId, sub?.name) &&
+              t.homeroomClassId === c.id;
+
+            // Faqat o'qituvchi o'zi sinf rahbari bo'lgan sinfdagi 1 soatlik Sinf soati stavkaga kirmaydi
+            if (!isHomeroomClassHour) {
               hours += Number(cs.weeklyHours) || 0;
             }
             classSet.add(c.id);

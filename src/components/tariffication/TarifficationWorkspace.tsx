@@ -138,15 +138,20 @@ export const TarifficationWorkspace: React.FC<TarifficationWorkspaceProps> = ({
       for (const cs of cls.subjects || []) {
         if (cs.teacherId) {
           const sub = subjectMap.get(cs.subjectId);
-          // O'zbekiston standartida Kelajak soati (Sinf soati) o'qituvchining dars stavkasiga qo'shilmaydi
-          if (!isKelajakOrSinfSoatiSubject(cs.subjectId, sub?.name)) {
+          const teacherObj = teachers.find((t) => t.id === cs.teacherId);
+          const isHomeroomClassHour =
+            isKelajakOrSinfSoatiSubject(cs.subjectId, sub?.name) &&
+            teacherObj?.homeroomClassId === cls.id;
+
+          // Faqat o'qituvchi o'zi sinf rahbari bo'lgan sinfdagi Sinf soatigina stavkaga kirmaydi
+          if (!isHomeroomClassHour) {
             map.set(cs.teacherId, (map.get(cs.teacherId) || 0) + cs.weeklyHours);
           }
         }
       }
     }
     return map;
-  }, [classesData, subjectMap]);
+  }, [classesData, subjectMap, teachers]);
 
   const filteredClasses = useMemo(() => {
     return classesData.filter((c) => {
