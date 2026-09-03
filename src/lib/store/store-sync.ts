@@ -147,7 +147,11 @@ export function useStoreSync() {
     document.addEventListener("visibilitychange", handleVisibilityChange);
 
     const heartbeatInterval = setInterval(() => {
-      if (document.visibilityState === "visible" && !storeState.isGenerating) {
+      if (
+        document.visibilityState === "visible" &&
+        !storeState.isGenerating &&
+        storeState.syncStatus !== "syncing"
+      ) {
         fetchServerData(undefined, true);
       }
     }, 30000);

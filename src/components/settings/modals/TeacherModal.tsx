@@ -153,6 +153,7 @@ export const TeacherModal: React.FC<TeacherModalProps> = ({
     const teacherData: Teacher = {
       id: editingTeacher ? editingTeacher.id : `t_${currentSchoolId}_${Date.now()}`,
       schoolId: currentSchoolId,
+      displayNumber: editingTeacher?.displayNumber,
       fullName: sanitizeFullName(fullName.trim()),
       phone: phone.trim() || null,
       weeklyHourCapacity: Number(weeklyCapacity),

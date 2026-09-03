@@ -13,7 +13,10 @@ export async function upsertTeacherAction(schoolId: string, teacher: Teacher) {
     if (!school) return { success: false, error: "Maktab topilmadi" };
     const actualSchoolId = school.id;
 
-    await prisma.$transaction(async (tx) => {
+    let savedTeacherRecord: any = null;
+
+    await prisma.$transaction(
+      async (tx) => {
       // Agar o'qituvchiga sinf biriktirilayotgan bo'lsa, avval bu sinf boshqa o'qituvchida bo'lsa tozalash (@unique xatoligini oldini olish)
       if (teacher.homeroomClassId) {
         await tx.teacher.updateMany({
@@ -31,18 +34,28 @@ export async function upsertTeacherAction(schoolId: string, teacher: Teacher) {
           OR: [
             { id: teacher.id },
             { schoolId: actualSchoolId, fullName: teacher.fullName.trim() },
-            { schoolId: actualSchoolId, displayNumber: teacher.displayNumber || 999 },
+            ...(teacher.displayNumber ? [{ schoolId: actualSchoolId, displayNumber: teacher.displayNumber }] : []),
           ],
         },
       });
 
       if (!teacherRecord) {
-        // Yangi o'qituvchi
+        // Yangi o'qituvchi: bazadagi eng katta displayNumber'ni topib +1 qo'shamiz (unique constraint xatosini oldini olish)
+        let targetDisplayNumber = teacher.displayNumber;
+        if (!targetDisplayNumber || targetDisplayNumber <= 0) {
+          const maxTeacher = await tx.teacher.findFirst({
+            where: { schoolId: actualSchoolId },
+            orderBy: { displayNumber: "desc" },
+            select: { displayNumber: true },
+          });
+          targetDisplayNumber = (maxTeacher?.displayNumber || 0) + 1;
+        }
+
         teacherRecord = await tx.teacher.create({
           data: {
+            id: teacher.id || undefined,
             schoolId: actualSchoolId,
-            displayNumber:
-              teacher.displayNumber || (await tx.teacher.count({ where: { schoolId: actualSchoolId } })) + 1,
+            displayNumber: targetDisplayNumber,
             fullName: teacher.fullName.trim(),
             phone: teacher.phone || null,
             weeklyHourCapacity: teacher.weeklyHourCapacity || 20,
@@ -163,9 +176,23 @@ export async function upsertTeacherAction(schoolId: string, teacher: Teacher) {
           }
         }
       }
-    });
 
-    return { success: true };
+      savedTeacherRecord = teacherRecord;
+    },
+    { timeout: 25000, maxWait: 10000 }
+  );
+
+    return {
+      success: true,
+      teacher: savedTeacherRecord
+        ? {
+            ...teacher,
+            id: savedTeacherRecord.id,
+            displayNumber: savedTeacherRecord.displayNumber,
+            schoolId: savedTeacherRecord.schoolId,
+          }
+        : undefined,
+    };
   } catch (error: any) {
     console.error("upsertTeacherAction xatosi:", error);
     return { success: false, error: error?.message };
@@ -180,7 +207,8 @@ export async function deleteTeacherAction(schoolId: string, teacherId: string) {
     const school = await resolveSchool(schoolId);
     const actualSchoolId = school ? school.id : schoolId;
 
-    await prisma.$transaction(async (tx) => {
+    await prisma.$transaction(
+      async (tx) => {
       // 1. O'qituvchini topish (ID, fullName yoki displayNumber bo'yicha)
       const teacher = await tx.teacher.findFirst({
         where: {
@@ -231,7 +259,9 @@ export async function deleteTeacherAction(schoolId: string, teacherId: string) {
       await tx.teacher.delete({
         where: { id: teacher.id },
       });
-    });
+    },
+    { timeout: 25000, maxWait: 10000 }
+  );
 
     return { success: true };
   } catch (error: any) {

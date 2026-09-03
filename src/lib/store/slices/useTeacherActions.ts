@@ -37,7 +37,18 @@ export function useTeacherActions() {
     addAuditLog("O'qituvchi qo'shildi", `${teacher.fullName} ro'yxatga kiritildi`);
 
     upsertTeacherAction(teacher.schoolId || storeState.currentSchoolId, teacher).then((res) => {
-      updateStore((prev) => ({ ...prev, syncStatus: res.success ? "synced" : "error" }));
+      if (res.success && res.teacher) {
+        const savedTeacher = res.teacher;
+        updateStore((prev) => ({
+          ...prev,
+          teachers: prev.teachers.map((t) =>
+            t.id === teacher.id ? { ...t, ...savedTeacher, id: savedTeacher.id } : t
+          ),
+          syncStatus: "synced",
+        }));
+      } else {
+        updateStore((prev) => ({ ...prev, syncStatus: "error" }));
+      }
     });
   }, []);
 
@@ -89,7 +100,18 @@ export function useTeacherActions() {
     addAuditLog("O'qituvchi yangilandi", `${teacher.fullName} ma'lumotlari tahrirlandi`);
 
     upsertTeacherAction(teacher.schoolId || storeState.currentSchoolId, teacher).then((res) => {
-      updateStore((prev) => ({ ...prev, syncStatus: res.success ? "synced" : "error" }));
+      if (res.success && res.teacher) {
+        const savedTeacher = res.teacher;
+        updateStore((prev) => ({
+          ...prev,
+          teachers: prev.teachers.map((t) =>
+            t.id === teacher.id ? { ...t, ...savedTeacher, id: savedTeacher.id } : t
+          ),
+          syncStatus: "synced",
+        }));
+      } else {
+        updateStore((prev) => ({ ...prev, syncStatus: "error" }));
+      }
     });
   }, []);
 

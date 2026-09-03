@@ -510,10 +510,17 @@ export async function syncFullSchoolDataAction(
             });
 
             if (!existing) {
+              const maxTeacher = await tx.teacher.findFirst({
+                where: { schoolId: actualSchoolId },
+                orderBy: { displayNumber: "desc" },
+                select: { displayNumber: true },
+              });
+              const safeDisplayNumber = t.displayNumber || ((maxTeacher?.displayNumber || 0) + 1);
+
               existing = await tx.teacher.create({
                 data: {
                   schoolId: actualSchoolId,
-                  displayNumber: t.displayNumber || i + 1,
+                  displayNumber: safeDisplayNumber,
                   fullName: t.fullName.trim(),
                   phone: t.phone || null,
                   weeklyHourCapacity: t.weeklyHourCapacity || 20,
