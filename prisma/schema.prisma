@@ -124,6 +124,7 @@ model Teacher {
   maxConsecutiveHours Int     @default(4)
   methodDay           Int?    // 0-6 (Yakshanba-Shanba), "metod kuni" — bu kunda dars yo'q
   homeroomClassId     String? @unique
+  teachingStages      String? @default("BOTH") // "PRIMARY" | "HIGH" | "BOTH"
 
   school         School               @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   subjects       TeacherSubject[]

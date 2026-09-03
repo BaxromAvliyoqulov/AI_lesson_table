@@ -173,6 +173,7 @@ export async function getSchoolFullData(schoolId?: string) {
       maxConsecutiveHours: t.maxConsecutiveHours,
       methodDayOfWeek: t.methodDay !== null ? t.methodDay : undefined,
       homeroomClassId: t.homeroomClassId || undefined,
+      teachingStages: (t.teachingStages as any) || "BOTH",
     }));
 
     const classes: SchoolClass[] = school.classes.map((c) => {

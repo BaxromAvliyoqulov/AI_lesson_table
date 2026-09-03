@@ -62,6 +62,7 @@ export async function upsertTeacherAction(schoolId: string, teacher: Teacher) {
             maxConsecutiveHours: teacher.maxConsecutiveHours || 4,
             methodDay: teacher.methodDayOfWeek !== undefined ? teacher.methodDayOfWeek : null,
             homeroomClassId: teacher.homeroomClassId || null,
+            teachingStages: teacher.teachingStages || "BOTH",
           },
         });
       } else {
@@ -75,6 +76,7 @@ export async function upsertTeacherAction(schoolId: string, teacher: Teacher) {
             maxConsecutiveHours: teacher.maxConsecutiveHours,
             methodDay: teacher.methodDayOfWeek !== undefined ? teacher.methodDayOfWeek : null,
             homeroomClassId: teacher.homeroomClassId || null,
+            teachingStages: teacher.teachingStages || "BOTH",
           },
         });
 
@@ -190,6 +192,7 @@ export async function upsertTeacherAction(schoolId: string, teacher: Teacher) {
             id: savedTeacherRecord.id,
             displayNumber: savedTeacherRecord.displayNumber,
             schoolId: savedTeacherRecord.schoolId,
+            teachingStages: (savedTeacherRecord.teachingStages as any) || teacher.teachingStages || "BOTH",
           }
         : undefined,
     };

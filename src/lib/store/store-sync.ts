@@ -72,11 +72,52 @@ export function normalizeHomeroomSinfSoati({
     };
   });
 
-  // 2. O'qituvchilarni tekshirish: sinf rahbarlariga Sinf soati fanini qo'shish
+  // 2. O'qituvchilarni tekshirish: sinf rahbarlariga Sinf soati fanini qo'shish va toifani (Boshlang'ich/Katta/Hammasi) avtomatik aniqlash
   const normalizedTeachers = teachers.map((t) => {
     const hrClass = normalizedClasses.find(
       (c) => c.homeroomTeacherId === t.id || t.homeroomClassId === c.id
     );
+
+    let teachingStages = t.teachingStages;
+    if (!teachingStages || teachingStages === "BOTH") {
+      if (hrClass) {
+        if ((hrClass.grade && hrClass.grade <= 4) || hrClass.isPrimary) {
+          teachingStages = "PRIMARY";
+        } else if (hrClass.grade && hrClass.grade >= 5) {
+          teachingStages = "HIGH";
+        }
+      } else if (t.subjectIds && t.subjectIds.length > 0) {
+        const teacherSubs = t.subjectIds
+          .map((sid) => subjects.find((s) => s.id === sid))
+          .filter(Boolean) as Subject[];
+        const highKeywords = [
+          "algebra", "geometriya", "fizika", "kimyo", "biologiya",
+          "geografiya", "tarix", "huquq", "astronomiya", "adabiyot", "chqbt"
+        ];
+        const primaryKeywords = ["o'qish", "o'qish savodxonligi", "alifbe"];
+        const hasHigh = teacherSubs.some((s) =>
+          highKeywords.some((k) => (s.name || "").toLowerCase().includes(k))
+        );
+        const hasPrimary = teacherSubs.some((s) =>
+          primaryKeywords.some((k) => (s.name || "").toLowerCase().includes(k))
+        );
+        const hasOnaTili = teacherSubs.some((s) =>
+          (s.name || "").toLowerCase().includes("ona tili")
+        );
+        const hasMat = teacherSubs.some((s) =>
+          (s.name || "").toLowerCase().includes("matematika")
+        );
+
+        if (hasPrimary && !hasHigh) {
+          teachingStages = "PRIMARY";
+        } else if (hasHigh && !hasPrimary) {
+          teachingStages = "HIGH";
+        } else if (hasOnaTili && hasMat && !hasHigh) {
+          teachingStages = "PRIMARY";
+        }
+      }
+    }
+
     if (hrClass) {
       const currentSubIds = t.subjectIds || [];
       const newSubIds = currentSubIds.includes(finalSubId)
@@ -86,9 +127,13 @@ export function normalizeHomeroomSinfSoati({
         ...t,
         homeroomClassId: hrClass.id,
         subjectIds: newSubIds,
+        teachingStages: teachingStages || "BOTH",
       };
     }
-    return t;
+    return {
+      ...t,
+      teachingStages: teachingStages || "BOTH",
+    };
   });
 
   // 3. Dars jadvalida Dushanba 1-soat darsini kafolatlash

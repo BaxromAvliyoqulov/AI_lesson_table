@@ -69,6 +69,7 @@ export const TeacherModal: React.FC<TeacherModalProps> = ({
   const [selectedBranches, setSelectedBranches] = useState<string[]>([]);
   const [selectedShifts, setSelectedShifts] = useState<string[]>([]);
   const [teachingStages, setTeachingStages] = useState<"PRIMARY" | "HIGH" | "BOTH">("BOTH");
+  const [isManualTeachingStagesOverride, setIsManualTeachingStagesOverride] = useState<boolean>(false);
   const [travelPolicy, setTravelPolicy] = useState<"BY_SHIFT" | "BY_DAY" | "ALTERNATING_DAYS" | "FLEXIBLE_BUFFER">("BY_SHIFT");
   const lastInitializedIdRef = useRef<string | null>(null);
 
@@ -96,6 +97,78 @@ export const TeacherModal: React.FC<TeacherModalProps> = ({
       setMethodDay(autoDetectedMethodDay.day);
     }
   }, [autoDetectedMethodDay, isManualMethodDayOverride]);
+
+  // Fanlar yoki sinf rahbari o'zgarganda Toifani (Boshlang'ich/Katta/Hammasi) AVTOMATIK aniqlash
+  useEffect(() => {
+    if (!isManualTeachingStagesOverride) {
+      // 1. Agar sinf rahbarligi bo'lsa:
+      if (homeroomClassId) {
+        const cls = classes.find((c) => c.id === homeroomClassId);
+        if (cls) {
+          if ((cls.grade && cls.grade <= 4) || cls.isPrimary) {
+            setTeachingStages("PRIMARY");
+            return;
+          } else if (cls.grade && cls.grade >= 5) {
+            setTeachingStages("HIGH");
+            return;
+          }
+        }
+      }
+
+      if (selectedSubjects.length === 0) {
+        setTeachingStages("BOTH");
+        return;
+      }
+
+      const selectedSubs = selectedSubjects
+        .map((id) => subjects.find((s) => s.id === id))
+        .filter(Boolean) as Subject[];
+
+      const highOnlyKeywords = [
+        "algebra", "geometriya", "fizika", "kimyo", "biologiya",
+        "geografiya", "tarix", "jahon tarixi", "o'zb. tarixi",
+        "huquq", "davlat va huquq", "iqtisod", "astronomiya",
+        "adabiyot", "chqbt", "chaqiruv"
+      ];
+
+      const primaryOnlyKeywords = [
+        "o'qish", "o'qish savodxonligi", "alifbe", "yozuv"
+      ];
+
+      let hasHighOnly = false;
+      let hasPrimaryOnly = false;
+
+      for (const s of selectedSubs) {
+        const name = (s.name || "").toLowerCase();
+        if (highOnlyKeywords.some((k) => name.includes(k))) {
+          hasHighOnly = true;
+        }
+        if (primaryOnlyKeywords.some((k) => name.includes(k))) {
+          hasPrimaryOnly = true;
+        }
+      }
+
+      if (hasPrimaryOnly && !hasHighOnly) {
+        setTeachingStages("PRIMARY");
+        return;
+      }
+      if (hasHighOnly && !hasPrimaryOnly) {
+        setTeachingStages("HIGH");
+        return;
+      }
+
+      const subNames = selectedSubs.map((s) => (s.name || "").toLowerCase());
+      const hasOnaTili = subNames.some((n) => n.includes("ona tili"));
+      const hasMatematika = subNames.some((n) => n.includes("matematika"));
+
+      if (hasOnaTili && hasMatematika && !hasHighOnly) {
+        setTeachingStages("PRIMARY");
+        return;
+      }
+
+      setTeachingStages("BOTH");
+    }
+  }, [selectedSubjects, homeroomClassId, subjects, classes, isManualTeachingStagesOverride]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -126,7 +199,12 @@ export const TeacherModal: React.FC<TeacherModalProps> = ({
             ? editingTeacher.shiftIds
             : shifts.map((s) => s.id)
         );
-        setTeachingStages(editingTeacher.teachingStages || "BOTH");
+        if (editingTeacher.teachingStages) {
+          setTeachingStages(editingTeacher.teachingStages);
+          setIsManualTeachingStagesOverride(true);
+        } else {
+          setIsManualTeachingStagesOverride(false);
+        }
         setTravelPolicy(editingTeacher.travelPolicy || "BY_SHIFT");
       } else {
         setFullName("");
@@ -140,6 +218,7 @@ export const TeacherModal: React.FC<TeacherModalProps> = ({
         setSelectedBranches(branches.map((b) => b.id));
         setSelectedShifts(shifts.map((s) => s.id));
         setTeachingStages("BOTH");
+        setIsManualTeachingStagesOverride(false);
         setTravelPolicy("BY_SHIFT");
       }
     }
@@ -507,14 +586,24 @@ export const TeacherModal: React.FC<TeacherModalProps> = ({
 
           {/* ── 3. SINFLAR TOIFASI (BOSQICHLAR) ─────────────────────────────── */}
           <div>
-            <label className="block text-xs font-bold text-foreground mb-2 flex items-center gap-1.5">
-              <GraduationCap className="w-3.5 h-3.5 text-purple-600" />
-              Dars beradigan sinflari (Toifasi)
-            </label>
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                <GraduationCap className="w-3.5 h-3.5 text-purple-600" />
+                <span>Dars beradigan sinflari (Toifasi)</span>
+              </label>
+              {!isManualTeachingStagesOverride && (
+                <span className="text-[10px] text-indigo-600 dark:text-indigo-400 font-bold bg-indigo-50 dark:bg-indigo-950/40 px-2 py-0.5 rounded-full border border-indigo-200 dark:border-indigo-800">
+                  ⚡ Avtomatik aniqlangan
+                </span>
+              )}
+            </div>
             <div className="grid grid-cols-3 gap-2">
               <button
                 type="button"
-                onClick={() => setTeachingStages("PRIMARY")}
+                onClick={() => {
+                  setTeachingStages("PRIMARY");
+                  setIsManualTeachingStagesOverride(true);
+                }}
                 className={`flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
                   teachingStages === "PRIMARY"
                     ? "bg-teal-50 dark:bg-teal-950/40 border-teal-600 text-teal-900 dark:text-teal-300 shadow-sm ring-1 ring-teal-600/30"
@@ -526,7 +615,10 @@ export const TeacherModal: React.FC<TeacherModalProps> = ({
 
               <button
                 type="button"
-                onClick={() => setTeachingStages("HIGH")}
+                onClick={() => {
+                  setTeachingStages("HIGH");
+                  setIsManualTeachingStagesOverride(true);
+                }}
                 className={`flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
                   teachingStages === "HIGH"
                     ? "bg-purple-50 dark:bg-purple-950/40 border-purple-600 text-purple-900 dark:text-purple-300 shadow-sm ring-1 ring-purple-600/30"
@@ -538,7 +630,10 @@ export const TeacherModal: React.FC<TeacherModalProps> = ({
 
               <button
                 type="button"
-                onClick={() => setTeachingStages("BOTH")}
+                onClick={() => {
+                  setTeachingStages("BOTH");
+                  setIsManualTeachingStagesOverride(true);
+                }}
                 className={`flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
                   teachingStages === "BOTH"
                     ? "bg-blue-50 dark:bg-blue-950/40 border-blue-600 text-blue-900 dark:text-blue-300 shadow-sm ring-1 ring-blue-600/30"
