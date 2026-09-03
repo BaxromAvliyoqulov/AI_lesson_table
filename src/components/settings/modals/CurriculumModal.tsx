@@ -7,6 +7,7 @@ import {
   isSubjectSuitableForGrade,
   UZBEKISTAN_STANDARD_CURRICULUM,
 } from "@/lib/curriculum-templates";
+import { ConfirmActionModal } from "@/components/modals/ConfirmActionModal";
 import {
   X,
   BookOpen,
@@ -69,6 +70,14 @@ export const CurriculumModal: React.FC<CurriculumModalProps> = ({
   const [catalogCategory, setCatalogCategory] = useState<SubjectCategory>("RECOMMENDED");
   const [selectedCatalogSubjectIds, setSelectedCatalogSubjectIds] = useState<Record<string, number>>({});
   const lastInitializedClassIdRef = React.useRef<string | null>(null);
+
+  // Tasdiqlash modali va Toast
+  const [isClearConfirmOpen, setIsClearConfirmOpen] = useState(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(null), 3500);
+  };
 
   useEffect(() => {
     if (!isOpen || !targetClass) {
@@ -255,7 +264,7 @@ export const CurriculumModal: React.FC<CurriculumModalProps> = ({
     );
 
     if (generated.length === 0) {
-      alert("Maktabingizda mos fanlar katalogi topilmadi. Avval Fanlar bo'limini tekshiring.");
+      showToast("Maktabingizda mos fanlar katalogi topilmadi. Avval Fanlar bo'limini tekshiring.");
       return;
     }
 
@@ -331,9 +340,7 @@ export const CurriculumModal: React.FC<CurriculumModalProps> = ({
   };
 
   const handleClearAll = () => {
-    if (confirm("Haqiqatan ham barcha fanlar yuklamasini tozalamoqchimisiz?")) {
-      setSubjectsList([]);
-    }
+    setIsClearConfirmOpen(true);
   };
 
   // Toggle selection in catalog
@@ -1188,6 +1195,29 @@ export const CurriculumModal: React.FC<CurriculumModalProps> = ({
               </div>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* ── TASDIQLASH MODALI (Zamonaviy UI Confirm) ── */}
+      <ConfirmActionModal
+        isOpen={isClearConfirmOpen}
+        onClose={() => setIsClearConfirmOpen(false)}
+        onConfirm={() => {
+          setSubjectsList([]);
+          setIsClearConfirmOpen(false);
+          showToast("Barcha fanlar yuklamasi tozalandi");
+        }}
+        title="O'quv rejasini tozalash"
+        description="Haqiqatan ham ushbu sinfning barcha fanlar yuklamasini tozalamoqchimisiz?"
+        confirmText="Ha, tozalansin"
+        cancelText="Bekor qilish"
+        variant="danger"
+      />
+
+      {/* ── TOAST XABARNOMA ── */}
+      {toastMessage && (
+        <div className="fixed bottom-6 right-6 z-[1000] px-4 py-3 rounded-2xl shadow-xl bg-slate-900 text-white text-xs font-bold transition-all animate-in slide-in-from-bottom-2">
+          {toastMessage}
         </div>
       )}
     </div>

@@ -3,6 +3,7 @@
 import React, { useState, useMemo } from "react";
 import { Room, Branch, RoomType } from "@/types";
 import { DoorOpen, Plus, Search, Edit2, Trash2, Building2, Users } from "lucide-react";
+import { ConfirmActionModal } from "@/components/modals/ConfirmActionModal";
 
 interface RoomsTabProps {
   rooms: Room[];
@@ -29,6 +30,14 @@ export const RoomsTab: React.FC<RoomsTabProps> = ({
 }) => {
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<string>("ALL");
+
+  // O'chirish tasdiqlash modali va toast
+  const [roomToDelete, setRoomToDelete] = useState<Room | null>(null);
+  const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
+  const showToast = (message: string, type: "success" | "error" = "success") => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 3500);
+  };
 
   const branchMap = useMemo(() => new Map(branches.map((b) => [b.id, b])), [branches]);
 
@@ -127,11 +136,7 @@ export const RoomsTab: React.FC<RoomsTabProps> = ({
                         <Edit2 className="w-3.5 h-3.5" />
                       </button>
                       <button
-                        onClick={() => {
-                          if (confirm(`${room.name} xonasini o'chirishni tasdiqlaysizmi?`)) {
-                            onDeleteRoom(room.id);
-                          }
-                        }}
+                        onClick={() => setRoomToDelete(room)}
                         className="p-1.5 rounded-lg text-rose-400 hover:text-rose-600 hover:bg-rose-500/10 transition-colors cursor-pointer"
                         title="O'chirish"
                       >
@@ -161,6 +166,37 @@ export const RoomsTab: React.FC<RoomsTabProps> = ({
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* ── TASDIQLASH MODALI (Zamonaviy UI Confirm) ── */}
+      <ConfirmActionModal
+        isOpen={!!roomToDelete}
+        onClose={() => setRoomToDelete(null)}
+        onConfirm={() => {
+          if (roomToDelete) {
+            onDeleteRoom(roomToDelete.id);
+            showToast(`"${roomToDelete.name}" xonasi muvaffaqiyatli o'chirildi`);
+            setRoomToDelete(null);
+          }
+        }}
+        title="Xonani o'chirish"
+        description={`"${roomToDelete?.name}" xonasini o'chirishni tasdiqlaysizmi?`}
+        confirmText="Ha, o'chirilsin"
+        cancelText="Bekor qilish"
+        variant="danger"
+      />
+
+      {/* ── TOAST XABARNOMA ── */}
+      {toast && (
+        <div
+          className={`fixed bottom-6 right-6 z-[1000] px-4 py-3 rounded-2xl shadow-xl flex items-center gap-2.5 text-xs font-bold transition-all animate-in slide-in-from-bottom-2 ${
+            toast.type === "success"
+              ? "bg-emerald-600 text-white shadow-emerald-600/30"
+              : "bg-rose-600 text-white shadow-rose-600/30"
+          }`}
+        >
+          <span>{toast.message}</span>
         </div>
       )}
     </div>

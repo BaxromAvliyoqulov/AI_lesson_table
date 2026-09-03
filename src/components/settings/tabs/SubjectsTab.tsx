@@ -4,6 +4,7 @@ import React, { useState, useMemo } from "react";
 import { Subject } from "@/types";
 import { getSanPiNBadge } from "@/lib/utils";
 import { getOfficialMethodDayForSubject } from "@/lib/constants/method-days";
+import { ConfirmActionModal } from "@/components/modals/ConfirmActionModal";
 import {
   BookOpen,
   Plus,
@@ -92,6 +93,14 @@ export const SubjectsTab: React.FC<SubjectsTabProps> = ({
 }) => {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"ALL" | "ACTIVE" | "INACTIVE">("ALL");
+
+  // O'chirish tasdiqlash modali va toast
+  const [subjectToDelete, setSubjectToDelete] = useState<Subject | null>(null);
+  const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
+  const showToast = (message: string, type: "success" | "error" = "success") => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 3500);
+  };
   const [selectedPresetId, setSelectedPresetId] = useState("");
 
   const activeCount = useMemo(
@@ -305,11 +314,7 @@ export const SubjectsTab: React.FC<SubjectsTabProps> = ({
                         <Edit2 className="w-3.5 h-3.5" />
                       </button>
                       <button
-                        onClick={() => {
-                          if (confirm(`${subject.name} fanini o'chirishni tasdiqlaysizmi?`)) {
-                            onDeleteSubject(subject.id);
-                          }
-                        }}
+                        onClick={() => setSubjectToDelete(subject)}
                         className="p-1.5 rounded-lg text-rose-400 hover:text-rose-600 hover:bg-rose-500/10 transition-colors cursor-pointer"
                         title="O'chirish"
                       >
@@ -405,6 +410,37 @@ export const SubjectsTab: React.FC<SubjectsTabProps> = ({
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* ── TASDIQLASH MODALI (Zamonaviy UI Confirm) ── */}
+      <ConfirmActionModal
+        isOpen={!!subjectToDelete}
+        onClose={() => setSubjectToDelete(null)}
+        onConfirm={() => {
+          if (subjectToDelete) {
+            onDeleteSubject(subjectToDelete.id);
+            showToast(`"${subjectToDelete.name}" fani muvaffaqiyatli o'chirildi`);
+            setSubjectToDelete(null);
+          }
+        }}
+        title="Fanni o'chirish"
+        description={`"${subjectToDelete?.name}" fanini katalogdan o'chirishni tasdiqlaysizmi? Ushbu fanga biriktirilgan darslar jadvaldan olib tashlanadi.`}
+        confirmText="Ha, o'chirilsin"
+        cancelText="Bekor qilish"
+        variant="danger"
+      />
+
+      {/* ── TOAST XABARNOMA ── */}
+      {toast && (
+        <div
+          className={`fixed bottom-6 right-6 z-[1000] px-4 py-3 rounded-2xl shadow-xl flex items-center gap-2.5 text-xs font-bold transition-all animate-in slide-in-from-bottom-2 ${
+            toast.type === "success"
+              ? "bg-emerald-600 text-white shadow-emerald-600/30"
+              : "bg-rose-600 text-white shadow-rose-600/30"
+          }`}
+        >
+          <span>{toast.message}</span>
         </div>
       )}
     </div>

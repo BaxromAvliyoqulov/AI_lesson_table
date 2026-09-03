@@ -14,6 +14,7 @@ import { TarifficationHeader, ViewMode } from "./TarifficationHeader";
 import { TarifficationByClassView } from "./TarifficationByClassView";
 import { TarifficationByTeacherView } from "./TarifficationByTeacherView";
 import { TarifficationMatrixView } from "./TarifficationMatrixView";
+import { ConfirmActionModal } from "@/components/modals/ConfirmActionModal";
 
 interface TarifficationWorkspaceProps {
   initialClasses: SchoolClass[];
@@ -98,6 +99,22 @@ export const TarifficationWorkspace: React.FC<TarifficationWorkspaceProps> = ({
     setToast({ message, type });
     setTimeout(() => setToast(null), 3500);
   };
+
+  const [confirmModalConfig, setConfirmModalConfig] = useState<{
+    isOpen: boolean;
+    title: string;
+    description: string;
+    confirmText: string;
+    variant: "danger" | "warning" | "info";
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    title: "",
+    description: "",
+    confirmText: "Ha, tasdiqlayman",
+    variant: "warning",
+    onConfirm: () => {},
+  });
 
   useEffect(() => {
     setClassesData(initialClasses);
@@ -222,12 +239,22 @@ export const TarifficationWorkspace: React.FC<TarifficationWorkspaceProps> = ({
     showToast("🗑️ Fan sinf o'quv rejasidan olib tashlandi va saqlandi!");
   };
 
-  const handleClearClassSubjects = async (classId: string) => {
-    if (!window.confirm("Ushbu sinfning barcha o'quv rejasini tozalashni tasdiqlaysizmi?")) return;
-    const updated = classesData.map((cls) => (cls.id === classId ? { ...cls, subjects: [] } : cls));
-    setClassesData(updated);
-    await onSaveClassSubjects(updated);
-    showToast("🗑️ Sinf o'quv rejasi tozalandi!");
+  const handleClearClassSubjects = (classId: string) => {
+    const cls = classesData.find((c) => c.id === classId);
+    setConfirmModalConfig({
+      isOpen: true,
+      title: "O'quv rejasini tozalash",
+      description: `"${cls?.name || "Sinf"}"ning barcha fanlari va o'quv rejasini tozalashni tasdiqlaysizmi?`,
+      confirmText: "Ha, tozalansin",
+      variant: "danger",
+      onConfirm: async () => {
+        const updated = classesData.map((c) => (c.id === classId ? { ...c, subjects: [] } : c));
+        setClassesData(updated);
+        await onSaveClassSubjects(updated);
+        showToast("🗑️ Sinf o'quv rejasi tozalandi!");
+        setConfirmModalConfig((prev) => ({ ...prev, isOpen: false }));
+      },
+    });
   };
 
   const handleTransferLesson = async (
@@ -282,32 +309,39 @@ export const TarifficationWorkspace: React.FC<TarifficationWorkspaceProps> = ({
     showToast(`✅ ${targetClass.name} sinfiga standart reja yuklandi va bazaga saqlandi!`);
   };
 
-  const handleLoadStandardForAllClasses = async () => {
-    if (!window.confirm("Barcha tanlangan sinflarga davlat o'quv rejasini yuklashni tasdiqlaysizmi?")) return;
+  const handleLoadStandardForAllClasses = () => {
+    setConfirmModalConfig({
+      isOpen: true,
+      title: "Davlat o'quv rejasini yuklash",
+      description: "Barcha tanlangan sinflarga davlat tayanch o'quv rejasini (316 soatlik standart) yuklashni tasdiqlaysizmi?",
+      confirmText: "Ha, yuklansin",
+      variant: "warning",
+      onConfirm: async () => {
+        const tracker = new Map<string, number>();
+        sortedTeachers.forEach((t) => tracker.set(t.id, 0));
 
-    const tracker = new Map<string, number>();
-    sortedTeachers.forEach((t) => tracker.set(t.id, 0));
+        const updated = classesData.map((cls) => {
+          if (selectedBranchId !== "ALL" && cls.branchId !== selectedBranchId) return cls;
+          if (stageFilter === "PRIMARY" && !cls.isPrimary && cls.grade > 4) return cls;
+          if (stageFilter === "HIGH" && (cls.isPrimary || cls.grade <= 4)) return cls;
 
-    const updated = classesData.map((cls) => {
-      if (selectedBranchId !== "ALL" && cls.branchId !== selectedBranchId) return cls;
-      if (stageFilter === "PRIMARY" && !cls.isPrimary && cls.grade > 4) return cls;
-      if (stageFilter === "HIGH" && (cls.isPrimary || cls.grade <= 4)) return cls;
+          const newSubjects = generateStandardCurriculumForClass(
+            cls.grade,
+            cls.id,
+            cls.homeroomTeacherId,
+            subjects,
+            sortedTeachers,
+            tracker
+          );
+          return { ...cls, subjects: newSubjects };
+        });
 
-      const newSubjects = generateStandardCurriculumForClass(
-        cls.grade,
-        cls.id,
-        cls.homeroomTeacherId,
-        subjects,
-        sortedTeachers,
-        tracker
-      );
-
-      return { ...cls, subjects: newSubjects };
+        setClassesData(updated);
+        await onSaveClassSubjects(updated);
+        showToast("✅ Barcha sinflarga davlat tayanch o'quv rejasi yuklandi!");
+        setConfirmModalConfig((prev) => ({ ...prev, isOpen: false }));
+      },
     });
-
-    setClassesData(updated);
-    await onSaveClassSubjects(updated);
-    showToast("✅ Barcha sinflarga davlat o'quv rejasi muvaffaqiyatli tatbiq etildi va saqlandi!");
   };
 
   const handleSave = async () => {
@@ -396,6 +430,18 @@ export const TarifficationWorkspace: React.FC<TarifficationWorkspaceProps> = ({
           />
         )}
       </main>
+
+      {/* ── TASDIQLASH MODALI (Zamonaviy UI Confirm) ── */}
+      <ConfirmActionModal
+        isOpen={confirmModalConfig.isOpen}
+        onClose={() => setConfirmModalConfig((prev) => ({ ...prev, isOpen: false }))}
+        onConfirm={confirmModalConfig.onConfirm}
+        title={confirmModalConfig.title}
+        description={confirmModalConfig.description}
+        confirmText={confirmModalConfig.confirmText}
+        cancelText="Bekor qilish"
+        variant={confirmModalConfig.variant}
+      />
     </div>
   );
 };

@@ -31,6 +31,7 @@ import {
 } from "@/lib/actions/superadmin.actions";
 import { Logo } from "@/components/brand/Logo";
 import { useSchoolStore } from "@/lib/store/useSchoolStore";
+import { ConfirmActionModal } from "@/components/modals/ConfirmActionModal";
 
 export default function SuperAdminPage() {
   const router = useRouter();
@@ -54,6 +55,8 @@ export default function SuperAdminPage() {
     setToastMessage({ text, type });
     setTimeout(() => setToastMessage(null), 3500);
   };
+
+  const [schoolToDelete, setSchoolToDelete] = useState<{ id: string; name: string } | null>(null);
 
   const [newSchool, setNewSchool] = useState({
     name: "",
@@ -118,20 +121,8 @@ export default function SuperAdminPage() {
     }
   };
 
-  const handleDeleteSchool = async (id: string, name: string) => {
-    if (!confirm(`Haqiqatan ham "${name}" maktabini va uning barcha jadvallarini butunlay o'chirmoqchimisiz?`)) {
-      return;
-    }
-
-    setSchools((prev) => prev.filter((s) => s.id !== id));
-    const res = await deleteSchoolAction(id);
-    if (res.success) {
-      showToast(`"${name}" muvaffaqiyatli o'chirildi`, "success");
-      loadData();
-    } else {
-      showToast(res.error || "O'chirishda xato", "error");
-      loadData();
-    }
+  const handleDeleteSchool = (id: string, name: string) => {
+    setSchoolToDelete({ id, name });
   };
 
   const handleImpersonate = (schoolId: string, schoolName: string) => {
@@ -629,10 +620,31 @@ export default function SuperAdminPage() {
         </div>
       )}
 
-      {/* Footer */}
-      <footer className="border-t border-slate-900 py-4 text-center text-xs text-slate-600">
-        © 2026 JadvalAI — Super Administrator Paneli (Neon PostgreSQL Connected)
-      </footer>
+      {/* ── TASDIQLASH MODALI (Zamonaviy UI Confirm) ── */}
+      <ConfirmActionModal
+        isOpen={!!schoolToDelete}
+        onClose={() => setSchoolToDelete(null)}
+        onConfirm={async () => {
+          if (schoolToDelete) {
+            const { id, name } = schoolToDelete;
+            setSchools((prev) => prev.filter((s) => s.id !== id));
+            setSchoolToDelete(null);
+            const res = await deleteSchoolAction(id);
+            if (res.success) {
+              showToast(`"${name}" muvaffaqiyatli o'chirildi`, "success");
+              loadData();
+            } else {
+              showToast(res.error || "O'chirishda xato", "error");
+              loadData();
+            }
+          }
+        }}
+        title="Maktabni o'chirish"
+        description={`Haqiqatan ham "${schoolToDelete?.name}" maktabini va uning barcha dars jadvallarini butunlay o'chirmoqchimisiz? Bu amalni ortga qaytarib bo'lmaydi.`}
+        confirmText="Ha, butunlay o'chirilsin"
+        cancelText="Bekor qilish"
+        variant="danger"
+      />
     </div>
   );
 }

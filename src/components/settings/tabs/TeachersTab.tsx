@@ -4,6 +4,7 @@ import React, { useState, useMemo, useCallback } from "react";
 import { Teacher, Subject, SchoolClass } from "@/types";
 import { ClassSelectCombobox } from "../shared/ClassSelectCombobox";
 import { getEffectiveTeacherMethodDay } from "@/lib/constants/method-days";
+import { ConfirmActionModal } from "@/components/modals/ConfirmActionModal";
 import {
   Users,
   Plus,
@@ -65,6 +66,14 @@ export const TeachersTab: React.FC<TeachersTabProps> = ({
   // Quick homeroom assignment modal state
   const [quickHomeroomTeacher, setQuickHomeroomTeacher] = useState<Teacher | null>(null);
   const [quickClassId, setQuickClassId] = useState<string>("");
+
+  // O'chirishni tasdiqlash modali va Toast
+  const [teacherToDelete, setTeacherToDelete] = useState<Teacher | null>(null);
+  const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
+  const showToast = (message: string, type: "success" | "error" = "success") => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 3500);
+  };
 
   const subjectMap = useMemo(() => new Map(subjects.map((s) => [s.id, s])), [subjects]);
   const classMap = useMemo(() => new Map(classes.map((c) => [c.id, c])), [classes]);
@@ -243,7 +252,7 @@ export const TeachersTab: React.FC<TeachersTabProps> = ({
       a.click();
       URL.revokeObjectURL(url);
     } catch (err) {
-      alert("Excel yuklashda xato yuz berdi");
+      showToast("Excel yuklashda xatolik yuz berdi", "error");
     } finally {
       setIsExporting(false);
     }
@@ -637,15 +646,7 @@ export const TeachersTab: React.FC<TeachersTabProps> = ({
                         <Edit2 className="w-3.5 h-3.5" />
                       </button>
                       <button
-                        onClick={() => {
-                          if (
-                            confirm(
-                              `${teacher.fullName} o'qituvchisini o'chirishni tasdiqlaysizmi?`
-                            )
-                          ) {
-                            onDeleteTeacher(teacher.id);
-                          }
-                        }}
+                        onClick={() => setTeacherToDelete(teacher)}
                         className="p-1.5 rounded-lg text-rose-400 hover:text-rose-600 hover:bg-rose-500/10 transition-colors cursor-pointer"
                         title="O'chirish"
                       >
@@ -916,6 +917,37 @@ export const TeachersTab: React.FC<TeachersTabProps> = ({
               </div>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* ── TASDIQLASH MODALI (Zamonaviy UI Confirm) ── */}
+      <ConfirmActionModal
+        isOpen={!!teacherToDelete}
+        onClose={() => setTeacherToDelete(null)}
+        onConfirm={() => {
+          if (teacherToDelete) {
+            onDeleteTeacher(teacherToDelete.id);
+            showToast(`"${teacherToDelete.fullName}" o'qituvchisi muvaffaqiyatli o'chirildi`);
+            setTeacherToDelete(null);
+          }
+        }}
+        title="O'qituvchini o'chirish"
+        description={`"${teacherToDelete?.fullName}" o'qituvchisini ro'yxatdan o'chirishni tasdiqlaysizmi? Unga biriktirilgan barcha darslar va yuklamalar ham bo'shatiladi.`}
+        confirmText="Ha, o'chirilsin"
+        cancelText="Bekor qilish"
+        variant="danger"
+      />
+
+      {/* ── TOAST XABARNOMA ── */}
+      {toast && (
+        <div
+          className={`fixed bottom-6 right-6 z-[1000] px-4 py-3 rounded-2xl shadow-xl flex items-center gap-2.5 text-xs font-bold transition-all animate-in slide-in-from-bottom-2 ${
+            toast.type === "success"
+              ? "bg-emerald-600 text-white shadow-emerald-600/30"
+              : "bg-rose-600 text-white shadow-rose-600/30"
+          }`}
+        >
+          <span>{toast.message}</span>
         </div>
       )}
     </div>
