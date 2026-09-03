@@ -351,7 +351,7 @@ export default function HomePage() {
         {/* Generatsiya Xulosasi Kartasi (Banner) */}
         {generationResult && (
           <div className="border-b border-border bg-gradient-to-r from-blue-500/10 via-indigo-500/10 to-transparent p-4 animate-in fade-in">
-            <div className="mx-auto flex max-w-7xl items-center justify-between gap-4">
+            <div className="mx-auto flex max-w-[1920px] items-center justify-between gap-4">
               <div className="flex items-center gap-3">
                 <div className="p-2 rounded-xl bg-primary text-primary-foreground shadow-md">
                   <Sparkles className="h-5 w-5" />

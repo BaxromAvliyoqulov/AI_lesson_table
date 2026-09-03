@@ -121,7 +121,7 @@ export const TeacherScheduleView: React.FC<TeacherScheduleViewProps> = ({
     : null;
 
   return (
-    <div className="flex flex-col h-full space-y-4 p-4 max-w-7xl mx-auto">
+    <div className="flex flex-col h-full space-y-4 p-4 max-w-[1920px] w-full mx-auto">
       {/* ── TEACHER STATUS & SELECTOR DASHBOARD ─────────────────────────────── */}
       <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 p-4 rounded-3xl bg-card border border-border shadow-xs">
         {/* Left: Subject & Teacher Switcher */}

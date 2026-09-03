@@ -71,7 +71,7 @@ export const SingleClassView: React.FC<SingleClassViewProps> = ({
   }
 
   return (
-    <div className="flex flex-col h-full space-y-4 p-4 max-w-7xl mx-auto">
+    <div className="flex flex-col h-full space-y-4 p-4 max-w-[1920px] w-full mx-auto">
       {/* Top Class Switcher Bar */}
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-3">
         <div className="flex items-center gap-2">

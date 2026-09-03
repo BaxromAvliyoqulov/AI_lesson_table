@@ -158,7 +158,7 @@ export default function SettingsPage() {
 
       {/* Top Header */}
       <header className="sticky top-0 z-40 bg-card/80 backdrop-blur-xl border-b border-border/80">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-10">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center gap-4">
               <Link
@@ -274,7 +274,7 @@ export default function SettingsPage() {
       </header>
 
       {/* Main Content Body */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <main className="flex-1 max-w-[1920px] w-full mx-auto px-4 sm:px-6 lg:px-8 xl:px-10 py-6">
         {activeTab === "CLASSES" && (
           <ClassesTab
             classes={schoolClasses}
