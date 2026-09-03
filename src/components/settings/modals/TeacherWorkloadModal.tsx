@@ -119,9 +119,38 @@ export const TeacherWorkloadModal: React.FC<TeacherWorkloadModalProps> = ({
         });
       });
 
+      // KAFOLAT: Agar bu o'qituvchi sinf rahbari bo'lsa, uning sinfiga 1 soatlik Sinf soati avtomatik biriktiriladi!
+      const homeroomClassId =
+        teacher.homeroomClassId ||
+        classes.find((c) => c.homeroomTeacherId === teacher.id)?.id;
+
+      if (homeroomClassId) {
+        const sinfSoatiSub =
+          subjects.find((s) => isKelajakOrSinfSoatiSubject(s.id, s.name)) ||
+          subjects.find((s) => s.id === "sub_sinf_soati");
+
+        const hasHomeroomClassHour = currentList.some((item) => {
+          const sub = subjectMap.get(item.subjectId) || subjects.find((s) => s.id === item.subjectId);
+          return (
+            item.classId === homeroomClassId &&
+            isKelajakOrSinfSoatiSubject(item.subjectId, sub?.name)
+          );
+        });
+
+        if (!hasHomeroomClassHour && sinfSoatiSub) {
+          currentList.unshift({
+            classId: homeroomClassId,
+            subjectId: sinfSoatiSub.id,
+            weeklyHours: 1,
+            isSplit: false,
+            groupType: "WHOLE",
+          });
+        }
+      }
+
       setAssignments(currentList);
     }
-  }, [isOpen, teacher?.id, teacher, classes, teacherSubjects, subjects]);
+  }, [isOpen, teacher?.id, teacher, classes, teacherSubjects, subjects, subjectMap]);
 
   // Total hours assigned vs Teacher's capacity (Kelajak/Sinf soati dars stavkasidan qat'iy chegiriladi!)
   const { totalAssignedHours, totalHomeroomHours, totalPhysicalHours } = useMemo(() => {
@@ -306,9 +335,39 @@ export const TeacherWorkloadModal: React.FC<TeacherWorkloadModalProps> = ({
 
   const handleSave = () => {
     if (!teacher) return;
-    const valid = assignments.filter(
+    let valid = assignments.filter(
       (a) => a.classId && a.subjectId && Number(a.weeklyHours) > 0
     );
+
+    // KAFOLAT: Agar o'qituvchi sinf rahbari bo'lsa, uning sinfiga 1 soatlik Sinf soati doim saqlanadi
+    const homeroomClassId =
+      teacher.homeroomClassId ||
+      classes.find((c) => c.homeroomTeacherId === teacher.id)?.id;
+
+    if (homeroomClassId) {
+      const sinfSoatiSub =
+        subjects.find((s) => isKelajakOrSinfSoatiSubject(s.id, s.name)) ||
+        subjects.find((s) => s.id === "sub_sinf_soati");
+
+      const hasHomeroomClassHour = valid.some((item) => {
+        const sub = subjectMap.get(item.subjectId) || subjects.find((s) => s.id === item.subjectId);
+        return (
+          item.classId === homeroomClassId &&
+          isKelajakOrSinfSoatiSubject(item.subjectId, sub?.name)
+        );
+      });
+
+      if (!hasHomeroomClassHour && sinfSoatiSub) {
+        valid.unshift({
+          classId: homeroomClassId,
+          subjectId: sinfSoatiSub.id,
+          weeklyHours: 1,
+          isSplit: false,
+          groupType: "WHOLE",
+        });
+      }
+    }
+
     onSave(teacher.id, valid);
     onClose();
   };
