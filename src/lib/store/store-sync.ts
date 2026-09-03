@@ -1,6 +1,8 @@
 import { useCallback, useEffect } from "react";
 import { getSchoolFullData, syncFullSchoolDataAction } from "@/lib/actions/school.actions";
 import { sortClassesByName } from "@/lib/utils";
+import { isKelajakOrSinfSoatiSubject } from "@/lib/curriculum-templates";
+import { SchoolClass, Teacher, Subject, Lesson } from "@/types";
 import {
   storeState,
   updateStore,
@@ -11,6 +13,120 @@ import {
   syncChannel,
   addAuditLog,
 } from "./store-core";
+
+export function normalizeHomeroomSinfSoati({
+  classes,
+  teachers,
+  subjects,
+  lessons,
+}: {
+  classes: SchoolClass[];
+  teachers: Teacher[];
+  subjects: Subject[];
+  lessons: Lesson[];
+}) {
+  const sinfSoatiSub =
+    subjects.find((s) => isKelajakOrSinfSoatiSubject(s.id, s.name)) ||
+    subjects.find((s) => s.id === "sub_sinf_soati");
+  const finalSubId = sinfSoatiSub?.id || "sub_sinf_soati";
+
+  // 1. Sinflarni tekshirish va sinf rahbari bo'lgan sinflarga 1 soatlik Sinf soatini kafolatlash
+  const normalizedClasses = classes.map((c) => {
+    const teacherByClass = teachers.find((t) => t.homeroomClassId === c.id);
+    const hrTeacherId = c.homeroomTeacherId || teacherByClass?.id;
+
+    if (!hrTeacherId) return c;
+
+    const existingSubjects = c.subjects || [];
+    const hasSinfSoati = existingSubjects.some((s) =>
+      isKelajakOrSinfSoatiSubject(s.subjectId)
+    );
+
+    let updatedSubjects = existingSubjects;
+    if (!hasSinfSoati) {
+      updatedSubjects = [
+        ...existingSubjects,
+        {
+          classId: c.id,
+          subjectId: finalSubId,
+          hoursPerWeek: 1,
+          weeklyHours: 1,
+          teacherId: hrTeacherId,
+          canSplit: false,
+          isMandatory: true,
+          groupType: "WHOLE",
+        } as any,
+      ];
+    } else {
+      updatedSubjects = existingSubjects.map((s) =>
+        isKelajakOrSinfSoatiSubject(s.subjectId)
+          ? { ...s, teacherId: hrTeacherId }
+          : s
+      );
+    }
+
+    return {
+      ...c,
+      homeroomTeacherId: hrTeacherId,
+      subjects: updatedSubjects,
+    };
+  });
+
+  // 2. O'qituvchilarni tekshirish: sinf rahbarlariga Sinf soati fanini qo'shish
+  const normalizedTeachers = teachers.map((t) => {
+    const hrClass = normalizedClasses.find(
+      (c) => c.homeroomTeacherId === t.id || t.homeroomClassId === c.id
+    );
+    if (hrClass) {
+      const currentSubIds = t.subjectIds || [];
+      const newSubIds = currentSubIds.includes(finalSubId)
+        ? currentSubIds
+        : [...currentSubIds, finalSubId];
+      return {
+        ...t,
+        homeroomClassId: hrClass.id,
+        subjectIds: newSubIds,
+      };
+    }
+    return t;
+  });
+
+  // 3. Dars jadvalida Dushanba 1-soat darsini kafolatlash
+  const normalizedLessons = [...lessons];
+  normalizedClasses.forEach((c) => {
+    if (c.homeroomTeacherId) {
+      const mondayFirstLesson = normalizedLessons.find(
+        (l) => l.classId === c.id && l.dayOfWeek === 1 && l.periodNumber === 1
+      );
+      if (!mondayFirstLesson) {
+        normalizedLessons.push({
+          id: `lesson_monday_1_${c.id}_${Date.now()}`,
+          scheduleId: "official_39_schedule",
+          schoolId: c.schoolId,
+          branchId: c.branchId || "",
+          classId: c.id,
+          subjectId: finalSubId,
+          teacherId: c.homeroomTeacherId,
+          dayOfWeek: 1,
+          periodNumber: 1,
+          isLocked: true,
+        });
+      } else if (
+        isKelajakOrSinfSoatiSubject(mondayFirstLesson.subjectId) &&
+        mondayFirstLesson.teacherId !== c.homeroomTeacherId
+      ) {
+        mondayFirstLesson.teacherId = c.homeroomTeacherId;
+        mondayFirstLesson.isLocked = true;
+      }
+    }
+  });
+
+  return {
+    classes: normalizedClasses,
+    teachers: normalizedTeachers,
+    lessons: normalizedLessons,
+  };
+}
 
 export function useStoreSync() {
   const fetchServerData = useCallback(async (schoolIdToFetch?: string, silent = false) => {
@@ -33,6 +149,13 @@ export function useStoreSync() {
           bellPeriods,
         } = res.data;
 
+        const normalized = normalizeHomeroomSinfSoati({
+          classes: sortClassesByName(classes),
+          teachers,
+          subjects,
+          lessons,
+        });
+
         updateStore(
           (prev) => {
             const newState = {
@@ -46,9 +169,9 @@ export function useStoreSync() {
               shifts,
               subjects,
               rooms,
-              teachers,
-              classes: sortClassesByName(classes),
-              lessons,
+              teachers: normalized.teachers,
+              classes: normalized.classes,
+              lessons: normalized.lessons,
               bellPeriods: bellPeriods.length > 0 ? bellPeriods : prev.bellPeriods,
               syncStatus: "synced" as const,
             };
@@ -118,7 +241,23 @@ export function useStoreSync() {
       setHasHydrated(true);
       const saved = getLocalStorageState();
       if (saved) {
-        updateStore((prev) => ({ ...prev, ...saved, isGenerating: false }), false);
+        const normalized = normalizeHomeroomSinfSoati({
+          classes: saved.classes || [],
+          teachers: saved.teachers || [],
+          subjects: saved.subjects || [],
+          lessons: saved.lessons || [],
+        });
+        updateStore(
+          (prev) => ({
+            ...prev,
+            ...saved,
+            classes: normalized.classes,
+            teachers: normalized.teachers,
+            lessons: normalized.lessons,
+            isGenerating: false,
+          }),
+          false
+        );
       }
       fetchServerData();
     }

@@ -128,7 +128,7 @@ export const TeachersTab: React.FC<TeachersTabProps> = ({
     [classes, classMap]
   );
 
-  // 1. Calculate each teacher's assigned hours and class count (Kelajak soati dars stavkasiga kirmaydi)
+  // 1. Calculate each teacher's assigned hours and class count (Sinf rahbari soati ham dars yuklamasiga kiradi)
   const teacherWorkloadMap = useMemo(() => {
     const map = new Map<string, { assignedHours: number; classCount: number }>();
     teachers.forEach((t) => {
@@ -137,23 +137,28 @@ export const TeachersTab: React.FC<TeachersTabProps> = ({
       classes.forEach((c) => {
         (c.subjects || []).forEach((cs) => {
           if (cs.teacherId === t.id) {
-            const sub = subjectMap.get(cs.subjectId);
-            const isHomeroomClassHour =
-              isKelajakOrSinfSoatiSubject(cs.subjectId, sub?.name) &&
-              t.homeroomClassId === c.id;
-
-            // Faqat o'qituvchi o'zi sinf rahbari bo'lgan sinfdagi 1 soatlik Sinf soati stavkaga kirmaydi
-            if (!isHomeroomClassHour) {
-              hours += Number(cs.weeklyHours) || 0;
-            }
+            hours += Number(cs.weeklyHours) || 0;
             classSet.add(c.id);
           }
         });
       });
+
+      // KAFOLAT: Agar o'qituvchi sinf rahbari bo'lsa, kamida o'z sinfidagi 1 soatlik Sinf soati uning yuklamasiga qo'shiladi!
+      const homeroomClass = getTeacherHomeroomClass(t);
+      if (homeroomClass) {
+        classSet.add(homeroomClass.id);
+        const hasSinfSoatiInSubs = (homeroomClass.subjects || []).some(
+          (cs) => cs.teacherId === t.id && isKelajakOrSinfSoatiSubject(cs.subjectId)
+        );
+        if (!hasSinfSoatiInSubs && hours === 0) {
+          hours += 1;
+        }
+      }
+
       map.set(t.id, { assignedHours: hours, classCount: classSet.size });
     });
     return map;
-  }, [teachers, classes, subjectMap]);
+  }, [teachers, classes, subjectMap, getTeacherHomeroomClass]);
 
   // 2. Global Aggregations for Top Status Bars
   const totalCapacityHours = useMemo(
@@ -607,11 +612,28 @@ export const TeachersTab: React.FC<TeachersTabProps> = ({
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 min-w-0">
           {filteredTeachers.map((teacher) => {
-            const teacherSubs = teacher.subjectIds
+            const homeroomClass = getTeacherHomeroomClass(teacher);
+            let teacherSubs = teacher.subjectIds
               .map((id) => subjectMap.get(id))
               .filter(Boolean) as Subject[];
 
-            const homeroomClass = getTeacherHomeroomClass(teacher);
+            // Agar o'qituvchi sinf rahbari bo'lsa, uning fanlari qatoriga "Sinf soati" ham albatta qo'shiladi!
+            if (homeroomClass) {
+              const hasSinfSoati = teacherSubs.some((s) => isKelajakOrSinfSoatiSubject(s.id, s.name));
+              if (!hasSinfSoati) {
+                const sinfSoatiSub =
+                  subjects.find((s) => isKelajakOrSinfSoatiSubject(s.id, s.name)) ||
+                  subjectMap.get("sub_sinf_soati") ||
+                  ({
+                    id: "sub_sinf_soati",
+                    name: "Sinf soati",
+                    shortName: "Sinf soati",
+                    colorTag: "#6366f1",
+                    schoolId: teacher.schoolId,
+                  } as Subject);
+                teacherSubs = [...teacherSubs, sinfSoatiSub];
+              }
+            }
             const workload = teacherWorkloadMap.get(teacher.id) || {
               assignedHours: 0,
               classCount: 0,

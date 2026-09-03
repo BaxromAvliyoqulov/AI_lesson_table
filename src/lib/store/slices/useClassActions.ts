@@ -207,7 +207,11 @@ export function useClassActions() {
 
       const updatedTeachers = prev.teachers.map((t) => {
         if (tid && t.id === tid) {
-          return { ...t, homeroomClassId: classId };
+          const sinfSoatiSubId =
+            prev.subjects.find((subItem) => isKelajakOrSinfSoatiSubject(subItem.id, subItem.name))?.id ||
+            "sub_sinf_soati";
+          const newSubIds = Array.from(new Set([...(t.subjectIds || []), sinfSoatiSubId]));
+          return { ...t, homeroomClassId: classId, subjectIds: newSubIds };
         }
         if (t.homeroomClassId === classId && (!tid || t.id !== tid)) {
           return { ...t, homeroomClassId: undefined };
@@ -363,6 +367,26 @@ export function useClassActions() {
               );
             }
           });
+
+          // KAFOLAT: Agar bu o'qituvchi shu sinfda sinf rahbari bo'lsa, 1 soatlik Sinf soati har doim saqlanadi!
+          if (c.homeroomTeacherId === teacherId) {
+            const hasSinfSoatiInAssignments = addedSubjects.some((as) =>
+              isKelajakOrSinfSoatiSubject(as.subjectId)
+            );
+            if (!hasSinfSoatiInAssignments) {
+              const sinfSoatiSub =
+                prev.subjects.find((subItem) => isKelajakOrSinfSoatiSubject(subItem.id, subItem.name)) ||
+                prev.subjects.find((subItem) => subItem.id === "sub_sinf_soati");
+              const finalSubId = sinfSoatiSub?.id || "sub_sinf_soati";
+              addedSubjects.unshift({
+                classId: c.id,
+                subjectId: finalSubId,
+                teacherId: teacherId,
+                weeklyHours: 1,
+                groupType: "WHOLE",
+              });
+            }
+          }
 
           const deduped: ClassSubject[] = [
             ...remainingSubjects.filter(
