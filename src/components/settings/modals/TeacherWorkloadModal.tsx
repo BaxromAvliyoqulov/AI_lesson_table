@@ -119,16 +119,25 @@ export const TeacherWorkloadModal: React.FC<TeacherWorkloadModalProps> = ({
     }
   }, [isOpen, teacher?.id, teacher, classes, teacherSubjects, subjects]);
 
-  // Total hours assigned vs Teacher's capacity (Kelajak/Sinf soati dars stavkasidan chegiriladi!)
-  const totalAssignedHours = useMemo(() => {
-    return assignments.reduce((sum, item) => {
-      const sub = subjectMap.get(item.subjectId);
+  // Total hours assigned vs Teacher's capacity (Kelajak/Sinf soati dars stavkasidan qat'iy chegiriladi!)
+  const { totalAssignedHours, totalHomeroomHours, totalPhysicalHours } = useMemo(() => {
+    let assigned = 0;
+    let homeroom = 0;
+    assignments.forEach((item) => {
+      const sub = subjectMap.get(item.subjectId) || subjects.find((s) => s.id === item.subjectId);
+      const hours = Number(item.weeklyHours) || 0;
       if (isKelajakOrSinfSoatiSubject(item.subjectId, sub?.name)) {
-        return sum;
+        homeroom += hours;
+      } else {
+        assigned += hours;
       }
-      return sum + (Number(item.weeklyHours) || 0);
-    }, 0);
-  }, [assignments, subjectMap]);
+    });
+    return {
+      totalAssignedHours: assigned,
+      totalHomeroomHours: homeroom,
+      totalPhysicalHours: assigned + homeroom,
+    };
+  }, [assignments, subjectMap, subjects]);
 
   const capacity = teacher?.weeklyHourCapacity || 20;
   const remainingHours = capacity - totalAssignedHours;
@@ -139,13 +148,14 @@ export const TeacherWorkloadModal: React.FC<TeacherWorkloadModalProps> = ({
     const map = new Map<string, number>();
     classes.forEach((cls) => {
       (cls.subjects || []).forEach((cs) => {
-        if (cs.teacherId && !isKelajakOrSinfSoatiSubject(cs.subjectId)) {
+        const sub = subjectMap.get(cs.subjectId) || subjects.find((s) => s.id === cs.subjectId);
+        if (cs.teacherId && !isKelajakOrSinfSoatiSubject(cs.subjectId, sub?.name)) {
           map.set(cs.teacherId, (map.get(cs.teacherId) || 0) + (Number(cs.weeklyHours) || 0));
         }
       });
     });
     return map;
-  }, [classes]);
+  }, [classes, subjectMap, subjects]);
 
   if (!isOpen || !teacher) return null;
 
@@ -347,16 +357,22 @@ export const TeacherWorkloadModal: React.FC<TeacherWorkloadModalProps> = ({
               }`}
             >
               <span>
-                {totalAssignedHours} / {capacity} soat
+                {totalAssignedHours} / {capacity} soat stavka
               </span>
               <span className="text-[10px] font-normal opacity-80">
                 {remainingHours > 0
                   ? `(${remainingHours} soat bo'sh)`
                   : remainingHours === 0
-                  ? "(To'liq stavka)"
+                  ? "(Optimal stavka • 100%)"
                   : `(+${Math.abs(remainingHours)} soat ortiqcha)`}
               </span>
             </span>
+
+            {totalHomeroomHours > 0 && (
+              <span className="font-bold px-2.5 py-1 rounded-xl text-xs bg-purple-100 dark:bg-purple-950/50 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800 flex items-center gap-1">
+                <span>👤 +{totalHomeroomHours} soat sinf rahbarligi</span>
+              </span>
+            )}
           </div>
 
           <div className="flex items-center gap-2">
@@ -888,13 +904,21 @@ export const TeacherWorkloadModal: React.FC<TeacherWorkloadModalProps> = ({
 
         {/* ── FOOTER ──────────────────────────────────────────────────────── */}
         <div className="flex items-center justify-between px-6 py-4 border-t border-border/80 bg-muted/20 shrink-0">
-          <div className="text-xs text-muted-foreground flex items-center gap-1.5">
+          <div className="text-xs text-muted-foreground flex flex-wrap items-center gap-2">
             <span className="font-bold text-foreground">
-              {assignments.length} ta sinf/fan
+              {assignments.length} ta fan
             </span>
             <span>•</span>
             <span className="font-black text-indigo-600 dark:text-indigo-400">
-              Jami {totalAssignedHours} soat stavka
+              {totalAssignedHours} soat dars stavkasi
+            </span>
+            {totalHomeroomHours > 0 && (
+              <span className="font-bold text-purple-700 dark:text-purple-300 bg-purple-100/90 dark:bg-purple-950/50 px-2 py-0.5 rounded-lg border border-purple-200 dark:border-purple-800">
+                +{totalHomeroomHours} soat sinf soati
+              </span>
+            )}
+            <span className="text-[11px] text-muted-foreground font-semibold">
+              (Jami darslar: {totalPhysicalHours} soat)
             </span>
           </div>
           <div className="flex items-center gap-2.5">

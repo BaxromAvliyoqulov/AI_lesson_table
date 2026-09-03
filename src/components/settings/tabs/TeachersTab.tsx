@@ -864,7 +864,7 @@ export const TeachersTab: React.FC<TeachersTabProps> = ({
                   >
                     <BookOpen className="w-3.5 h-3.5 shrink-0" />
                     <span>
-                      Dars taqsimoti ({workload.assignedHours} st • {workload.classCount} sinf)
+                      Dars taqsimoti ({workload.assignedHours} st stavka • {workload.classCount} sinf)
                     </span>
                   </button>
                 )}
