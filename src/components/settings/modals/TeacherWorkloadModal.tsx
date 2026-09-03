@@ -125,31 +125,29 @@ export const TeacherWorkloadModal: React.FC<TeacherWorkloadModalProps> = ({
         teacher.homeroomClassId ||
         classes.find((c) => c.homeroomTeacherId === teacher.id)?.id;
 
-      if (homeroomClassId) {
-        const sinfSoatiSub =
-          subjects.find((s) => isKelajakOrSinfSoatiSubject(s.id, s.name)) ||
-          subjects.find((s) => s.id === "sub_sinf_soati");
+      // KAFOLAT: O'qituvchining dars taqsimotida Sinf soati har doim MAKSIMUM 1 DANA bo'lishi shart!
+      const sinfSoatiSub =
+        subjects.find((s) => isKelajakOrSinfSoatiSubject(s.id, s.name)) ||
+        subjects.find((s) => s.id === "sub_sinf_soati");
 
-        const hasHomeroomClassHour = currentList.some((item) => {
-          const sub = subjectMap.get(item.subjectId) || subjects.find((s) => s.id === item.subjectId);
-          return (
-            item.classId === homeroomClassId &&
-            isKelajakOrSinfSoatiSubject(item.subjectId, sub?.name)
-          );
+      // Barcha mavjud dublikat Sinf soatlarini olib tashlaymiz
+      const filteredList = currentList.filter((item) => {
+        const sub = subjectMap.get(item.subjectId) || subjects.find((s) => s.id === item.subjectId);
+        return !isKelajakOrSinfSoatiSubject(item.subjectId, sub?.name);
+      });
+
+      // Agar o'qituvchi sinf rahbari bo'lsa, o'z sinfiga FAQAT 1 DANA 1 soatlik Sinf soati qo'shamiz
+      if (homeroomClassId && sinfSoatiSub) {
+        filteredList.unshift({
+          classId: homeroomClassId,
+          subjectId: sinfSoatiSub.id,
+          weeklyHours: 1,
+          isSplit: false,
+          groupType: "WHOLE",
         });
-
-        if (!hasHomeroomClassHour && sinfSoatiSub) {
-          currentList.unshift({
-            classId: homeroomClassId,
-            subjectId: sinfSoatiSub.id,
-            weeklyHours: 1,
-            isSplit: false,
-            groupType: "WHOLE",
-          });
-        }
       }
 
-      setAssignments(currentList);
+      setAssignments(filteredList);
     }
   }, [isOpen, teacher?.id, teacher, classes, teacherSubjects, subjects, subjectMap]);
 

@@ -2,7 +2,7 @@ import { useCallback, useEffect } from "react";
 import { getSchoolFullData, syncFullSchoolDataAction } from "@/lib/actions/school.actions";
 import { sortClassesByName } from "@/lib/utils";
 import { isKelajakOrSinfSoatiSubject } from "@/lib/curriculum-templates";
-import { SchoolClass, Teacher, Subject, Lesson } from "@/types";
+import { SchoolClass, Teacher, Subject, Lesson, ClassSubject } from "@/types";
 import {
   storeState,
   updateStore,
@@ -30,45 +30,38 @@ export function normalizeHomeroomSinfSoati({
     subjects.find((s) => s.id === "sub_sinf_soati");
   const finalSubId = sinfSoatiSub?.id || "sub_sinf_soati";
 
-  // 1. Sinflarni tekshirish va sinf rahbari bo'lgan sinflarga 1 soatlik Sinf soatini kafolatlash
+  // 1. Sinflarni tekshirish: har bir sinfda FAQAT VA FAQAT 1 DONA Sinf soati (1 soat) bo'lishini kafolatlash
   const normalizedClasses = classes.map((c) => {
     const teacherByClass = teachers.find((t) => t.homeroomClassId === c.id);
     const hrTeacherId = c.homeroomTeacherId || teacherByClass?.id;
 
-    if (!hrTeacherId) return c;
-
     const existingSubjects = c.subjects || [];
-    const hasSinfSoati = existingSubjects.some((s) =>
-      isKelajakOrSinfSoatiSubject(s.subjectId)
+
+    if (!hrTeacherId) {
+      return c;
+    }
+
+    // Barcha eski va dublikat Sinf soatlarini butunlay tozalaymiz
+    const otherSubjects = existingSubjects.filter(
+      (s) => !isKelajakOrSinfSoatiSubject(s.subjectId)
     );
 
-    let updatedSubjects = existingSubjects;
-    if (!hasSinfSoati) {
-      updatedSubjects = [
-        ...existingSubjects,
-        {
-          classId: c.id,
-          subjectId: finalSubId,
-          hoursPerWeek: 1,
-          weeklyHours: 1,
-          teacherId: hrTeacherId,
-          canSplit: false,
-          isMandatory: true,
-          groupType: "WHOLE",
-        } as any,
-      ];
-    } else {
-      updatedSubjects = existingSubjects.map((s) =>
-        isKelajakOrSinfSoatiSubject(s.subjectId)
-          ? { ...s, teacherId: hrTeacherId }
-          : s
-      );
-    }
+    // QAT'IY 1 DONA (1 soatlik) SINF SOATI
+    const singleHomeroomHour: ClassSubject = {
+      classId: c.id,
+      subjectId: finalSubId,
+      hoursPerWeek: 1,
+      weeklyHours: 1,
+      teacherId: hrTeacherId,
+      canSplit: false,
+      isMandatory: true,
+      groupType: "WHOLE",
+    } as any;
 
     return {
       ...c,
       homeroomTeacherId: hrTeacherId,
-      subjects: updatedSubjects,
+      subjects: [...otherSubjects, singleHomeroomHour],
     };
   });
 
@@ -136,10 +129,20 @@ export function normalizeHomeroomSinfSoati({
     };
   });
 
-  // 3. Dars jadvalida Dushanba 1-soat darsini kafolatlash
-  const normalizedLessons = [...lessons];
+  // 3. Dars jadvalida har bir sinfda faqat Dushanba 1-soatda 1 dona Sinf soati bo'ladi
+  let normalizedLessons = [...lessons];
   normalizedClasses.forEach((c) => {
     if (c.homeroomTeacherId) {
+      // Dushanba 1-soatdan tashqari barcha ortiqcha Sinf soatlarini olib tashlash
+      normalizedLessons = normalizedLessons.filter(
+        (l) =>
+          !(
+            l.classId === c.id &&
+            isKelajakOrSinfSoatiSubject(l.subjectId) &&
+            !(l.dayOfWeek === 1 && l.periodNumber === 1)
+          )
+      );
+
       const mondayFirstLesson = normalizedLessons.find(
         (l) => l.classId === c.id && l.dayOfWeek === 1 && l.periodNumber === 1
       );
@@ -156,10 +159,8 @@ export function normalizeHomeroomSinfSoati({
           periodNumber: 1,
           isLocked: true,
         });
-      } else if (
-        isKelajakOrSinfSoatiSubject(mondayFirstLesson.subjectId) &&
-        mondayFirstLesson.teacherId !== c.homeroomTeacherId
-      ) {
+      } else {
+        mondayFirstLesson.subjectId = finalSubId;
         mondayFirstLesson.teacherId = c.homeroomTeacherId;
         mondayFirstLesson.isLocked = true;
       }

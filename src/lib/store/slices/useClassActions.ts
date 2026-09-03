@@ -398,7 +398,19 @@ export function useClassActions() {
             ...addedSubjects,
           ];
 
-          return { ...c, subjects: deduped };
+          // KAFOLAT: Har bir sinfda Sinf soati FAQAT VA FAQAT 1 DONA bo'lishi shart!
+          let seenSinfSoatiInClass = false;
+          const strictlyUniqueSubjects = deduped.filter((s) => {
+            if (isKelajakOrSinfSoatiSubject(s.subjectId)) {
+              if (seenSinfSoatiInClass) return false;
+              seenSinfSoatiInClass = true;
+              s.weeklyHours = 1;
+              return true;
+            }
+            return true;
+          });
+
+          return { ...c, subjects: strictlyUniqueSubjects };
         });
 
         return {
