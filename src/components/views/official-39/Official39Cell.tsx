@@ -236,7 +236,7 @@ export const OfficialTableCell: React.FC<OfficialTableCellProps> = ({
             {num1 || "?"} / {num2 || "?"}
           </span>
         ) : (
-          teacherNumber || ""
+          (lesson && teacherNumberMap ? teacherNumberMap.get(lesson.teacherId) : teacherNumber) || ""
         )}
       </td>
     </>

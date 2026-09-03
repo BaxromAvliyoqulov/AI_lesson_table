@@ -764,6 +764,7 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
             onToggleLock={handleToggleLock}
             onDeleteLesson={handleDeleteLesson}
             onOpenZamena={onOpenZamena}
+            teacherNumberMap={teacherNumberMap}
           />
         )}
 

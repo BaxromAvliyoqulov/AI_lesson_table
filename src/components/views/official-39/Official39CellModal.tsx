@@ -24,6 +24,7 @@ interface Official39CellModalProps {
   onToggleLock: (lessonId: string) => void;
   onDeleteLesson: (lessonId: string) => void;
   onOpenZamena?: (lesson: Lesson) => void;
+  teacherNumberMap?: Map<string, number>;
 }
 
 export const Official39CellModal: React.FC<Official39CellModalProps> = ({
@@ -41,6 +42,7 @@ export const Official39CellModal: React.FC<Official39CellModalProps> = ({
   onToggleLock,
   onDeleteLesson,
   onOpenZamena,
+  teacherNumberMap,
 }) => {
   if (!isOpen) return null;
 
@@ -153,11 +155,14 @@ export const Official39CellModal: React.FC<Official39CellModalProps> = ({
               onChange={(e) => onTeacherChange(e.target.value)}
               className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 text-xs font-bold outline-none focus:bg-white focus:ring-2 focus:ring-blue-500"
             >
-              {teachers.map((t, idx) => (
-                <option key={t.id} value={t.id}>
-                  №{idx + 1} &bull; {t.fullName}
-                </option>
-              ))}
+              {teachers.map((t, idx) => {
+                const num = teacherNumberMap?.get(t.id) ?? (idx + 1);
+                return (
+                  <option key={t.id} value={t.id}>
+                    №{num} &bull; {t.fullName}
+                  </option>
+                );
+              })}
             </select>
           </div>
 
