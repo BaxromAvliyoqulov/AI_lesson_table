@@ -168,9 +168,6 @@ export const TeacherWorkloadModal: React.FC<TeacherWorkloadModalProps> = ({
     return map;
   }, [classes, subjectMap, subjects]);
 
-  if (!isOpen || !teacher) return null;
-
-  // Tezkor sinfni qo'shish / o'chirish (Toggle)
   const handleToggleClassAssignment = (classId: string) => {
     const targetSubjectId = batchSubjectId || defaultSubjectId;
     const existingIndex = assignments.findIndex(
@@ -287,7 +284,7 @@ export const TeacherWorkloadModal: React.FC<TeacherWorkloadModalProps> = ({
         if (nextIsSplit) {
           // Shu fanni o'tadigan boshqa o'qituvchini topamiz (default taklif)
           const suitableTeacher = teachers.find(
-            (t) => t.id !== teacher.id && (t.subjectIds || []).includes(item.subjectId)
+            (t) => t.id !== teacher?.id && (t.subjectIds || []).includes(item.subjectId)
           );
           return {
             ...item,
@@ -308,6 +305,7 @@ export const TeacherWorkloadModal: React.FC<TeacherWorkloadModalProps> = ({
   };
 
   const handleSave = () => {
+    if (!teacher) return;
     const valid = assignments.filter(
       (a) => a.classId && a.subjectId && Number(a.weeklyHours) > 0
     );
@@ -326,6 +324,8 @@ export const TeacherWorkloadModal: React.FC<TeacherWorkloadModalProps> = ({
     classes.forEach((c) => set.add(c.grade));
     return Array.from(set).sort((a, b) => a - b);
   }, [classes]);
+
+  if (!isOpen || !teacher) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-150">
