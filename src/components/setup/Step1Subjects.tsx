@@ -15,7 +15,7 @@ const DEFAULT_SUBJECTS = [
   "Tarix","Jahon tarixi","O'zbekiston tarixi","Geografiya","Biologiya","Fizika","Kimyo",
   "Informatika","Tabiiy fan","Texnologiya","Tasviriy san'at","Musiqa","Jismoniy tarbiya",
   "Chizmachilik","Huquq","Iqtisod","Tadbirkorlik asoslari","Astronomiya","Tarbiya",
-  "CHQBT","Sinf soati",
+  "CHQBT","Kelajak soati",
 ];
 
 const makeSubject = (name: string, i: number): Subject => ({

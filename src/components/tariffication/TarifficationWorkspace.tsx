@@ -182,9 +182,12 @@ export const TarifficationWorkspace: React.FC<TarifficationWorkspaceProps> = ({
         let updated: ClassSubject[];
 
         let homeroomId = cls.homeroomTeacherId;
-        // Agar Sinf soati faniga o'qituvchi biriktirilsa, avtomatik sinf rahbari sifatida ham belgilanadi
+        // Agar Kelajak soati faniga o'qituvchi biriktirilsa, avtomatik sinf rahbari sifatida ham belgilanadi
         if (
-          (subjectId === "sub_sinf_soati" || subjectId.toLowerCase().includes("sinf_soati")) &&
+          (subjectId === "sub_sinf_soati" ||
+            subjectId === "sub_kelajak" ||
+            subjectId.toLowerCase().includes("sinf_soati") ||
+            subjectId.toLowerCase().includes("kelajak")) &&
           teacherId
         ) {
           homeroomId = teacherId;

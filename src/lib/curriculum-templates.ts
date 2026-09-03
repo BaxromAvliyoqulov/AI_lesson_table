@@ -26,7 +26,7 @@ export const UZBEKISTAN_STANDARD_CURRICULUM: Record<number, GradeCurriculumItem[
     { subjectName: "Tasviriy san'at", searchAliases: ["tasviriy san'at", "tasviriy", "rasm"], defaultHours: 1, prioritySubjectId: "sub_sanat" },
     { subjectName: "Texnologiya", searchAliases: ["texnologiya", "mehnat"], defaultHours: 1, prioritySubjectId: "sub_texno" },
     { subjectName: "Jismoniy tarbiya", searchAliases: ["jismoniy", "sport", "fizkultura"], defaultHours: 1, prioritySubjectId: "sub_jism" },
-    { subjectName: "Kelajak soati (Sinf soati)", searchAliases: ["kelajak soati", "kelajak", "sinf soati"], defaultHours: 1, prioritySubjectId: "sub_sinf_soati" },
+    { subjectName: "Kelajak soati", searchAliases: ["kelajak soati", "kelajak", "sinf soati"], defaultHours: 1, prioritySubjectId: "sub_sinf_soati" },
   ],
 
   // 2-sinf: Jami 24 soat (+ 1 soat Kelajak soati)
@@ -43,7 +43,7 @@ export const UZBEKISTAN_STANDARD_CURRICULUM: Record<number, GradeCurriculumItem[
     { subjectName: "Tasviriy san'at", searchAliases: ["tasviriy san'at", "tasviriy"], defaultHours: 1, prioritySubjectId: "sub_sanat" },
     { subjectName: "Texnologiya", searchAliases: ["texnologiya"], defaultHours: 1, prioritySubjectId: "sub_texno" },
     { subjectName: "Jismoniy tarbiya", searchAliases: ["jismoniy"], defaultHours: 2, prioritySubjectId: "sub_jism" },
-    { subjectName: "Kelajak soati (Sinf soati)", searchAliases: ["kelajak soati", "kelajak", "sinf soati"], defaultHours: 1, prioritySubjectId: "sub_sinf_soati" },
+    { subjectName: "Kelajak soati", searchAliases: ["kelajak soati", "kelajak", "sinf soati"], defaultHours: 1, prioritySubjectId: "sub_sinf_soati" },
   ],
 
   // 3-sinf: Jami 24 soat (+ 1 soat Kelajak soati)
@@ -60,7 +60,7 @@ export const UZBEKISTAN_STANDARD_CURRICULUM: Record<number, GradeCurriculumItem[
     { subjectName: "Tasviriy san'at", searchAliases: ["tasviriy san'at"], defaultHours: 1, prioritySubjectId: "sub_sanat" },
     { subjectName: "Texnologiya", searchAliases: ["texnologiya"], defaultHours: 1, prioritySubjectId: "sub_texno" },
     { subjectName: "Jismoniy tarbiya", searchAliases: ["jismoniy"], defaultHours: 2, prioritySubjectId: "sub_jism" },
-    { subjectName: "Kelajak soati (Sinf soati)", searchAliases: ["kelajak soati", "kelajak", "sinf soati"], defaultHours: 1, prioritySubjectId: "sub_sinf_soati" },
+    { subjectName: "Kelajak soati", searchAliases: ["kelajak soati", "kelajak", "sinf soati"], defaultHours: 1, prioritySubjectId: "sub_sinf_soati" },
   ],
 
   // 4-sinf: Jami 24 soat (+ 1 soat Kelajak soati)
@@ -77,7 +77,7 @@ export const UZBEKISTAN_STANDARD_CURRICULUM: Record<number, GradeCurriculumItem[
     { subjectName: "Tasviriy san'at", searchAliases: ["tasviriy san'at"], defaultHours: 1, prioritySubjectId: "sub_sanat" },
     { subjectName: "Texnologiya", searchAliases: ["texnologiya"], defaultHours: 1, prioritySubjectId: "sub_texno" },
     { subjectName: "Jismoniy tarbiya", searchAliases: ["jismoniy"], defaultHours: 2, prioritySubjectId: "sub_jism" },
-    { subjectName: "Kelajak soati (Sinf soati)", searchAliases: ["kelajak soati", "kelajak", "sinf soati"], defaultHours: 1, prioritySubjectId: "sub_sinf_soati" },
+    { subjectName: "Kelajak soati", searchAliases: ["kelajak soati", "kelajak", "sinf soati"], defaultHours: 1, prioritySubjectId: "sub_sinf_soati" },
   ],
 
   // 5-sinf: Jami 29 soat (+ 1 soat Kelajak soati)
@@ -95,7 +95,7 @@ export const UZBEKISTAN_STANDARD_CURRICULUM: Record<number, GradeCurriculumItem[
     { subjectName: "Tasviriy san'at", searchAliases: ["tasviriy san'at"], defaultHours: 1, prioritySubjectId: "sub_sanat" },
     { subjectName: "Texnologiya", searchAliases: ["texnologiya"], defaultHours: 2, prioritySubjectId: "sub_texno" },
     { subjectName: "Jismoniy tarbiya", searchAliases: ["jismoniy"], defaultHours: 2, prioritySubjectId: "sub_jism" },
-    { subjectName: "Kelajak soati (Sinf soati)", searchAliases: ["kelajak soati", "kelajak", "sinf soati"], defaultHours: 1, prioritySubjectId: "sub_sinf_soati" },
+    { subjectName: "Kelajak soati", searchAliases: ["kelajak soati", "kelajak", "sinf soati"], defaultHours: 1, prioritySubjectId: "sub_sinf_soati" },
   ],
 
   // 6-sinf: Jami 30 soat (+ 1 soat Kelajak soati)
@@ -113,7 +113,7 @@ export const UZBEKISTAN_STANDARD_CURRICULUM: Record<number, GradeCurriculumItem[
     { subjectName: "Tasviriy san'at", searchAliases: ["tasviriy san'at"], defaultHours: 1, prioritySubjectId: "sub_sanat" },
     { subjectName: "Texnologiya", searchAliases: ["texnologiya"], defaultHours: 2, prioritySubjectId: "sub_texno" },
     { subjectName: "Jismoniy tarbiya", searchAliases: ["jismoniy"], defaultHours: 2, prioritySubjectId: "sub_jism" },
-    { subjectName: "Kelajak soati (Sinf soati)", searchAliases: ["kelajak soati", "kelajak", "sinf soati"], defaultHours: 1, prioritySubjectId: "sub_sinf_soati" },
+    { subjectName: "Kelajak soati", searchAliases: ["kelajak soati", "kelajak", "sinf soati"], defaultHours: 1, prioritySubjectId: "sub_sinf_soati" },
   ],
 
   // 7-sinf: Jami 35 soat (+ 1 soat Kelajak soati)
@@ -135,7 +135,7 @@ export const UZBEKISTAN_STANDARD_CURRICULUM: Record<number, GradeCurriculumItem[
     { subjectName: "Tasviriy san'at", searchAliases: ["tasviriy san'at"], defaultHours: 1, prioritySubjectId: "sub_sanat" },
     { subjectName: "Texnologiya", searchAliases: ["texnologiya"], defaultHours: 2, prioritySubjectId: "sub_texno" },
     { subjectName: "Jismoniy tarbiya", searchAliases: ["jismoniy"], defaultHours: 2, prioritySubjectId: "sub_jism" },
-    { subjectName: "Kelajak soati (Sinf soati)", searchAliases: ["kelajak soati", "kelajak", "sinf soati"], defaultHours: 1, prioritySubjectId: "sub_sinf_soati" },
+    { subjectName: "Kelajak soati", searchAliases: ["kelajak soati", "kelajak", "sinf soati"], defaultHours: 1, prioritySubjectId: "sub_sinf_soati" },
   ],
 
   // 8-sinf: Jami 33 soat (+ 1 soat Kelajak soati)
@@ -158,7 +158,7 @@ export const UZBEKISTAN_STANDARD_CURRICULUM: Record<number, GradeCurriculumItem[
     { subjectName: "Chizmachilik", searchAliases: ["chizmachilik"], defaultHours: 1, prioritySubjectId: "sub_chiz" },
     { subjectName: "Texnologiya", searchAliases: ["texnologiya"], defaultHours: 1, prioritySubjectId: "sub_texno" },
     { subjectName: "Jismoniy tarbiya", searchAliases: ["jismoniy"], defaultHours: 2, prioritySubjectId: "sub_jism" },
-    { subjectName: "Kelajak soati (Sinf soati)", searchAliases: ["kelajak soati", "kelajak", "sinf soati"], defaultHours: 1, prioritySubjectId: "sub_sinf_soati" },
+    { subjectName: "Kelajak soati", searchAliases: ["kelajak soati", "kelajak", "sinf soati"], defaultHours: 1, prioritySubjectId: "sub_sinf_soati" },
   ],
 
   // 9-sinf: Jami 34 soat (+ 1 soat Kelajak soati)
@@ -181,7 +181,7 @@ export const UZBEKISTAN_STANDARD_CURRICULUM: Record<number, GradeCurriculumItem[
     { subjectName: "Chizmachilik", searchAliases: ["chizmachilik"], defaultHours: 1, prioritySubjectId: "sub_chiz" },
     { subjectName: "Texnologiya", searchAliases: ["texnologiya"], defaultHours: 1, prioritySubjectId: "sub_texno" },
     { subjectName: "Jismoniy tarbiya", searchAliases: ["jismoniy"], defaultHours: 2, prioritySubjectId: "sub_jism" },
-    { subjectName: "Kelajak soati (Sinf soati)", searchAliases: ["kelajak soati", "kelajak", "sinf soati"], defaultHours: 1, prioritySubjectId: "sub_sinf_soati" },
+    { subjectName: "Kelajak soati", searchAliases: ["kelajak soati", "kelajak", "sinf soati"], defaultHours: 1, prioritySubjectId: "sub_sinf_soati" },
   ],
 
   // 10-sinf: Jami 31 soat (+ 1 soat Kelajak soati)
@@ -203,7 +203,7 @@ export const UZBEKISTAN_STANDARD_CURRICULUM: Record<number, GradeCurriculumItem[
     { subjectName: "Geografiya", searchAliases: ["geografiya"], defaultHours: 2, prioritySubjectId: "sub_geo" },
     { subjectName: "Jismoniy tarbiya", searchAliases: ["jismoniy"], defaultHours: 2, prioritySubjectId: "sub_jism" },
     { subjectName: "CHQBT", searchAliases: ["chqbt", "chaqiruvga qadar", "harbiy"], defaultHours: 2, prioritySubjectId: "sub_chqbt" },
-    { subjectName: "Kelajak soati (Sinf soati)", searchAliases: ["kelajak soati", "kelajak", "sinf soati"], defaultHours: 1, prioritySubjectId: "sub_sinf_soati" },
+    { subjectName: "Kelajak soati", searchAliases: ["kelajak soati", "kelajak", "sinf soati"], defaultHours: 1, prioritySubjectId: "sub_sinf_soati" },
   ],
 
   // 11-sinf: Jami 31 soat (+ 1 soat Kelajak soati)
@@ -226,7 +226,7 @@ export const UZBEKISTAN_STANDARD_CURRICULUM: Record<number, GradeCurriculumItem[
     { subjectName: "Tadbirkorlik asoslari", searchAliases: ["tadbirkorlik", "iqtisodiyot"], defaultHours: 1, prioritySubjectId: "sub_tadbirkor" },
     { subjectName: "Jismoniy tarbiya", searchAliases: ["jismoniy"], defaultHours: 2, prioritySubjectId: "sub_jism" },
     { subjectName: "CHQBT", searchAliases: ["chqbt", "chaqiruvga qadar", "harbiy"], defaultHours: 2, prioritySubjectId: "sub_chqbt" },
-    { subjectName: "Kelajak soati (Sinf soati)", searchAliases: ["kelajak soati", "kelajak", "sinf soati"], defaultHours: 1, prioritySubjectId: "sub_sinf_soati" },
+    { subjectName: "Kelajak soati", searchAliases: ["kelajak soati", "kelajak", "sinf soati"], defaultHours: 1, prioritySubjectId: "sub_sinf_soati" },
   ],
 };
 
@@ -484,7 +484,7 @@ export const MMTV_133_UZBEK_MEDIUM: MMTV133Row[] = [
   { direction: "Amaliy fanlar", subjectName: "Texnologiya (Mehnat)", hoursByGrade: [1, 1, 1, 1, 2, 2, 2, 1, 1, 0, 0], canSplit: true, splitMinGrade: 5, splitMaxGrade: 9 },
   { direction: "Amaliy fanlar", subjectName: "Jismoniy tarbiya", hoursByGrade: [1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2], canSplit: false },
   { direction: "Amaliy fanlar", subjectName: "CHQBT", hoursByGrade: [0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 2], canSplit: true, splitMinGrade: 10, splitMaxGrade: 11 },
-  { direction: "Majburiy", subjectName: "Kelajak soati (Sinf soati)", hoursByGrade: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1], canSplit: false },
+  { direction: "Majburiy", subjectName: "Kelajak soati", hoursByGrade: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1], canSplit: false },
 ];
 
 export const MMTV_133_RUSSIAN_MEDIUM: MMTV133Row[] = [
@@ -510,7 +510,7 @@ export const MMTV_133_RUSSIAN_MEDIUM: MMTV133Row[] = [
   { direction: "Amaliy fanlar", subjectName: "Texnologiya (Mehnat)", hoursByGrade: [1, 1, 1, 1, 2, 2, 2, 1, 1, 0, 0], canSplit: true, splitMinGrade: 5, splitMaxGrade: 9 },
   { direction: "Amaliy fanlar", subjectName: "Jismoniy tarbiya", hoursByGrade: [1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2], canSplit: false },
   { direction: "Amaliy fanlar", subjectName: "CHQBT", hoursByGrade: [0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 2], canSplit: true, splitMinGrade: 10, splitMaxGrade: 11 },
-  { direction: "Majburiy", subjectName: "Sinf soati (Kelajak soati)", hoursByGrade: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1], canSplit: false },
+  { direction: "Majburiy", subjectName: "Kelajak soati", hoursByGrade: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1], canSplit: false },
 ];
 
 /**

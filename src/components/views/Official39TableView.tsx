@@ -545,7 +545,7 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
         return l;
       });
       onLessonsChange(updatedLessons);
-      showToast(`${homeroomModal.cls.name} dars jadvalida sinf soati yangilandi!`, "success");
+      showToast(`${homeroomModal.cls.name} dars jadvalida Kelajak soati yangilandi!`, "success");
     }
     setHomeroomModal(null);
   };

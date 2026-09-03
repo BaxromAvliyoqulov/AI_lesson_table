@@ -342,7 +342,7 @@ export const TarifficationByClassView: React.FC<TarifficationByClassViewProps> =
                 <div>
                   <div className="text-xs font-black text-slate-800">Sinf Rahbari:</div>
                   <div className="text-[10px] text-slate-500">
-                    Sinf soati darsi orqali ham bog&apos;lanadi
+                    Kelajak soati darsi orqali ham bog&apos;lanadi
                   </div>
                 </div>
               </div>

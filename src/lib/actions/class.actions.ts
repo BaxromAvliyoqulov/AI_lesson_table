@@ -87,22 +87,61 @@ export async function upsertClassAction(schoolId: string, cls: SchoolClass) {
             data: { homeroomClassId: classId },
           });
 
-          // Sinf soati fani bo'lsa uni ham yangi sinf rahbariga ulash
-          const sinfSoati = await tx.subject.findFirst({
-            where: { schoolId: actualSchoolId, OR: [{ id: "sub_sinf_soati" }, { name: { contains: "Sinf soati" } }] },
+          // Kelajak soati fani bo'lsa uni ham yangi sinf rahbariga ulash yoki mavjud bo'lmasa yaratish
+          let sinfSoati = await tx.subject.findFirst({
+            where: {
+              schoolId: actualSchoolId,
+              OR: [
+                { id: "sub_sinf_soati" },
+                { id: "sub_kelajak" },
+                { name: { contains: "Kelajak" } },
+                { name: { contains: "Sinf soati" } },
+              ],
+            },
           });
-          if (sinfSoati) {
-            await tx.classSubject.updateMany({
-              where: { classId, subjectId: sinfSoati.id },
-              data: { teacherId: teacher.id },
+          if (!sinfSoati) {
+            sinfSoati = await tx.subject.create({
+              data: {
+                id: `sub_kelajak_${actualSchoolId}`,
+                schoolId: actualSchoolId,
+                name: "Kelajak soati",
+                shortName: "Kelajak s.",
+                colorTag: "#8B5CF6",
+                difficultyScore: 1,
+                allowDoubleLesson: false,
+                methodDayOfWeek: 1,
+              },
             });
+          }
+
+          if (sinfSoati) {
+            const existingCS = await tx.classSubject.findFirst({
+              where: { classId, subjectId: sinfSoati.id },
+            });
+            if (existingCS) {
+              await tx.classSubject.update({
+                where: { id: existingCS.id },
+                data: { teacherId: teacher.id },
+              });
+            } else {
+              await tx.classSubject.create({
+                data: {
+                  schoolId: actualSchoolId,
+                  classId,
+                  subjectId: sinfSoati.id,
+                  teacherId: teacher.id,
+                  weeklyHours: 1,
+                },
+              });
+            }
+
             await tx.lesson.updateMany({
               where: {
                 schoolId: actualSchoolId,
                 classId,
                 OR: [{ subjectId: sinfSoati.id }, { dayOfWeek: 1, periodNumber: 1 }],
               },
-              data: { teacherId: teacher.id },
+              data: { teacherId: teacher.id, subjectId: sinfSoati.id },
             });
           }
         }

@@ -425,7 +425,7 @@ export const initialSubjects: Subject[] = [
   {
     "id": "sub_sinf_soati",
     "schoolId": "school_39",
-    "name": "Kelajak soati (Sinf soati)",
+    "name": "Kelajak soati",
     "shortName": "Kelajak s.",
     "colorTag": "#8B5CF6",
     "difficultyScore": 1,

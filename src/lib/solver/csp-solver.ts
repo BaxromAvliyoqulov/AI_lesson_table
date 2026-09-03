@@ -420,6 +420,28 @@ export class CSPSolver {
         const classHash = req.classId.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0);
         score += ((classHash * 7 + slot.day * 13 + slot.period * 17) % 23) * 2;
 
+        // Bino harakati qoidasi (Travel Policy):
+        const teacherObj = this.teacherMap.get(req.teacherId);
+        if (teacherObj && teacherObj.branchIds && teacherObj.branchIds.length > 1) {
+          if (teacherObj.travelPolicy === "ALTERNATING_DAYS") {
+            const isMainBranch = req.branchId === teacherObj.branchIds[0];
+            const isOddDay = slot.day % 2 === 1; // 1: Dushanba, 3: Chorshanba, 5: Juma
+            if (isMainBranch && !isOddDay) {
+              score += 20000000; // Asosiy bino toq kunlarda
+            } else if (!isMainBranch && isOddDay) {
+              score += 20000000; // Filial bino juft kunlarda
+            }
+          } else if (teacherObj.travelPolicy === "BY_DAY") {
+            const isMainBranch = req.branchId === teacherObj.branchIds[0];
+            const isFirstHalfOfWeek = slot.day <= 3; // Dush, Sesh, Chor
+            if (isMainBranch && !isFirstHalfOfWeek) {
+              score += 20000000;
+            } else if (!isMainBranch && isFirstHalfOfWeek) {
+              score += 20000000;
+            }
+          }
+        }
+
         if (attempt > 0) {
           score += Math.random() * (attempt * 15);
         }

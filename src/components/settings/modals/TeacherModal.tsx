@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { Teacher, Subject, Branch, Shift, SchoolClass } from "@/types";
 import { formatUzPhone, sanitizeFullName } from "@/lib/utils";
+import { getOfficialMethodDayForSubject } from "@/lib/constants/method-days";
 import { ClassSelectCombobox } from "../shared/ClassSelectCombobox";
 import {
   X,
@@ -18,6 +19,8 @@ import {
   Sparkles,
   ArrowRightLeft,
   Check,
+  CheckCircle2,
+  RotateCcw,
 } from "lucide-react";
 
 interface TeacherModalProps {
@@ -59,13 +62,39 @@ export const TeacherModal: React.FC<TeacherModalProps> = ({
   const [weeklyCapacity, setWeeklyCapacity] = useState(20);
   const [maxConsecutive, setMaxConsecutive] = useState(4);
   const [methodDay, setMethodDay] = useState<number | "">("");
+  const [isManualMethodDayOverride, setIsManualMethodDayOverride] = useState<boolean>(false);
   const [homeroomClassId, setHomeroomClassId] = useState("");
   const [selectedSubjects, setSelectedSubjects] = useState<string[]>([]);
   const [selectedBranches, setSelectedBranches] = useState<string[]>([]);
   const [selectedShifts, setSelectedShifts] = useState<string[]>([]);
   const [teachingStages, setTeachingStages] = useState<"PRIMARY" | "HIGH" | "BOTH">("BOTH");
-  const [travelPolicy, setTravelPolicy] = useState<"BY_SHIFT" | "BY_DAY" | "FLEXIBLE_BUFFER">("BY_SHIFT");
-  const lastInitializedIdRef = React.useRef<string | null>(null);
+  const [travelPolicy, setTravelPolicy] = useState<"BY_SHIFT" | "BY_DAY" | "ALTERNATING_DAYS" | "FLEXIBLE_BUFFER">("BY_SHIFT");
+  const lastInitializedIdRef = useRef<string | null>(null);
+
+  // Tanlangan fan(lar) bo'yicha rasmiy metod kunini avtomatik aniqlash
+  const autoDetectedMethodDay = useMemo(() => {
+    for (const sid of selectedSubjects) {
+      const sub = subjects.find((s) => s.id === sid);
+      if (sub) {
+        const day = sub.methodDayOfWeek ?? getOfficialMethodDayForSubject(sub.name || sub.id);
+        if (day && day >= 1 && day <= 6) {
+          return {
+            day,
+            dayName: WEEKDAYS.find((w) => w.id === day)?.name || "",
+            subjectName: sub.name,
+          };
+        }
+      }
+    }
+    return null;
+  }, [selectedSubjects, subjects]);
+
+  // Fan tanlanganda, agar foydalanuvchi qo'lda boshqa kunga override qilmagan bo'lsa, avtomatik moslash
+  useEffect(() => {
+    if (!isManualMethodDayOverride && autoDetectedMethodDay) {
+      setMethodDay(autoDetectedMethodDay.day);
+    }
+  }, [autoDetectedMethodDay, isManualMethodDayOverride]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -83,6 +112,7 @@ export const TeacherModal: React.FC<TeacherModalProps> = ({
         setWeeklyCapacity(editingTeacher.weeklyHourCapacity);
         setMaxConsecutive(editingTeacher.maxConsecutiveHours);
         setMethodDay(editingTeacher.methodDayOfWeek || "");
+        setIsManualMethodDayOverride(editingTeacher.methodDayOfWeek !== undefined && editingTeacher.methodDayOfWeek !== null);
         setHomeroomClassId(editingTeacher.homeroomClassId || "");
         setSelectedSubjects(editingTeacher.subjectIds || []);
         setSelectedBranches(
@@ -103,6 +133,7 @@ export const TeacherModal: React.FC<TeacherModalProps> = ({
         setWeeklyCapacity(20);
         setMaxConsecutive(4);
         setMethodDay("");
+        setIsManualMethodDayOverride(false);
         setHomeroomClassId("");
         setSelectedSubjects([]);
         setSelectedBranches(branches.map((b) => b.id));
@@ -247,7 +278,7 @@ export const TeacherModal: React.FC<TeacherModalProps> = ({
               placeholder="Sinf rahbari bo'lgan sinfni tanlang..."
             />
             <p className="text-[11px] text-indigo-900/80 dark:text-indigo-300/80 mt-1.5 leading-relaxed">
-              💡 Sinf rahbarligi biriktirilsa, ushbu sinfning Juma kungi <strong>Sinf soati</strong> fani va rasmiy jadval imzolari avtomatik shu o'qituvchiga ulanadi.
+              💡 Sinf rahbarligi biriktirilsa, ushbu sinfga Dushanba 1-soatdagi <strong>Kelajak soati</strong> fani va rasmiy jadval imzolari avtomatik biriktiriladi.
             </p>
           </div>
 
@@ -282,20 +313,51 @@ export const TeacherModal: React.FC<TeacherModalProps> = ({
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-muted-foreground mb-1.5">
-                Shaxsiy metod kuni
-              </label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-xs font-semibold text-muted-foreground flex items-center gap-1">
+                  <Calendar className="w-3.5 h-3.5 text-blue-600" />
+                  Metod kuni
+                </label>
+                {autoDetectedMethodDay && !isManualMethodDayOverride && (
+                  <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-1.5 py-0.5 rounded-md flex items-center gap-0.5">
+                    <Sparkles className="w-2.5 h-2.5" /> Fandan avto
+                  </span>
+                )}
+                {isManualMethodDayOverride && autoDetectedMethodDay && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsManualMethodDayOverride(false);
+                      setMethodDay(autoDetectedMethodDay.day);
+                    }}
+                    title="Fanning rasmiy metod kuniga qaytarish"
+                    className="text-[10px] text-blue-600 hover:text-blue-700 flex items-center gap-0.5 cursor-pointer font-medium"
+                  >
+                    <RotateCcw className="w-2.5 h-2.5" /> Fandan avto
+                  </button>
+                )}
+              </div>
               <select
                 value={methodDay}
-                onChange={(e) => setMethodDay(e.target.value === "" ? "" : Number(e.target.value))}
-                className="w-full px-3 py-2 rounded-xl border border-border bg-background focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm cursor-pointer"
+                onChange={(e) => {
+                  setIsManualMethodDayOverride(true);
+                  setMethodDay(e.target.value === "" ? "" : Number(e.target.value));
+                }}
+                className={`w-full px-3 py-2 rounded-xl border text-sm cursor-pointer transition-all ${
+                  !isManualMethodDayOverride && autoDetectedMethodDay
+                    ? "border-emerald-500/60 bg-emerald-50/20 text-foreground font-semibold ring-1 ring-emerald-500/20"
+                    : "border-border bg-background text-foreground"
+                }`}
               >
                 <option value="">Metod kuni yo&apos;q</option>
-                {WEEKDAYS.map((w) => (
-                  <option key={w.id} value={w.id}>
-                    {w.name}
-                  </option>
-                ))}
+                {WEEKDAYS.map((w) => {
+                  const isMatchOfficial = autoDetectedMethodDay?.day === w.id;
+                  return (
+                    <option key={w.id} value={w.id}>
+                      {w.name} {isMatchOfficial ? `⚡ (${autoDetectedMethodDay?.subjectName} fani)` : ""}
+                    </option>
+                  );
+                })}
               </select>
             </div>
           </div>
@@ -459,11 +521,11 @@ export const TeacherModal: React.FC<TeacherModalProps> = ({
                 <ArrowRightLeft className="w-3.5 h-3.5 text-amber-700" />
                 Filial va Asosiy Bino o&apos;rtasida harakatlanish qoidasi:
               </label>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
                 <button
                   type="button"
                   onClick={() => setTravelPolicy("BY_SHIFT")}
-                  className={`p-2 rounded-xl text-left border text-[11px] transition-all cursor-pointer ${
+                  className={`p-2.5 rounded-xl text-left border text-[11px] transition-all cursor-pointer ${
                     travelPolicy === "BY_SHIFT"
                       ? "bg-card border-amber-600 text-foreground font-bold shadow-sm ring-1 ring-amber-600/40"
                       : "bg-card/50 border-amber-200/80 dark:border-amber-800/50 text-muted-foreground hover:bg-card"
@@ -480,7 +542,7 @@ export const TeacherModal: React.FC<TeacherModalProps> = ({
                 <button
                   type="button"
                   onClick={() => setTravelPolicy("BY_DAY")}
-                  className={`p-2 rounded-xl text-left border text-[11px] transition-all cursor-pointer ${
+                  className={`p-2.5 rounded-xl text-left border text-[11px] transition-all cursor-pointer ${
                     travelPolicy === "BY_DAY"
                       ? "bg-card border-amber-600 text-foreground font-bold shadow-sm ring-1 ring-amber-600/40"
                       : "bg-card/50 border-amber-200/80 dark:border-amber-800/50 text-muted-foreground hover:bg-card"
@@ -490,14 +552,31 @@ export const TeacherModal: React.FC<TeacherModalProps> = ({
                     <span>📅 Kunlar bo&apos;yicha</span>
                   </div>
                   <div className="text-[10px] text-muted-foreground font-medium mt-0.5">
-                    Dush/Chor Asosiy, Sesh/Pay Filial
+                    Kunlik bloklar (Dush/Chor Asosiy...)
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setTravelPolicy("ALTERNATING_DAYS")}
+                  className={`p-2.5 rounded-xl text-left border text-[11px] transition-all cursor-pointer ${
+                    travelPolicy === "ALTERNATING_DAYS"
+                      ? "bg-card border-amber-600 text-foreground font-bold shadow-sm ring-1 ring-amber-600/40"
+                      : "bg-card/50 border-amber-200/80 dark:border-amber-800/50 text-muted-foreground hover:bg-card"
+                  }`}
+                >
+                  <div className="font-extrabold flex items-center gap-1">
+                    <span>🔄 1 kun Asosiy, 1 kun Filial</span>
+                  </div>
+                  <div className="text-[10px] text-muted-foreground font-medium mt-0.5">
+                    Kunma-kun navbatlashuv (1 kun/1 kun)
                   </div>
                 </button>
 
                 <button
                   type="button"
                   onClick={() => setTravelPolicy("FLEXIBLE_BUFFER")}
-                  className={`p-2 rounded-xl text-left border text-[11px] transition-all cursor-pointer ${
+                  className={`p-2.5 rounded-xl text-left border text-[11px] transition-all cursor-pointer ${
                     travelPolicy === "FLEXIBLE_BUFFER"
                       ? "bg-card border-amber-600 text-foreground font-bold shadow-sm ring-1 ring-amber-600/40"
                       : "bg-card/50 border-amber-200/80 dark:border-amber-800/50 text-muted-foreground hover:bg-card"
@@ -507,7 +586,7 @@ export const TeacherModal: React.FC<TeacherModalProps> = ({
                     <span>⏳ Yo&apos;l darchasi bilan</span>
                   </div>
                   <div className="text-[10px] text-muted-foreground font-medium mt-0.5">
-                    AI o&apos;rtada 1 soat oraliq vaqt qoldiradi
+                    AI o&apos;rtada 1 soat oraliq qoldiradi
                   </div>
                 </button>
               </div>
@@ -516,12 +595,73 @@ export const TeacherModal: React.FC<TeacherModalProps> = ({
 
           {/* ── 5. FANLAR TANLOVI ───────────────────────────────────────────── */}
           <div>
-            <label className="block text-xs font-semibold text-muted-foreground mb-2">
-              Dars beradigan fanlari ({selectedSubjects.length} ta tanlandi)
-            </label>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-36 overflow-y-auto p-2 rounded-2xl border border-border bg-muted/20 custom-scrollbar">
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-xs font-bold text-foreground flex items-center gap-1.5">
+                <BookOpen className="w-3.5 h-3.5 text-blue-600" />
+                <span>Dars beradigan fanlari</span>
+                <span className="text-[11px] font-normal text-muted-foreground">
+                  ({selectedSubjects.length} ta tanlandi)
+                </span>
+              </label>
+
+              {teachingStages === "PRIMARY" && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const primarySubIds = subjects
+                      .filter((s) => {
+                        const l = s.name.toLowerCase();
+                        return (
+                          l.includes("ona tili") ||
+                          l.includes("o'qish") ||
+                          l.includes("matematika") ||
+                          l.includes("tarbiya") ||
+                          l.includes("tabiiy")
+                        );
+                      })
+                      .map((s) => s.id);
+                    setSelectedSubjects((prev) => Array.from(new Set([...prev, ...primarySubIds])));
+                  }}
+                  className="text-[10px] font-bold text-teal-700 dark:text-teal-300 bg-teal-50 dark:bg-teal-950/60 hover:bg-teal-100 px-2 py-1 rounded-lg border border-teal-200 dark:border-teal-800 transition-colors flex items-center gap-1 cursor-pointer"
+                >
+                  <Sparkles className="w-3 h-3 text-teal-600" />
+                  Boshlang&apos;ich paketini tanlash
+                </button>
+              )}
+            </div>
+
+            {/* Scroll olib tashlangan, toza ochiq grid */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 p-3 rounded-2xl border border-border bg-muted/10">
               {subjects
-                .filter((s) => s.isActive !== false || selectedSubjects.includes(s.id))
+                .filter((s) => {
+                  if (s.isActive === false && !selectedSubjects.includes(s.id)) return false;
+                  const l = s.name.toLowerCase();
+                  const isHighOnly =
+                    l.includes("fizika") ||
+                    l.includes("kimyo") ||
+                    l.includes("biologiya") ||
+                    l.includes("geografiya") ||
+                    l.includes("algebra") ||
+                    l.includes("geometriya") ||
+                    l.includes("tarix") ||
+                    l.includes("huquq") ||
+                    l.includes("chqbt") ||
+                    l.includes("astronomiya") ||
+                    l.includes("chizmachilik") ||
+                    l.includes("iqtisod") ||
+                    l.includes("tadbirkor");
+
+                  if (teachingStages === "PRIMARY") {
+                    // Agar tanlangan bo'lsa doim ko'rinsin, aks holda faqat boshlang'ich fanlar
+                    return selectedSubjects.includes(s.id) || !isHighOnly;
+                  }
+                  if (teachingStages === "HIGH") {
+                    // Katta sinflar uchun o'qish savodxonligi kabi xos boshlang'ich fanlar yashiriladi
+                    const isPrimaryOnly = l.includes("o'qish savodxonligi") || l.includes("savodxonlik");
+                    return selectedSubjects.includes(s.id) || !isPrimaryOnly;
+                  }
+                  return true;
+                })
                 .map((s) => {
                   const isSelected = selectedSubjects.includes(s.id);
                   const isInactive = s.isActive === false;
@@ -530,12 +670,12 @@ export const TeacherModal: React.FC<TeacherModalProps> = ({
                       key={s.id}
                       type="button"
                       onClick={() => toggleSubject(s.id)}
-                      className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium text-left border transition-all cursor-pointer ${
+                      className={`flex items-center gap-2 px-3 py-2.5 rounded-xl text-xs font-medium text-left border transition-all cursor-pointer ${
                         isSelected
-                          ? "bg-primary/10 border-primary text-primary font-bold shadow-xs"
+                          ? "bg-primary/10 border-primary text-primary font-bold shadow-xs ring-1 ring-primary/20"
                           : isInactive
                           ? "bg-muted/40 border-border opacity-60 text-muted-foreground"
-                          : "bg-card border-border hover:border-slate-300 dark:hover:border-slate-700 text-muted-foreground"
+                          : "bg-card border-border hover:border-slate-300 dark:hover:border-slate-700 text-foreground hover:bg-muted/30"
                       }`}
                     >
                       <span

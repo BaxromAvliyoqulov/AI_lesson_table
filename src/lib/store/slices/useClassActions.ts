@@ -90,17 +90,35 @@ export function useClassActions() {
     updateStore((prev) => {
       const updatedClasses = prev.classes.map((c) => {
         if (c.id === classId) {
-          const updatedSubjects = c.subjects.map((s) => {
+          let hasKelajak = false;
+          let updatedSubjects = (c.subjects || []).map((s) => {
             if (
-              (s.subjectId === "sub_sinf_soati" ||
-                s.subjectId === "sub_kelajak" ||
-                s.subjectId.includes("sinf_soati")) &&
-              tid
+              s.subjectId === "sub_sinf_soati" ||
+              s.subjectId === "sub_kelajak" ||
+              s.subjectId.includes("sinf_soati") ||
+              s.subjectId.includes("kelajak")
             ) {
-              return { ...s, teacherId: tid };
+              hasKelajak = true;
+              return tid ? { ...s, teacherId: tid } : s;
             }
             return s;
           });
+
+          // Agar sinfda hali "Kelajak soati" o'quv rejasida bo'lmasa, uni avtomatik qo'shamiz
+          if (!hasKelajak && tid) {
+            updatedSubjects = [
+              ...updatedSubjects,
+              {
+                subjectId: "sub_sinf_soati",
+                hoursPerWeek: 1,
+                weeklyHours: 1,
+                teacherId: tid,
+                canSplit: false,
+                isMandatory: true,
+              } as any,
+            ];
+          }
+
           return { ...c, homeroomTeacherId: tid || undefined, subjects: updatedSubjects };
         }
         if (tid && c.homeroomTeacherId === tid && c.id !== classId) {
@@ -119,18 +137,37 @@ export function useClassActions() {
         return t;
       });
 
-      const updatedLessons = prev.lessons.map((l) => {
-        if (
-          tid &&
-          l.classId === classId &&
-          (l.subjectId === "sub_sinf_soati" ||
-            l.subjectId === "sub_kelajak" ||
-            (l.dayOfWeek === 1 && l.periodNumber === 1))
-        ) {
-          return { ...l, teacherId: tid };
+      let updatedLessons = [...prev.lessons];
+      if (tid) {
+        let hasMondayLesson = false;
+        updatedLessons = updatedLessons.map((l) => {
+          if (
+            l.classId === classId &&
+            (l.subjectId === "sub_sinf_soati" ||
+              l.subjectId === "sub_kelajak" ||
+              (l.dayOfWeek === 1 && l.periodNumber === 1))
+          ) {
+            hasMondayLesson = true;
+            return { ...l, teacherId: tid, subjectId: "sub_sinf_soati" };
+          }
+          return l;
+        });
+
+        // Agar bu sinf dars jadvali mavjud bo'lib, lekin Dushanba 1-soat darsi hali qo'yilmagan bo'lsa
+        const classHasLessons = prev.lessons.some((l) => l.classId === classId);
+        if (classHasLessons && !hasMondayLesson) {
+          updatedLessons.push({
+            id: `les_${classId}_kelajak_${Date.now()}`,
+            schoolId: prev.currentSchoolId,
+            classId,
+            subjectId: "sub_sinf_soati",
+            teacherId: tid,
+            dayOfWeek: 1,
+            periodNumber: 1,
+            isLocked: true,
+          } as any);
         }
-        return l;
-      });
+      }
 
       return {
         ...prev,

@@ -215,7 +215,7 @@ export const Official39HomeroomModal: React.FC<Official39HomeroomModalProps> = (
                 {cls.name} — Sinf Rahbarini Tayinlash
               </h3>
               <p className="text-[11px] text-slate-500">
-                Sinf rahbari o'zgarganda Juma kungi Sinf soati va imzolar avtomatik yangilanadi
+                Sinf rahbari o'zgarganda Dushanba kungi Kelajak soati va imzolar avtomatik yangilanadi
               </p>
             </div>
           </div>
@@ -253,7 +253,7 @@ export const Official39HomeroomModal: React.FC<Official39HomeroomModalProps> = (
             <p className="font-bold mb-0.5">⚡ Avtomatik Zanjir (SaaS Reactive Sync):</p>
             <ul className="list-disc pl-4 space-y-0.5 text-[10px] text-blue-800">
               <li>Jadvalning eng pastki qatoridagi <strong>Sinf rahbar</strong> F.I.Sh yangilanadi.</li>
-              <li>Juma kuni 1-dars <strong>Sinf soati</strong> darsiga ushbu ustoz va uning tartib raqami (№) biriktiriladi.</li>
+              <li>Dushanba kuni 1-dars <strong>Kelajak soati</strong> darsiga ushbu ustoz va uning tartib raqami (№) biriktiriladi.</li>
               <li>O'qituvchilar va fanlar reestrida o'zgarishlar sinxron aks etadi.</li>
             </ul>
           </div>

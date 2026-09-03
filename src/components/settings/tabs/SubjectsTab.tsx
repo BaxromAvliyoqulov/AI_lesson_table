@@ -61,7 +61,7 @@ export const STANDARD_UZBEK_SUBJECTS: Array<{
   { id: "sub_tadbirkor", name: "Tadbirkorlik asoslari", shortName: "Tadbirkorlik", colorTag: "#0D9488", difficultyScore: 4, allowDoubleLesson: false, methodDayOfWeek: 4 },
   { id: "sub_chqbt", name: "CHQBT (Harbiy tayyorgarlik)", shortName: "CHQBT", colorTag: "#475569", difficultyScore: 3, allowDoubleLesson: false, methodDayOfWeek: 6 },
   { id: "sub_astronomiya", name: "Astronomiya", shortName: "Astronomiya", colorTag: "#0284C7", difficultyScore: 6, allowDoubleLesson: false, methodDayOfWeek: 6 },
-  { id: "sub_sinf_soati", name: "Kelajak soati (Sinf soati)", shortName: "Kelajak s.", colorTag: "#8B5CF6", difficultyScore: 1, allowDoubleLesson: false, methodDayOfWeek: 1 },
+  { id: "sub_sinf_soati", name: "Kelajak soati", shortName: "Kelajak s.", colorTag: "#8B5CF6", difficultyScore: 1, allowDoubleLesson: false, methodDayOfWeek: 1 },
 ];
 
 interface SubjectsTabProps {

@@ -22,6 +22,7 @@ import {
   TrendingUp,
   AlertTriangle,
   CheckCircle2,
+  Check,
   Activity,
   Layers,
   Upload,
@@ -69,6 +70,7 @@ export const TeachersTab: React.FC<TeachersTabProps> = ({
 
   // O'chirishni tasdiqlash modali va Toast
   const [teacherToDelete, setTeacherToDelete] = useState<Teacher | null>(null);
+  const [selectedTeacherId, setSelectedTeacherId] = useState<string | null>(null);
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
   const showToast = (message: string, type: "success" | "error" = "success") => {
     setToast({ message, type });
@@ -611,25 +613,45 @@ export const TeachersTab: React.FC<TeachersTabProps> = ({
             const isOptimal = workloadPct >= 80 && workloadPct <= 100;
             const isOverloaded = workloadPct > 100;
 
+            const isSelected = selectedTeacherId === teacher.id;
+
             return (
               <div
                 key={teacher.id}
-                className="flex flex-col justify-between p-4 rounded-3xl border border-border/80 bg-card/80 hover:bg-card hover:border-primary/40 hover:shadow-lg transition-all min-w-0 overflow-hidden space-y-3"
+                onClick={() => setSelectedTeacherId(isSelected ? null : teacher.id)}
+                className={`flex flex-col justify-between p-4 rounded-3xl transition-all min-w-0 overflow-hidden space-y-3 cursor-pointer ${
+                  isSelected
+                    ? "border-2 border-blue-600 dark:border-blue-500 bg-blue-50/50 dark:bg-blue-950/30 shadow-xl shadow-blue-500/15 ring-4 ring-blue-500/20 scale-[1.015]"
+                    : "border border-border/80 bg-card/80 hover:bg-card hover:border-primary/40 hover:shadow-lg"
+                }`}
               >
                 <div className="min-w-0">
                   {/* Top card header: Avatar + Name + Phone + Action buttons */}
                   <div className="flex items-start justify-between gap-2 mb-2.5 min-w-0">
                     <div className="flex items-start gap-2.5 min-w-0 flex-1">
-                      <div className="w-10 h-10 rounded-2xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-extrabold text-sm shadow-inner shrink-0 mt-0.5">
+                      <div
+                        className={`w-10 h-10 rounded-2xl flex items-center justify-center font-extrabold text-sm shadow-inner shrink-0 mt-0.5 transition-colors ${
+                          isSelected
+                            ? "bg-blue-600 text-white shadow-md shadow-blue-600/30"
+                            : "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400"
+                        }`}
+                      >
                         {teacher.fullName.charAt(0)}
                       </div>
                       <div className="min-w-0 flex-1">
-                        <h4
-                          className="font-bold text-foreground text-sm leading-snug break-words"
-                          title={teacher.fullName}
-                        >
-                          {teacher.fullName}
-                        </h4>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <h4
+                            className="font-bold text-foreground text-sm leading-snug break-words"
+                            title={teacher.fullName}
+                          >
+                            {teacher.fullName}
+                          </h4>
+                          {isSelected && (
+                            <span className="px-1.5 py-0.5 rounded-md bg-blue-600 text-white text-[9px] font-black tracking-wide flex items-center gap-0.5 shadow-xs shrink-0">
+                              <Check className="w-2.5 h-2.5" /> Tanlangan
+                            </span>
+                          )}
+                        </div>
                         <p className="text-[11px] text-muted-foreground flex items-center gap-1 mt-0.5">
                           <Phone className="w-3 h-3 shrink-0" />
                           <span className="break-all">{teacher.phone || "Telefon yo'q"}</span>
@@ -639,14 +661,20 @@ export const TeachersTab: React.FC<TeachersTabProps> = ({
 
                     <div className="flex items-center gap-1 shrink-0">
                       <button
-                        onClick={() => onEditTeacher(teacher)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onEditTeacher(teacher);
+                        }}
                         className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
                         title="Tahrirlash"
                       >
                         <Edit2 className="w-3.5 h-3.5" />
                       </button>
                       <button
-                        onClick={() => setTeacherToDelete(teacher)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setTeacherToDelete(teacher);
+                        }}
                         className="p-1.5 rounded-lg text-rose-400 hover:text-rose-600 hover:bg-rose-500/10 transition-colors cursor-pointer"
                         title="O'chirish"
                       >

@@ -70,23 +70,58 @@ export async function upsertTeacherAction(schoolId: string, teacher: Teacher) {
         await tx.teacherBranch.deleteMany({ where: { teacherId: teacherRecord.id } });
       }
 
-      // Agar sinf biriktirilgan bo'lsa, ClassSubject dagi Sinf soatini shu o'qituvchiga ulash
+      // Agar sinf biriktirilgan bo'lsa, ClassSubject dagi Kelajak soatini shu o'qituvchiga ulash yoki yaratish
       if (teacher.homeroomClassId) {
-        const sinfSoatiSubject = await tx.subject.findFirst({
+        let sinfSoatiSubject = await tx.subject.findFirst({
           where: {
             schoolId: actualSchoolId,
-            OR: [{ id: "sub_sinf_soati" }, { name: { contains: "Sinf soati" } }],
+            OR: [
+              { id: "sub_sinf_soati" },
+              { id: "sub_kelajak" },
+              { name: { contains: "Kelajak" } },
+              { name: { contains: "Sinf soati" } },
+            ],
           },
         });
-        if (sinfSoatiSubject) {
-          await tx.classSubject.updateMany({
-            where: {
+        if (!sinfSoatiSubject) {
+          sinfSoatiSubject = await tx.subject.create({
+            data: {
+              id: `sub_kelajak_${actualSchoolId}`,
               schoolId: actualSchoolId,
+              name: "Kelajak soati",
+              shortName: "Kelajak s.",
+              colorTag: "#8B5CF6",
+              difficultyScore: 1,
+              allowDoubleLesson: false,
+              methodDayOfWeek: 1,
+            },
+          });
+        }
+
+        if (sinfSoatiSubject) {
+          const existingCS = await tx.classSubject.findFirst({
+            where: {
               classId: teacher.homeroomClassId,
               subjectId: sinfSoatiSubject.id,
             },
-            data: { teacherId: teacherRecord.id },
           });
+          if (existingCS) {
+            await tx.classSubject.update({
+              where: { id: existingCS.id },
+              data: { teacherId: teacherRecord.id },
+            });
+          } else {
+            await tx.classSubject.create({
+              data: {
+                schoolId: actualSchoolId,
+                classId: teacher.homeroomClassId,
+                subjectId: sinfSoatiSubject.id,
+                teacherId: teacherRecord.id,
+                weeklyHours: 1,
+              },
+            });
+          }
+
           await tx.lesson.updateMany({
             where: {
               schoolId: actualSchoolId,
@@ -96,7 +131,7 @@ export async function upsertTeacherAction(schoolId: string, teacher: Teacher) {
                 { dayOfWeek: 1, periodNumber: 1 },
               ],
             },
-            data: { teacherId: teacherRecord.id },
+            data: { teacherId: teacherRecord.id, subjectId: sinfSoatiSubject.id },
           });
         }
       }
@@ -306,21 +341,56 @@ export async function setHomeroomTeacherAction(
         data: { homeroomClassId: cls.id },
       });
 
-      // 4. ClassSubject (Sinf soati) ni yangi o'qituvchiga o'tkazish
-      const sinfSoatiSubject = await tx.subject.findFirst({
+      // 4. ClassSubject (Kelajak soati) ni yangi o'qituvchiga o'tkazish yoki yaratish
+      let sinfSoatiSubject = await tx.subject.findFirst({
         where: {
           schoolId: actualSchoolId,
-          OR: [{ id: "sub_sinf_soati" }, { name: { contains: "Sinf soati" } }],
+          OR: [
+            { id: "sub_sinf_soati" },
+            { id: "sub_kelajak" },
+            { name: { contains: "Kelajak" } },
+            { name: { contains: "Sinf soati" } },
+          ],
         },
       });
 
-      if (sinfSoatiSubject) {
-        await tx.classSubject.updateMany({
-          where: { classId: cls.id, subjectId: sinfSoatiSubject.id },
-          data: { teacherId: teacher.id },
+      if (!sinfSoatiSubject) {
+        sinfSoatiSubject = await tx.subject.create({
+          data: {
+            id: `sub_kelajak_${actualSchoolId}`,
+            schoolId: actualSchoolId,
+            name: "Kelajak soati",
+            shortName: "Kelajak s.",
+            colorTag: "#8B5CF6",
+            difficultyScore: 1,
+            allowDoubleLesson: false,
+            methodDayOfWeek: 1,
+          },
         });
+      }
 
-        // 5. Mavjud darslar jadvalidagi Sinf soatini yangilash
+      if (sinfSoatiSubject) {
+        const existingCS = await tx.classSubject.findFirst({
+          where: { classId: cls.id, subjectId: sinfSoatiSubject.id },
+        });
+        if (existingCS) {
+          await tx.classSubject.update({
+            where: { id: existingCS.id },
+            data: { teacherId: teacher.id },
+          });
+        } else {
+          await tx.classSubject.create({
+            data: {
+              schoolId: actualSchoolId,
+              classId: cls.id,
+              subjectId: sinfSoatiSubject.id,
+              teacherId: teacher.id,
+              weeklyHours: 1,
+            },
+          });
+        }
+
+        // 5. Mavjud darslar jadvalidagi Kelajak soatini yangilash
         await tx.lesson.updateMany({
           where: {
             schoolId: actualSchoolId,
@@ -330,7 +400,7 @@ export async function setHomeroomTeacherAction(
               { dayOfWeek: 1, periodNumber: 1 },
             ],
           },
-          data: { teacherId: teacher.id },
+          data: { teacherId: teacher.id, subjectId: sinfSoatiSubject.id },
         });
       }
     });
