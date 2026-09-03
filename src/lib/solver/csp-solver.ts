@@ -214,6 +214,7 @@ export class CSPSolver {
 
     // ── 2. QAT'IY BELGILANGAN VA QULFLANGAN DARSLAR (Lock / Pin) ───
     const teacherOccupancy = new Map<string, number>(); // key: `${teacherId}_${day}_${period}` -> count
+    const teacherDailyHours = new Map<string, number>(); // key: `${teacherId}_${day}` -> count (Kunlik dars limiti nazorati)
     const lockedClassSet = new Set(this.input.lockedClassIds || []);
     const lockedTeacherSet = new Set(this.input.lockedTeacherIds || []);
 
@@ -236,6 +237,9 @@ export class CSPSolver {
 
             const k = `${el.teacherId}_${el.dayOfWeek}_${el.periodNumber}`;
             teacherOccupancy.set(k, (teacherOccupancy.get(k) || 0) + 1);
+
+            const dk = `${el.teacherId}_${el.dayOfWeek}`;
+            teacherDailyHours.set(dk, (teacherDailyHours.get(dk) || 0) + 1);
           }
         }
       }
@@ -266,6 +270,9 @@ export class CSPSolver {
 
         const k = `${homeroomId}_1_1`;
         teacherOccupancy.set(k, (teacherOccupancy.get(k) || 0) + 1);
+
+        const dk = `${homeroomId}_1`;
+        teacherDailyHours.set(dk, (teacherDailyHours.get(dk) || 0) + 1);
       }
     }
 
@@ -404,6 +411,18 @@ export class CSPSolver {
 
         if (currentOcc > 0) score += currentOcc * 50000000;
 
+        // O'qituvchining kunlik dars soati limiti (kuniga maks soat) nazorati:
+        const teacherObj = this.teacherMap.get(req.teacherId);
+        const maxDaily = teacherObj?.maxConsecutiveHours || 5;
+        const dayKey = `${req.teacherId}_${slot.day}`;
+        const currentDayCount = teacherDailyHours.get(dayKey) || 0;
+
+        if (currentDayCount >= maxDaily) {
+          score += (currentDayCount - maxDaily + 1) * 30000000; // Kunlik limitdan oshib ketmaslik!
+        } else {
+          score += currentDayCount * 500; // Darslarni kunlarga tekis taqsimlash
+        }
+
         // Agar 2-guruh darsi bo'lsa, ayni shu fan va vaqtdagi 1-guruh bilan parallel tushishga qat'iy ustunlik:
         if (req.groupType === "GROUP_2") {
           const matchingGroup1 = slots.find(
@@ -469,7 +488,6 @@ export class CSPSolver {
         score += ((classHash * 7 + slot.day * 13 + slot.period * 17) % 23) * 2;
 
         // Bino harakati qoidasi (Travel Policy):
-        const teacherObj = this.teacherMap.get(req.teacherId);
         if (teacherObj && teacherObj.branchIds && teacherObj.branchIds.length > 1) {
           if (teacherObj.travelPolicy === "ALTERNATING_DAYS") {
             const isMainBranch = req.branchId === teacherObj.branchIds[0];
@@ -506,6 +524,9 @@ export class CSPSolver {
 
       const occKey = `${req.teacherId}_${bestSlot.day}_${bestSlot.period}`;
       teacherOccupancy.set(occKey, (teacherOccupancy.get(occKey) || 0) + 1);
+
+      const dayKey = `${req.teacherId}_${bestSlot.day}`;
+      teacherDailyHours.set(dayKey, (teacherDailyHours.get(dayKey) || 0) + 1);
     }
 
     // ── 5. TEZ VA KUCHLI MIN-CONFLICTS LOCAL SEARCH (Max 200 iteration) ─────────

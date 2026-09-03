@@ -157,7 +157,12 @@ export function validateDropSlot({
   }
 
   const teacherMaxAllowed = teacher?.maxConsecutiveHours || 4;
-  if (maxConsecutive > teacherMaxAllowed) {
+  const totalDayLessons = teacherDayLessons.length + 1;
+  if (totalDayLessons > teacherMaxAllowed) {
+    warnings.push(
+      `⚡ ${teacher?.fullName || "O'qituvchi"} uchun kunlik dars limiti (${teacherMaxAllowed} soat) dan oshdi (Jami: ${totalDayLessons} soat)!`
+    );
+  } else if (maxConsecutive > teacherMaxAllowed) {
     warnings.push(
       `⚡ ${teacher?.fullName || "O'qituvchi"} uchun ketma-ket ${maxConsecutive} soat dars yuklamasi!`
     );

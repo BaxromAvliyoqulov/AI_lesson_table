@@ -21,6 +21,7 @@ import {
   Check,
   CheckCircle2,
   RotateCcw,
+  AlertCircle,
 } from "lucide-react";
 
 interface TeacherModalProps {
@@ -300,17 +301,41 @@ export const TeacherModal: React.FC<TeacherModalProps> = ({
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-muted-foreground mb-1.5">
-                Ketma-ket dars (maks)
-              </label>
-              <input
-                type="number"
-                min={1}
-                max={8}
-                value={maxConsecutive}
-                onChange={(e) => setMaxConsecutive(Number(e.target.value))}
-                className="w-full px-3 py-2 rounded-xl border border-border bg-background focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm font-semibold"
-              />
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-xs font-semibold text-muted-foreground flex items-center gap-1" title="Bir kunda o'qituvchiga qo'yiladigan maksimal dars soati">
+                  <Clock className="w-3.5 h-3.5 text-indigo-600" />
+                  Kuniga maks dars
+                </label>
+              </div>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => setMaxConsecutive((prev) => Math.max(2, prev - 1))}
+                  className="w-8 h-9 rounded-xl border border-border bg-muted/40 hover:bg-muted flex items-center justify-center font-bold text-xs cursor-pointer select-none transition-colors"
+                  title="1 soat kamaytirish"
+                >
+                  -
+                </button>
+                <input
+                  type="number"
+                  min={2}
+                  max={8}
+                  value={maxConsecutive}
+                  onChange={(e) => setMaxConsecutive(Math.max(2, Math.min(8, Number(e.target.value))))}
+                  className="w-full px-2 py-2 rounded-xl border border-border bg-background focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm font-black text-center"
+                />
+                <button
+                  type="button"
+                  onClick={() => setMaxConsecutive((prev) => Math.min(8, prev + 1))}
+                  className="w-8 h-9 rounded-xl border border-border bg-muted/40 hover:bg-muted flex items-center justify-center font-bold text-xs cursor-pointer select-none transition-colors"
+                  title="1 soat oshirish"
+                >
+                  +
+                </button>
+              </div>
+              <span className="text-[10px] text-muted-foreground block mt-1">
+                1 kunda ko'pi bilan (soat)
+              </span>
             </div>
 
             <div>
@@ -362,6 +387,16 @@ export const TeacherModal: React.FC<TeacherModalProps> = ({
               </select>
             </div>
           </div>
+
+          {/* Mantiqiy ogohlantirish (Kunlik dars soati stavkaga nisbatan yetarli bo'lishi kerak) */}
+          {weeklyCapacity > 0 && maxConsecutive * 5 < weeklyCapacity && (
+            <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center gap-2 text-xs text-amber-900 dark:text-amber-200">
+              <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+              <span>
+                💡 Haftalik <strong>{weeklyCapacity} soat</strong> stavka sig&apos;ishi uchun kuniga kamida <strong>{Math.ceil(weeklyCapacity / 5)} soat</strong> dars belgilanishi tavsiya etiladi (5 kunlik o&apos;quv haftasida).
+              </span>
+            </div>
+          )}
 
           {/* ── 1. BINOLAR TANLOVI (FILIALLAR) ─────────────────────────────── */}
           <div>
