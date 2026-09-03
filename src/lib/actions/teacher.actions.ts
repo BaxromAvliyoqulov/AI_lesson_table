@@ -276,51 +276,116 @@ export async function deleteTeacherAction(schoolId: string, teacherId: string) {
 export async function saveTeacherWorkloadAction(
   schoolId: string,
   teacherId: string,
-  assignments: Array<{ classId: string; subjectId: string; weeklyHours: number }>
+  assignments: Array<{
+    classId: string;
+    subjectId: string;
+    weeklyHours: number;
+    isSplit?: boolean;
+    groupType?: "WHOLE" | "GROUP_1" | "GROUP_2";
+    secondTeacherId?: string;
+  }>
 ) {
   try {
     const school = await resolveSchool(schoolId);
     if (!school) return { success: false, error: "Maktab topilmadi" };
     const actualSchoolId = school.id;
 
-    await prisma.$transaction(async (tx) => {
-      const teacher = await tx.teacher.findFirst({
-        where: { OR: [{ id: teacherId }, { schoolId: actualSchoolId, fullName: teacherId }] },
-      });
-      if (!teacher) return;
-
-      // Ushbu o'qituvchining avvalgi barcha biriktirilgan ClassSubject larini tozalash
-      await tx.classSubject.deleteMany({
-        where: { teacherId: teacher.id, schoolId: actualSchoolId },
-      });
-
-      // Yangi biriktirilgan dars soatlarini yozish
-      for (const a of assignments) {
-        const cls = await tx.class.findFirst({
-          where: { OR: [{ id: a.classId }, { schoolId: actualSchoolId, name: a.classId }] },
+    await prisma.$transaction(
+      async (tx) => {
+        const teacher = await tx.teacher.findFirst({
+          where: { OR: [{ id: teacherId }, { schoolId: actualSchoolId, fullName: teacherId }] },
         });
-        const sub = await tx.subject.findFirst({
-          where: { OR: [{ id: a.subjectId }, { schoolId: actualSchoolId, name: a.subjectId }] },
+        if (!teacher) return;
+
+        // Ushbu o'qituvchining avvalgi barcha biriktirilgan ClassSubject larini tozalash
+        await tx.classSubject.deleteMany({
+          where: { teacherId: teacher.id, schoolId: actualSchoolId },
         });
 
-        if (cls && sub) {
-          // Sinfda ushbu fan bo'yicha boshqa yozuv bo'lsa tozalash (duplicate oldini olish)
-          await tx.classSubject.deleteMany({
-            where: { classId: cls.id, subjectId: sub.id, schoolId: actualSchoolId },
+        // Yangi biriktirilgan dars soatlarini yozish
+        for (const a of assignments) {
+          const cls = await tx.class.findFirst({
+            where: { OR: [{ id: a.classId }, { schoolId: actualSchoolId, name: a.classId }] },
+          });
+          const sub = await tx.subject.findFirst({
+            where: { OR: [{ id: a.subjectId }, { schoolId: actualSchoolId, name: a.subjectId }] },
           });
 
-          await tx.classSubject.create({
-            data: {
-              schoolId: actualSchoolId,
-              classId: cls.id,
-              subjectId: sub.id,
-              teacherId: teacher.id,
-              weeklyHours: a.weeklyHours,
-            },
-          });
+          if (cls && sub) {
+            if (a.isSplit && a.secondTeacherId) {
+              const secondTeacher = await tx.teacher.findFirst({
+                where: {
+                  OR: [
+                    { id: a.secondTeacherId },
+                    { schoolId: actualSchoolId, fullName: a.secondTeacherId },
+                  ],
+                },
+              });
+
+              // 1-o'qituvchi uchun
+              await tx.classSubject.deleteMany({
+                where: {
+                  classId: cls.id,
+                  subjectId: sub.id,
+                  teacherId: teacher.id,
+                  schoolId: actualSchoolId,
+                },
+              });
+              await tx.classSubject.create({
+                data: {
+                  schoolId: actualSchoolId,
+                  classId: cls.id,
+                  subjectId: sub.id,
+                  teacherId: teacher.id,
+                  weeklyHours: a.weeklyHours,
+                },
+              });
+
+              // 2-o'qituvchi uchun ham yozish
+              if (secondTeacher) {
+                await tx.classSubject.deleteMany({
+                  where: {
+                    classId: cls.id,
+                    subjectId: sub.id,
+                    teacherId: secondTeacher.id,
+                    schoolId: actualSchoolId,
+                  },
+                });
+                await tx.classSubject.create({
+                  data: {
+                    schoolId: actualSchoolId,
+                    classId: cls.id,
+                    subjectId: sub.id,
+                    teacherId: secondTeacher.id,
+                    weeklyHours: a.weeklyHours,
+                  },
+                });
+              }
+            } else {
+              await tx.classSubject.deleteMany({
+                where: {
+                  classId: cls.id,
+                  subjectId: sub.id,
+                  teacherId: teacher.id,
+                  schoolId: actualSchoolId,
+                },
+              });
+
+              await tx.classSubject.create({
+                data: {
+                  schoolId: actualSchoolId,
+                  classId: cls.id,
+                  subjectId: sub.id,
+                  teacherId: teacher.id,
+                  weeklyHours: a.weeklyHours,
+                },
+              });
+            }
+          }
         }
-      }
-    });
+      },
+      { timeout: 25000, maxWait: 10000 }
+    );
 
     return { success: true };
   } catch (error: any) {

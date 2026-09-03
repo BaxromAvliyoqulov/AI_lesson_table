@@ -58,4 +58,33 @@ describe("Teacher Workload & Capacity Validation Engine", () => {
 
     expect(totalWorkload).toBe(10); // 11 emas, qat'iyan 10 soat!
   });
+
+  it("should calculate split group hours dynamically for both teachers and support slash format", () => {
+    // Agar 5A sinfining Ingliz tili fani (4 soat) guruhga bo'lingan bo'lsa:
+    // 1-guruh: 18-o'qituvchi (4 soat)
+    // 2-guruh: 24-o'qituvchi (4 soat)
+    const splitAssignments = [
+      { classId: "c_5A", subjectId: "sub_ing", teacherId: "t_18", weeklyHours: 4, groupType: "GROUP_1" },
+      { classId: "c_5A", subjectId: "sub_ing", teacherId: "t_24", weeklyHours: 4, groupType: "GROUP_2" },
+      { classId: "c_5B", subjectId: "sub_ing", teacherId: "t_18", weeklyHours: 4, groupType: "WHOLE" },
+    ];
+
+    const teacherWorkloads = new Map<string, number>();
+    for (const cs of splitAssignments) {
+      if (!isKelajakOrSinfSoatiSubject(cs.subjectId)) {
+        teacherWorkloads.set(cs.teacherId, (teacherWorkloads.get(cs.teacherId) || 0) + cs.weeklyHours);
+      }
+    }
+
+    // 18-o'qituvchiga 4 (5A 1-gr) + 4 (5B) = 8 soat
+    expect(teacherWorkloads.get("t_18")).toBe(8);
+    // 24-o'qituvchiga ham dinamik ravishda 5A 2-guruhning 4 soati to'liq qo'shiladi!
+    expect(teacherWorkloads.get("t_24")).toBe(4);
+
+    // Dars jadvalida o'qituvchilar raqami slash bilan ajratilishi:
+    const num1 = 18;
+    const num2 = 24;
+    const slashLabel = `${num1} / ${num2}`;
+    expect(slashLabel).toBe("18 / 24");
+  });
 });

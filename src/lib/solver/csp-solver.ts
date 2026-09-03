@@ -167,6 +167,10 @@ export class CSPSolver {
       const maxP = isPrimary ? 5 : 6;
 
       const slots: Slot[] = [];
+      const hasGroup2 = (effectiveClassSubjects.get(cls.id) || []).some(
+        (cs) => cs.groupType === "GROUP_2"
+      );
+
       for (let day = 1; day <= days; day++) {
         if (blockedDaysSet.has(day)) continue; // Bu kun sinf uchun dam kuni
 
@@ -186,6 +190,23 @@ export class CSPSolver {
           };
           slots.push(slot);
           allSlots.push(slot);
+
+          // Agar sinfda guruhlarga bo'lingan (GROUP_2) darslar bo'lsa, parallel slot ochish
+          if (hasGroup2) {
+            const parallelSlot: Slot = {
+              classId: cls.id,
+              branchId: cls.branchId,
+              day,
+              period: p,
+              teacherId: null,
+              subjectId: null,
+              groupType: "GROUP_2",
+              roomId: null,
+              isLocked: false,
+            };
+            slots.push(parallelSlot);
+            allSlots.push(parallelSlot);
+          }
         }
       }
       classSlots.set(cls.id, slots);
@@ -332,10 +353,21 @@ export class CSPSolver {
       // QAT'IY METOD KUNI VA BIR KUNDA 1 FAN PROTOKOLI:
       const emptySlots = slots.filter((s) => {
         if (s.isLocked || s.teacherId !== null) return false;
+
+        // Parallel slotlar filtri: GROUP_2 faqat GROUP_2 slotiga, boshqalar asosiy slotlarga
+        if (req.groupType === "GROUP_2") {
+          if (s.groupType !== "GROUP_2") return false;
+        } else {
+          if (s.groupType === "GROUP_2") return false;
+        }
+
         if (this.isStrictMethodDay(s.day, req.teacherId, req.subjectId)) return false;
 
         const sameSubjectSlotsInDay = slots.filter(
-          (other) => other.day === s.day && other.subjectId === req.subjectId
+          (other) =>
+            other.day === s.day &&
+            other.subjectId === req.subjectId &&
+            other.groupType === req.groupType
         );
 
         // Hech qaysi fan 1 kunda 3 yoki undan ortiq soat bo'lishi mumkin emas!
@@ -371,6 +403,22 @@ export class CSPSolver {
         const currentOcc = teacherOccupancy.get(occKey) || 0;
 
         if (currentOcc > 0) score += currentOcc * 50000000;
+
+        // Agar 2-guruh darsi bo'lsa, ayni shu fan va vaqtdagi 1-guruh bilan parallel tushishga qat'iy ustunlik:
+        if (req.groupType === "GROUP_2") {
+          const matchingGroup1 = slots.find(
+            (other) =>
+              other.day === slot.day &&
+              other.period === slot.period &&
+              other.subjectId === req.subjectId &&
+              other.groupType === "GROUP_1"
+          );
+          if (matchingGroup1) {
+            score -= 100000000; // 1-guruh bilan ayni bir vaqtda parallel o'tish!
+          } else {
+            score += 20000000;
+          }
+        }
 
         const sameSubjectCount = slots.filter(
           (s) => s.day === slot.day && s.subjectId === req.subjectId

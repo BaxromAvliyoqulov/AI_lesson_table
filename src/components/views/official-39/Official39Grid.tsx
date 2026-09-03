@@ -146,7 +146,7 @@ export const Official39Grid: React.FC<Official39GridProps> = ({
               {displayClasses.map((cls) => (
                 <React.Fragment key={`sub_${cls.id}`}>
                   <th className="border border-black px-1 py-1 text-center w-16 font-bold text-[9px] text-slate-800 bg-slate-200/80">Fan</th>
-                  <th className="border border-black px-1 py-1 text-center w-6 bg-slate-300 font-black text-[9.5px] text-slate-950">
+                  <th className="border border-black px-1 py-1 text-center w-8 min-w-[30px] bg-slate-300 font-black text-[9.5px] text-slate-950">
                     №
                   </th>
                 </React.Fragment>

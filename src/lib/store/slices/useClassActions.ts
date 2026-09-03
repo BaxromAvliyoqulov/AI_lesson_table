@@ -301,24 +301,75 @@ export function useClassActions() {
   const saveTeacherWorkload = useCallback(
     (
       teacherId: string,
-      assignments: Array<{ classId: string; subjectId: string; weeklyHours: number }>
+      assignments: Array<{
+        classId: string;
+        subjectId: string;
+        weeklyHours: number;
+        isSplit?: boolean;
+        groupType?: "WHOLE" | "GROUP_1" | "GROUP_2";
+        secondTeacherId?: string;
+      }>
     ) => {
       updateStore((prev) => {
         const updatedClasses = prev.classes.map((c) => {
-          const remainingSubjects = (c.subjects || []).filter((s) => s.teacherId !== teacherId);
+          let remainingSubjects = (c.subjects || []).filter((s) => s.teacherId !== teacherId);
           const classAssignments = assignments.filter((a) => a.classId === c.id);
 
-          const addedSubjects: ClassSubject[] = classAssignments.map((a) => ({
-            classId: c.id,
-            subjectId: a.subjectId,
-            teacherId,
-            weeklyHours: a.weeklyHours,
-            groupType: "WHOLE",
-          }));
+          const addedSubjects: ClassSubject[] = [];
+
+          classAssignments.forEach((a) => {
+            if (a.isSplit && a.secondTeacherId) {
+              // 1-guruh darsi (hozirgi o'qituvchi)
+              addedSubjects.push({
+                classId: c.id,
+                subjectId: a.subjectId,
+                teacherId: teacherId,
+                weeklyHours: a.weeklyHours,
+                groupType: "GROUP_1",
+              });
+              // 2-guruh darsi (biriktirilgan 2-o'qituvchi)
+              addedSubjects.push({
+                classId: c.id,
+                subjectId: a.subjectId,
+                teacherId: a.secondTeacherId,
+                weeklyHours: a.weeklyHours,
+                groupType: "GROUP_2",
+              });
+
+              // Ushbu fanning eski split qismlarini tozalash
+              remainingSubjects = remainingSubjects.filter(
+                (rs) =>
+                  !(
+                    rs.subjectId === a.subjectId &&
+                    (rs.groupType === "GROUP_1" || rs.groupType === "GROUP_2")
+                  )
+              );
+            } else {
+              addedSubjects.push({
+                classId: c.id,
+                subjectId: a.subjectId,
+                teacherId: teacherId,
+                weeklyHours: a.weeklyHours,
+                groupType: "WHOLE",
+              });
+
+              // Agar avval split bo'lgan bo'lsa, eskisini tozalash
+              remainingSubjects = remainingSubjects.filter(
+                (rs) =>
+                  !(
+                    rs.subjectId === a.subjectId &&
+                    (rs.groupType === "GROUP_1" || rs.groupType === "GROUP_2")
+                  )
+              );
+            }
+          });
 
           const deduped: ClassSubject[] = [
             ...remainingSubjects.filter(
-              (rs) => !addedSubjects.some((as) => as.subjectId === rs.subjectId)
+              (rs) =>
+                !addedSubjects.some(
+                  (as) => as.subjectId === rs.subjectId && as.teacherId === rs.teacherId
+                )
             ),
             ...addedSubjects,
           ];

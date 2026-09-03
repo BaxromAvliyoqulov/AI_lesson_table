@@ -530,6 +530,7 @@ export default function SettingsPage() {
         teacher={workloadTeacher}
         classes={schoolClasses}
         subjects={schoolSubjects}
+        teachers={schoolTeachers}
         onSave={(teacherId, assignments) => {
           store.saveTeacherWorkload(teacherId, assignments);
           showToast("O'qituvchi dars yuklamasi muvaffaqiyatli saqlandi", "success");

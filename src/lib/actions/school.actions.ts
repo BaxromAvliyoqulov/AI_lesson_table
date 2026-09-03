@@ -92,7 +92,14 @@ export async function deleteTeacherAction(schoolId: string, teacherId: string) {
 export async function saveTeacherWorkloadAction(
   schoolId: string,
   teacherId: string,
-  assignments: Array<{ classId: string; subjectId: string; weeklyHours: number }>
+  assignments: Array<{
+    classId: string;
+    subjectId: string;
+    weeklyHours: number;
+    isSplit?: boolean;
+    groupType?: "WHOLE" | "GROUP_1" | "GROUP_2";
+    secondTeacherId?: string;
+  }>
 ) {
   return teacher.saveTeacherWorkloadAction(schoolId, teacherId, assignments);
 }

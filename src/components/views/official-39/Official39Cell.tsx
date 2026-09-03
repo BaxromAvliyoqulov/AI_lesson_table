@@ -181,15 +181,13 @@ export const OfficialTableCell: React.FC<OfficialTableCellProps> = ({
         }
       >
         {isSplitGroup ? (
-          <div className="flex flex-col text-[8px] leading-tight">
-            <div className="flex items-center justify-between border-b border-black/30 pb-0.5 truncate">
-              <span className="font-bold truncate text-blue-950">{s1?.shortName || s1?.name || "1-gr"}</span>
-              <span className="text-[7px] text-blue-700 font-extrabold ml-0.5">1-g</span>
-            </div>
-            <div className="flex items-center justify-between pt-0.5 truncate">
-              <span className="font-bold truncate text-indigo-950">{s2?.shortName || s2?.name || "2-gr"}</span>
-              <span className="text-[7px] text-indigo-700 font-extrabold ml-0.5">2-g</span>
-            </div>
+          <div className="flex items-center justify-between gap-0.5 truncate">
+            <span className="font-bold truncate text-slate-900 text-[9.5px]">
+              {s1?.shortName || s1?.name || (s2 ? `${s1?.shortName || s1?.name}/${s2?.shortName || s2?.name}` : "Fan")}
+            </span>
+            <span className="text-[7px] font-black text-indigo-700 bg-indigo-100/90 px-1 py-0.5 rounded border border-indigo-200 shrink-0">
+              1-2 gr
+            </span>
           </div>
         ) : (
           <div className="flex items-center justify-between gap-0.5">
@@ -233,11 +231,10 @@ export const OfficialTableCell: React.FC<OfficialTableCellProps> = ({
             : ""
         }
       >
-        {isSplitGroup ? (
-          <div className="flex flex-col text-[8.5px] leading-tight font-mono font-black">
-            <div className="border-b border-black/30 pb-0.5 text-blue-950">{num1 || "—"}</div>
-            <div className="pt-0.5 text-indigo-950">{num2 || "—"}</div>
-          </div>
+        {isSplitGroup && (num1 || num2) ? (
+          <span className="font-mono font-black text-[9px] text-slate-950 whitespace-nowrap tracking-tighter px-0.5">
+            {num1 || "?"} / {num2 || "?"}
+          </span>
         ) : (
           teacherNumber || ""
         )}
