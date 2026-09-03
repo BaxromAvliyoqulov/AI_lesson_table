@@ -200,6 +200,19 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
         );
         hasChanges = true;
       }
+
+      // Sinf dars jadvalidagi o'qituvchilarni amaldagi dars taqsimotiga (cls.subjects) sinxronlash
+      const classLessons = updatedLessons.filter((l) => l.classId === cls.id);
+      classLessons.forEach((l) => {
+        if (l.isLocked) return;
+        const assignedSub = (cls.subjects || []).find((s) => s.subjectId === l.subjectId);
+        if (assignedSub && assignedSub.teacherId && assignedSub.teacherId !== l.teacherId) {
+          updatedLessons = updatedLessons.map((item) =>
+            item.id === l.id ? { ...item, teacherId: assignedSub.teacherId } : item
+          );
+          hasChanges = true;
+        }
+      });
     });
 
     if (hasChanges) {
@@ -365,16 +378,10 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
           }
         });
       }
-      for (const l of lessons) {
-        if (l.teacherId === t.id && l.subjectId !== "sub_sinf_soati") {
-          const s = subjectMap.get(l.subjectId);
-          if (s) subjectNames.add(s.shortName || s.name);
-        }
-      }
       map.set(t.id, subjectNames.size === 0 ? "—" : Array.from(subjectNames).join(", "));
     }
     return map;
-  }, [teachers, classes, lessons, subjectMap]);
+  }, [teachers, classes, subjectMap]);
 
   const getHomeroomTeacher = useCallback(
     (cls: SchoolClass): Teacher | undefined => {
