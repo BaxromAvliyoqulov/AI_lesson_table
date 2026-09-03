@@ -22,6 +22,7 @@ import { CheckCircle2, AlertTriangle, Sparkles } from "lucide-react";
 import { FilterScope, Official39TableViewProps, DAYS, PERIOD_TIMES } from "./official-39/types";
 import { validateDropSlot } from "@/lib/solver/drag-validator";
 import { detectScheduleConflicts } from "@/lib/solver/schedule-conflict-detector";
+import { isKelajakOrSinfSoatiSubject } from "@/lib/curriculum-templates";
 import { Official39Header, Official39Signatures } from "./official-39/Official39Header";
 import { Official39Filters } from "./official-39/Official39Filters";
 import { Official39Grid } from "./official-39/Official39Grid";
@@ -145,6 +146,67 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
     approvalDate,
   ]);
 
+  const subjectMap = useMemo(() => new Map(subjects.map((s) => [s.id, s])), [subjects]);
+  const teacherMap = useMemo(() => new Map(teachers.map((t) => [t.id, t])), [teachers]);
+
+  // ─── KAFOLAT: Har bir sinf uchun Dushanba 1-soat Kelajak/Sinf soatini AVTOMATIK kafolatlash ───
+  useEffect(() => {
+    if (!onLessonsChange || classes.length === 0 || subjects.length === 0) return;
+
+    let hasChanges = false;
+    let updatedLessons = [...lessons];
+
+    const sinfSoatiSub =
+      subjects.find((s) => isKelajakOrSinfSoatiSubject(s.id, s.name)) ||
+      subjects.find((s) => s.id === "sub_sinf_soati");
+
+    classes.forEach((cls) => {
+      const homeroomSub = (cls.subjects || []).find((s) =>
+        isKelajakOrSinfSoatiSubject(s.subjectId, subjectMap.get(s.subjectId)?.name)
+      );
+      const homeroomTeacherId = cls.homeroomTeacherId || homeroomSub?.teacherId;
+
+      if (!homeroomTeacherId || !sinfSoatiSub) return;
+
+      const mondayL1 = updatedLessons.find(
+        (l) => l.classId === cls.id && l.dayOfWeek === 1 && l.periodNumber === 1
+      );
+
+      if (!mondayL1) {
+        // Dushanba 1-soat darsi bo'sh bo'lsa -> avtomatik yaratib qulflaymiz!
+        updatedLessons.push({
+          id: `les_${cls.id}_sinf_soati_${Date.now()}`,
+          scheduleId: "draft-schedule",
+          schoolId: cls.schoolId,
+          classId: cls.id,
+          subjectId: sinfSoatiSub.id,
+          teacherId: homeroomTeacherId,
+          roomId: null,
+          branchId: cls.branchId,
+          dayOfWeek: 1,
+          periodNumber: 1,
+          isLocked: true,
+        });
+        hasChanges = true;
+      } else if (
+        isKelajakOrSinfSoatiSubject(mondayL1.subjectId, subjectMap.get(mondayL1.subjectId)?.name) &&
+        mondayL1.teacherId !== homeroomTeacherId
+      ) {
+        // Agar o'qituvchisi boshqa bo'lib qolgan bo'lsa -> yangi sinf rahbariga sinxronlash
+        updatedLessons = updatedLessons.map((l) =>
+          l.id === mondayL1.id
+            ? { ...l, teacherId: homeroomTeacherId, isLocked: true }
+            : l
+        );
+        hasChanges = true;
+      }
+    });
+
+    if (hasChanges) {
+      onLessonsChange(updatedLessons);
+    }
+  }, [classes, subjects, subjectMap, onLessonsChange]);
+
   // Sinf rahbarini almashtirish modali
   const [homeroomModal, setHomeroomModal] = useState<{
     isOpen: boolean;
@@ -163,9 +225,6 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
   } | null>(null);
   const [selectedSubjectId, setSelectedSubjectId] = useState<string>("");
   const [selectedTeacherId, setSelectedTeacherId] = useState<string>("");
-
-  const subjectMap = useMemo(() => new Map(subjects.map((s) => [s.id, s])), [subjects]);
-  const teacherMap = useMemo(() => new Map(teachers.map((t) => [t.id, t])), [teachers]);
 
   // Asosiy bino va Filial bo'yicha aniq filtrlangan va tartiblangan sinflar
   const displayClasses = useMemo(() => {
