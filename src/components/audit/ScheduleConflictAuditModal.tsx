@@ -16,35 +16,12 @@ import {
   Coffee,
   HelpCircle,
 } from "lucide-react";
-import { Lesson, SchoolClass, Subject, Teacher, Room } from "@/types";
-
-const WEEKDAY_NAMES = [
-  "",
-  "Dushanba",
-  "Seshanba",
-  "Chorshanba",
-  "Payshanba",
-  "Juma",
-  "Shanba",
-];
-
-export interface ScheduleConflictItem {
-  id: string;
-  type: "TEACHER_COLLISION" | "METHOD_DAY" | "SAME_DAY_DUPLICATE" | "PRIMARY_SATURDAY" | "TEACHER_FATIGUE";
-  severity: "CRITICAL" | "HIGH" | "MEDIUM";
-  title: string;
-  description: string;
-  className: string;
-  classId: string;
-  subjectName: string;
-  teacherName: string;
-  teacherNumber?: number;
-  dayOfWeek: number;
-  dayName: string;
-  periodNumber: number;
-  relatedLessons: Lesson[];
-  recommendation: string;
-}
+import { Lesson, SchoolClass, Subject, Teacher } from "@/types";
+import {
+  detectScheduleConflicts,
+  ScheduleConflictItem,
+  WEEKDAY_NAMES,
+} from "@/lib/solver/schedule-conflict-detector";
 
 interface ScheduleConflictAuditModalProps {
   isOpen: boolean;
@@ -67,158 +44,17 @@ export const ScheduleConflictAuditModal: React.FC<ScheduleConflictAuditModalProp
   onAutoFixAI,
   onSelectClass,
 }) => {
-  const classMap = useMemo(() => new Map(classes.map((c) => [c.id, c])), [classes]);
-  const subjectMap = useMemo(() => new Map(subjects.map((s) => [s.id, s])), [subjects]);
-  const teacherMap = useMemo(() => new Map(teachers.map((t) => [t.id, t])), [teachers]);
-
-  // Analyze conflicts
-  const conflicts: ScheduleConflictItem[] = useMemo(() => {
-    const list: ScheduleConflictItem[] = [];
-
-    // 1. O'qituvchilar Kolliziyasi (Teacher Collisions)
-    const teacherSlotMap = new Map<string, Lesson[]>();
-    for (const l of lessons) {
-      const key = `${l.teacherId}_${l.dayOfWeek}_${l.periodNumber}`;
-      const existing = teacherSlotMap.get(key) || [];
-      existing.push(l);
-      teacherSlotMap.set(key, existing);
-    }
-
-    teacherSlotMap.forEach((matchedLessons, key) => {
-      if (matchedLessons.length > 1) {
-        const first = matchedLessons[0];
-        const teacher = teacherMap.get(first.teacherId);
-        const classNames = matchedLessons.map((l) => classMap.get(l.classId)?.name || "Sinf").join(", ");
-        const subNames = matchedLessons.map((l) => subjectMap.get(l.subjectId)?.name || "Fan").join(", ");
-
-        list.push({
-          id: `collision_${key}`,
-          type: "TEACHER_COLLISION",
-          severity: "CRITICAL",
-          title: `O'qituvchi Kolliziyasi (${matchedLessons.length} ta sinfda bir vaqtda)`,
-          description: `${teacher?.fullName || "O'qituvchi"} bir vaqtning o'zida (${WEEKDAY_NAMES[first.dayOfWeek]}, ${first.periodNumber}-dars) ${classNames} sinflariga dars o'tishi kerak bo'lib qolgan.`,
-          className: classNames,
-          classId: first.classId,
-          subjectName: subNames,
-          teacherName: teacher?.fullName || "O'qituvchi",
-          teacherNumber: teacher?.displayNumber,
-          dayOfWeek: first.dayOfWeek,
-          dayName: WEEKDAY_NAMES[first.dayOfWeek] || `${first.dayOfWeek}-kun`,
-          periodNumber: first.periodNumber,
-          relatedLessons: matchedLessons,
-          recommendation: `Darslardan birini o'qituvchi bo'sh bo'lgan boshqa soatga ko'chiring yoki AI bilan 1 bosishda to'g'rilang.`,
-        });
-      }
+  // Yagona Dvigatel orqali ziddiyatlarni aniqlash
+  const detectionResult = useMemo(() => {
+    return detectScheduleConflicts({
+      lessons,
+      classes,
+      subjects,
+      teachers,
     });
+  }, [lessons, classes, subjects, teachers]);
 
-    // 2. Metod Kuni Xatolari (Method Day Violations)
-    for (const l of lessons) {
-      const teacher = teacherMap.get(l.teacherId);
-      const subject = subjectMap.get(l.subjectId);
-      const cls = classMap.get(l.classId);
-
-      const isTeacherMethodDay =
-        teacher?.methodDayOfWeek !== undefined &&
-        teacher.methodDayOfWeek !== null &&
-        teacher.methodDayOfWeek === l.dayOfWeek;
-
-      const isSubjectMethodDay =
-        subject?.methodDayOfWeek !== undefined &&
-        subject.methodDayOfWeek !== null &&
-        subject.methodDayOfWeek === l.dayOfWeek;
-
-      if (isTeacherMethodDay || isSubjectMethodDay) {
-        const targetEntity = isTeacherMethodDay
-          ? `${teacher?.fullName || "O'qituvchi"}ning shaxsiy metod kuni`
-          : `${subject?.name || "Fan"}ning rasmiy metod kuni`;
-
-        list.push({
-          id: `method_${l.id}`,
-          type: "METHOD_DAY",
-          severity: "CRITICAL",
-          title: `Metod Kunida Dars Qo'yilgan`,
-          description: `${cls?.name || "Sinf"}da ${WEEKDAY_NAMES[l.dayOfWeek]} kuni ${l.periodNumber}-darsga ${subject?.name || "Fan"} qo'yilgan. Bu kun ${targetEntity} hisoblanadi.`,
-          className: cls?.name || "Sinf",
-          classId: l.classId,
-          subjectName: subject?.name || "Fan",
-          teacherName: teacher?.fullName || "O'qituvchi",
-          teacherNumber: teacher?.displayNumber,
-          dayOfWeek: l.dayOfWeek,
-          dayName: WEEKDAY_NAMES[l.dayOfWeek] || `${l.dayOfWeek}-kun`,
-          periodNumber: l.periodNumber,
-          relatedLessons: [l],
-          recommendation: `Ushbu darsni haftaning boshqa bo'sh kuniga o'tkazing.`,
-        });
-      }
-    }
-
-    // 3. Bir kunda bir xil fan takrorlanishi (Same Day Duplicate)
-    const classDaySubjectMap = new Map<string, Lesson[]>();
-    for (const l of lessons) {
-      const sub = subjectMap.get(l.subjectId);
-      if (!sub?.allowDoubleLesson) {
-        const key = `${l.classId}_${l.dayOfWeek}_${l.subjectId}`;
-        const existing = classDaySubjectMap.get(key) || [];
-        existing.push(l);
-        classDaySubjectMap.set(key, existing);
-      }
-    }
-
-    classDaySubjectMap.forEach((matched, key) => {
-      if (matched.length > 1) {
-        const first = matched[0];
-        const cls = classMap.get(first.classId);
-        const subject = subjectMap.get(first.subjectId);
-        const teacher = teacherMap.get(first.teacherId);
-        const periods = matched.map((m) => `${m.periodNumber}-dars`).join(" va ");
-
-        list.push({
-          id: `duplicate_${key}`,
-          type: "SAME_DAY_DUPLICATE",
-          severity: "HIGH",
-          title: `Bir Kunda Bir Xil Fanning Takrorlanishi`,
-          description: `${cls?.name || "Sinf"}da ${WEEKDAY_NAMES[first.dayOfWeek]} kuni ${subject?.name || "Fan"} darsi ${matched.length} marta (${periods}) qo'yilgan. Maktab me'yori bo'yicha bu fanga kuniga 1 soat ruxsat berilgan.`,
-          className: cls?.name || "Sinf",
-          classId: first.classId,
-          subjectName: subject?.name || "Fan",
-          teacherName: teacher?.fullName || "O'qituvchi",
-          teacherNumber: teacher?.displayNumber,
-          dayOfWeek: first.dayOfWeek,
-          dayName: WEEKDAY_NAMES[first.dayOfWeek] || `${first.dayOfWeek}-kun`,
-          periodNumber: first.periodNumber,
-          relatedLessons: matched,
-          recommendation: `Ikkinchi darsni haftaning bu fan bo'lmagan boshqa kuniga suring.`,
-        });
-      }
-    });
-
-    // 4. Boshlang'ich sinf Shanba darsi
-    for (const l of lessons) {
-      const cls = classMap.get(l.classId);
-      if (cls?.isPrimary && l.dayOfWeek === 6) {
-        const subject = subjectMap.get(l.subjectId);
-        const teacher = teacherMap.get(l.teacherId);
-        list.push({
-          id: `primary_sat_${l.id}`,
-          type: "PRIMARY_SATURDAY",
-          severity: "MEDIUM",
-          title: `Boshlang'ich Sinfda Shanba Darsi`,
-          description: `${cls.name} boshlang'ich sinf bo'lib, Shanba kuni dam olish kuni hisoblanadi.`,
-          className: cls.name,
-          classId: l.classId,
-          subjectName: subject?.name || "Fan",
-          teacherName: teacher?.fullName || "O'qituvchi",
-          dayOfWeek: 6,
-          dayName: "Shanba",
-          periodNumber: l.periodNumber,
-          relatedLessons: [l],
-          recommendation: `Darsni Dushanba-Juma oralig'idagi soatlarga ko'chiring.`,
-        });
-      }
-    }
-
-    return list;
-  }, [lessons, classMap, subjectMap, teacherMap]);
+  const conflicts = detectionResult.conflicts;
 
   if (!isOpen) return null;
 

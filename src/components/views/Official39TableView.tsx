@@ -21,6 +21,7 @@ import { sortClassesByName } from "@/lib/utils";
 import { CheckCircle2, AlertTriangle, Sparkles } from "lucide-react";
 import { FilterScope, Official39TableViewProps, DAYS, PERIOD_TIMES } from "./official-39/types";
 import { validateDropSlot } from "@/lib/solver/drag-validator";
+import { detectScheduleConflicts } from "@/lib/solver/schedule-conflict-detector";
 import { Official39Header, Official39Signatures } from "./official-39/Official39Header";
 import { Official39Filters } from "./official-39/Official39Filters";
 import { Official39Grid } from "./official-39/Official39Grid";
@@ -213,52 +214,17 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
     return map;
   }, [displayTeachers]);
 
-  // Barcha Ziddiyatlarni Real-Time Aniqlash (O'qituvchi kolliziyasi + 1 kunda bir xil fan + Metod kuni)
-  const teacherConflictsSet = useMemo(() => {
-    const conflicts = new Set<string>();
+  // Yagona Haqiqat Manbai (Single Source of Truth) orqali barcha ziddiyatlarni aniqlash
+  const conflictDetectionResult = useMemo(() => {
+    return detectScheduleConflicts({
+      lessons,
+      classes,
+      subjects,
+      teachers,
+    });
+  }, [lessons, classes, subjects, teachers]);
 
-    // 1. O'qituvchi kolliziyasi (Ayni vaqtda 2 ta sinfda)
-    const teacherOccMap = new Map<string, string[]>();
-    for (const l of lessons) {
-      const key = `${l.teacherId}_${l.dayOfWeek}_${l.periodNumber}`;
-      const list = teacherOccMap.get(key) || [];
-      list.push(l.id);
-      teacherOccMap.set(key, list);
-    }
-    for (const ids of teacherOccMap.values()) {
-      if (ids.length > 1) {
-        ids.forEach((id) => conflicts.add(id));
-      }
-    }
-
-    // 2. Bir kunda bitta sinfda bir xil fan takrorlanishi (QAT'IY TAQIQLANGAN)
-    const classDaySubMap = new Map<string, string[]>();
-    for (const l of lessons) {
-      const key = `${l.classId}_${l.dayOfWeek}_${l.subjectId}`;
-      const list = classDaySubMap.get(key) || [];
-      list.push(l.id);
-      classDaySubMap.set(key, list);
-    }
-    for (const ids of classDaySubMap.values()) {
-      if (ids.length > 1) {
-        ids.forEach((id) => conflicts.add(id));
-      }
-    }
-
-    // 3. Metod kuni buzilishi (O'qituvchi yoki fanning metod kuni)
-    for (const l of lessons) {
-      const t = teacherMap.get(l.teacherId);
-      const s = subjectMap.get(l.subjectId);
-      const isTeacherMethod = t?.methodDayOfWeek !== undefined && t?.methodDayOfWeek !== null && t.methodDayOfWeek === l.dayOfWeek;
-      const subMethodDay = s?.methodDayOfWeek !== undefined && s?.methodDayOfWeek !== null ? s.methodDayOfWeek : null;
-      const isSubMethod = subMethodDay === l.dayOfWeek;
-      if (isTeacherMethod || isSubMethod) {
-        conflicts.add(l.id);
-      }
-    }
-
-    return conflicts;
-  }, [lessons, teacherMap, subjectMap]);
+  const teacherConflictsSet = conflictDetectionResult.conflictLessonIds;
 
   const teacherSubjectsMap = useMemo(() => {
     const map = new Map<string, string>();

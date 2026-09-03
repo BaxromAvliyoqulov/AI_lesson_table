@@ -10,6 +10,7 @@ import { exportScheduleToExcel } from "@/lib/excel/excel-export";
 import { CSPSolver } from "@/lib/solver/csp-solver";
 import { Official39TableView } from "@/components/views/Official39TableView";
 import { Lesson, SolverResult } from "@/types";
+import { detectScheduleConflicts } from "@/lib/solver/schedule-conflict-detector";
 import {
   Sparkles,
   Layers,
@@ -81,6 +82,16 @@ export default function HomePage() {
   const schoolLessons = store.lessons.filter((l) => l.schoolId === store.currentSchoolId).length > 0
     ? store.lessons.filter((l) => l.schoolId === store.currentSchoolId)
     : store.lessons;
+
+  // Yagona Dvigatel orqali ziddiyatlarni hisoblash
+  const conflictDetectionResult = useMemo(() => {
+    return detectScheduleConflicts({
+      lessons: schoolLessons,
+      classes: schoolClasses,
+      subjects: schoolSubjects,
+      teachers: schoolTeachers,
+    });
+  }, [schoolLessons, schoolClasses, schoolSubjects, schoolTeachers]);
 
   // AI & CSP Generator (Interaktiv Progress Modal bilan)
   const handleGenerate = () => {
@@ -212,6 +223,8 @@ export default function HomePage() {
         onOpenA3Print={() => setIsA3PrintOpen(true)}
         onOpenTeacherCardsPrint={() => setIsTeacherCardsPrintOpen(true)}
         onOpenConflictModal={() => setIsConflictModalOpen(true)}
+        conflictsCount={conflictDetectionResult.totalConflictsCount}
+        onAutoFixConflicts={handleGenerate}
         onUndo={store.undo}
         canUndo={store.history.length > 0}
         isGenerating={store.isGenerating}
@@ -286,11 +299,24 @@ export default function HomePage() {
         <div className="flex items-center gap-2.5 text-xs">
           <button
             onClick={() => setIsConflictModalOpen(true)}
-            className="flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-bold transition-all bg-amber-500/10 text-amber-700 dark:text-amber-400 hover:bg-amber-500/20 border border-amber-500/30 shadow-sm cursor-pointer"
+            className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-bold transition-all border shadow-sm cursor-pointer ${
+              conflictDetectionResult.totalConflictsCount > 0
+                ? "bg-rose-500/10 text-rose-700 dark:text-rose-400 hover:bg-rose-500/20 border-rose-500/30"
+                : "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500/20 border-emerald-500/30"
+            }`}
             title="Dars jadvali ziddiyatlari radari"
           >
-            <AlertCircle className="h-3.5 w-3.5 text-amber-600" />
-            <span>Radarni Ko'rish</span>
+            {conflictDetectionResult.totalConflictsCount > 0 ? (
+              <>
+                <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></span>
+                <span>Radarni Ko'rish ({conflictDetectionResult.totalConflictsCount})</span>
+              </>
+            ) : (
+              <>
+                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+                <span>Radar: 0 Ziddiyat</span>
+              </>
+            )}
           </button>
 
           <span className="text-muted-foreground hidden sm:inline">

@@ -334,22 +334,38 @@ export class CSPSolver {
         if (s.isLocked || s.teacherId !== null) return false;
         if (this.isStrictMethodDay(s.day, req.teacherId, req.subjectId)) return false;
 
-        // Agar juftlik darsiga ruxsat bo'lmasa, bu kunda ayni shu fanning darsi bo'lsa, qat'iyan bloklanadi!
-        if (!allowDouble) {
-          const hasSameSubjectInDay = slots.some(
-            (other) => other.day === s.day && other.subjectId === req.subjectId
-          );
-          if (hasSameSubjectInDay) return false;
+        const sameSubjectSlotsInDay = slots.filter(
+          (other) => other.day === s.day && other.subjectId === req.subjectId
+        );
+
+        // Hech qaysi fan 1 kunda 3 yoki undan ortiq soat bo'lishi mumkin emas!
+        if (sameSubjectSlotsInDay.length >= 2) return false;
+
+        // Agar fanga juft dars taqiqlangan bo'lsa, 1 kunda 1 martadan oshmasligi kerak
+        if (!allowDouble && sameSubjectSlotsInDay.length >= 1) return false;
+
+        // Agar juft darsga ruxsat bo'lsa va 1-dars allaqachon bo'lsa, 2-dars faqat ketma-ket (juft) bo'lishi shart!
+        if (allowDouble && sameSubjectSlotsInDay.length === 1) {
+          const existingPeriod = sameSubjectSlotsInDay[0].period;
+          if (Math.abs(existingPeriod - s.period) !== 1) return false;
         }
+
         return true;
       });
 
       if (emptySlots.length === 0) continue;
 
-      let bestSlot = emptySlots[0];
+      // O'qituvchi boshqa sinflarda mutlaqo bo'sh bo'lgan (0 to'qnashuvli) slotlarni birinchi o'ringa qo'yish
+      const conflictFreeSlots = emptySlots.filter((s) => {
+        const occKey = `${req.teacherId}_${s.day}_${s.period}`;
+        return (teacherOccupancy.get(occKey) || 0) === 0;
+      });
+      const candidateSlots = conflictFreeSlots.length > 0 ? conflictFreeSlots : emptySlots;
+
+      let bestSlot = candidateSlots[0];
       let bestScore = Infinity;
 
-      for (const slot of emptySlots) {
+      for (const slot of candidateSlots) {
         let score = 0;
         const occKey = `${req.teacherId}_${slot.day}_${slot.period}`;
         const currentOcc = teacherOccupancy.get(occKey) || 0;
