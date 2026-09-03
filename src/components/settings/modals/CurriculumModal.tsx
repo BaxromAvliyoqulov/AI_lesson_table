@@ -251,6 +251,48 @@ export const CurriculumModal: React.FC<CurriculumModalProps> = ({
     );
   }, [allClasses, targetClass]);
 
+  // Simulated weekly distribution schedule (Dushanba-Juma/Shanba)
+  const is5DayWeek = (targetClass?.grade ?? 1) <= 4 || Boolean(targetClass?.isPrimary);
+  const daysCount = is5DayWeek ? 5 : 6;
+  const dayNames = ["Dushanba", "Seshanba", "Chorshanba", "Payshanba", "Juma", "Shanba"].slice(
+    0,
+    daysCount
+  );
+
+  // Distribute items across days for preview (All hooks MUST be called before any early return)
+  const weeklyDistribution = useMemo(() => {
+    const days: Array<Array<{ subject: Subject; teacher?: Teacher; hoursCount: number }>> = Array.from(
+      { length: daysCount },
+      () => []
+    );
+    if (!targetClass) return days;
+
+    let dayIdx = 0;
+    subjectsList.forEach((item) => {
+      const sub = subjectMap.get(item.subjectId);
+      if (!sub) return;
+      const teacher = teacherMap.get(item.teacherId);
+      const isSinfSoati =
+        item.subjectId === "sub_sinf_soati" ||
+        item.subjectId === "sub_kelajak" ||
+        sub.name.toLowerCase().includes("sinf soati") ||
+        sub.name.toLowerCase().includes("kelajak");
+
+      if (isSinfSoati) {
+        days[0].unshift({ subject: sub, teacher, hoursCount: item.weeklyHours });
+        return;
+      }
+
+      const hours = Number(item.weeklyHours) || 1;
+      for (let h = 0; h < hours; h++) {
+        days[dayIdx % daysCount].push({ subject: sub, teacher, hoursCount: 1 });
+        dayIdx++;
+      }
+    });
+
+    return days;
+  }, [subjectsList, daysCount, subjectMap, teacherMap, targetClass]);
+
   if (!isOpen || !targetClass) return null;
 
   // 1-Click Davlat Standarti Shablonini yuklash
@@ -415,47 +457,6 @@ export const CurriculumModal: React.FC<CurriculumModalProps> = ({
     onSave(targetClass.id, validList);
     onClose();
   };
-
-  // Simulated weekly distribution schedule (Dushanba-Juma/Shanba)
-  const is5DayWeek = targetClass.grade <= 4 || targetClass.isPrimary;
-  const daysCount = is5DayWeek ? 5 : 6;
-  const dayNames = ["Dushanba", "Seshanba", "Chorshanba", "Payshanba", "Juma", "Shanba"].slice(
-    0,
-    daysCount
-  );
-
-  // Distribute items across days for preview
-  const weeklyDistribution = useMemo(() => {
-    const days: Array<Array<{ subject: Subject; teacher?: Teacher; hoursCount: number }>> = Array.from(
-      { length: daysCount },
-      () => []
-    );
-
-    let dayIdx = 0;
-    subjectsList.forEach((item) => {
-      const sub = subjectMap.get(item.subjectId);
-      if (!sub) return;
-      const teacher = teacherMap.get(item.teacherId);
-      const isSinfSoati =
-        item.subjectId === "sub_sinf_soati" ||
-        item.subjectId === "sub_kelajak" ||
-        sub.name.toLowerCase().includes("sinf soati") ||
-        sub.name.toLowerCase().includes("kelajak");
-
-      if (isSinfSoati) {
-        days[0].unshift({ subject: sub, teacher, hoursCount: item.weeklyHours });
-        return;
-      }
-
-      const hours = Number(item.weeklyHours) || 1;
-      for (let h = 0; h < hours; h++) {
-        days[dayIdx % daysCount].push({ subject: sub, teacher, hoursCount: 1 });
-        dayIdx++;
-      }
-    });
-
-    return days;
-  }, [subjectsList, daysCount, subjectMap, teacherMap]);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/70 backdrop-blur-md animate-in fade-in duration-200">
