@@ -28,6 +28,7 @@ import { Official39Filters } from "./official-39/Official39Filters";
 import { Official39Grid } from "./official-39/Official39Grid";
 import { Official39CellModal } from "./official-39/Official39CellModal";
 import { Official39RequisitesModal, Official39HomeroomModal } from "./official-39/Official39ExtraModals";
+import { AIConflictResolverModal } from "@/components/modals/AIConflictResolverModal";
 import { useSchoolStore } from "@/lib/store/useSchoolStore";
 
 export const Official39TableView: React.FC<Official39TableViewProps> = ({
@@ -238,6 +239,16 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
   } | null>(null);
   const [selectedSubjectId, setSelectedSubjectId] = useState<string>("");
   const [selectedTeacherId, setSelectedTeacherId] = useState<string>("");
+
+  // AI Ziddiyatlarni Bartaraf Qilish modali state
+  const [conflictResolverLesson, setConflictResolverLesson] = useState<Lesson | null>(null);
+
+  const handleApplyConflictSolution = (updatedLessons: Lesson[], msg: string) => {
+    if (onLessonsChange) {
+      onLessonsChange(updatedLessons);
+    }
+    showToast(msg, "success");
+  };
 
   // Asosiy bino va Filial bo'yicha aniq filtrlangan va tartiblangan sinflar
   const displayClasses = useMemo(() => {
@@ -731,6 +742,7 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
               setHomeroomModal({ isOpen: true, cls, currentTeacherId });
               setSelectedHomeroomTeacherId(currentTeacherId || "");
             }}
+            onResolveConflict={(l) => setConflictResolverLesson(l)}
           />
 
           <Official39Signatures
@@ -780,6 +792,17 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
             onSave={handleSaveHomeroomTeacher}
           />
         )}
+
+        <AIConflictResolverModal
+          isOpen={!!conflictResolverLesson}
+          onClose={() => setConflictResolverLesson(null)}
+          conflictLesson={conflictResolverLesson}
+          classes={classes}
+          teachers={teachers}
+          subjects={subjects}
+          allLessons={lessons}
+          onApplySolution={handleApplyConflictSolution}
+        />
 
         <DragOverlay>
           {activeDragLesson ? (

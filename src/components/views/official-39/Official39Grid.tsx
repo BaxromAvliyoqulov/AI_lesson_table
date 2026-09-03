@@ -35,6 +35,7 @@ interface Official39GridProps {
   onCellClick: (cls: SchoolClass, day: number, period: number, lesson?: Lesson) => void;
   getHomeroomTeacher: (cls: SchoolClass) => Teacher | undefined;
   onOpenHomeroomModal: (cls: SchoolClass, currentTeacherId?: string) => void;
+  onResolveConflict?: (lesson: Lesson) => void;
 }
 
 export const Official39Grid: React.FC<Official39GridProps> = ({
@@ -63,6 +64,7 @@ export const Official39Grid: React.FC<Official39GridProps> = ({
   onCellClick,
   getHomeroomTeacher,
   onOpenHomeroomModal,
+  onResolveConflict,
 }) => {
   return (
     <div className="w-full overflow-x-auto border-t-2 border-b-2 border-black pb-2">
@@ -251,6 +253,7 @@ export const Official39Grid: React.FC<Official39GridProps> = ({
                             onHoverTeacher={onHoverTeacher}
                             hasConflict={lesson ? teacherConflictsSet.has(lesson.id) : false}
                             onCellClick={onCellClick}
+                            onResolveConflict={onResolveConflict}
                           />
                         );
                       })}

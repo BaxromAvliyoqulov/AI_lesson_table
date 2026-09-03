@@ -31,6 +31,7 @@ export interface OfficialTableCellProps {
   teacherNumberMap?: Map<string, number>;
   onHoverTeacher: (teacherId: string | null) => void;
   onCellClick: (cls: SchoolClass, day: number, period: number, lesson?: Lesson) => void;
+  onResolveConflict?: (lesson: Lesson) => void;
 }
 
 export const OfficialTableCell: React.FC<OfficialTableCellProps> = ({
@@ -54,6 +55,7 @@ export const OfficialTableCell: React.FC<OfficialTableCellProps> = ({
   teacherNumberMap,
   onHoverTeacher,
   onCellClick,
+  onResolveConflict,
 }) => {
   const cellId = `${cls.id}_${day}_${period}`;
 
@@ -198,7 +200,17 @@ export const OfficialTableCell: React.FC<OfficialTableCellProps> = ({
               <AlertTriangle className="w-2.5 h-2.5 text-rose-600 shrink-0 inline no-print animate-bounce" />
             )}
             {hasConflict && !activeDragLesson && (
-              <AlertTriangle className="w-2.5 h-2.5 text-rose-600 shrink-0 inline no-print animate-bounce" />
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (lesson) onResolveConflict?.(lesson);
+                }}
+                className="p-0.5 rounded hover:bg-rose-200 text-rose-600 transition-all hover:scale-125 active:scale-95 cursor-pointer shrink-0 inline no-print"
+                title="⚡ AI Yordamida Ziddiyatni Bartaraf Qilish (bosing)"
+              >
+                <AlertTriangle className="w-2.5 h-2.5 animate-bounce" />
+              </button>
             )}
             {lesson?.isLocked && (
               <Lock className="w-2.5 h-2.5 text-indigo-600 shrink-0 inline no-print" />
