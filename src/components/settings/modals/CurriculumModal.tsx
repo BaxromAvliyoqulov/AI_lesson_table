@@ -10,6 +10,7 @@ import {
   UZBEKISTAN_STANDARD_CURRICULUM,
 } from "@/lib/curriculum-templates";
 import { ConfirmActionModal } from "@/components/modals/ConfirmActionModal";
+import { TeacherSelectCombobox } from "../shared/TeacherSelectCombobox";
 import {
   X,
   BookOpen,
@@ -1297,40 +1298,15 @@ export const CurriculumModal: React.FC<CurriculumModalProps> = ({
                         {!isSplit ? (
                           /* BUTUN SINF USTOZI */
                           <div>
-                            <select
+                            <TeacherSelectCombobox
                               value={item.teacherId}
-                              onChange={(e) => handleUpdateGroupTeacher(group.subjectId, "WHOLE", e.target.value)}
-                              className={`w-full px-3 py-2 text-xs font-semibold rounded-xl border bg-background focus:ring-2 focus:ring-primary/20 focus:border-primary cursor-pointer truncate ${
-                                !item.teacherId
-                                  ? "border-amber-400 text-amber-700 dark:text-amber-400 font-bold bg-amber-500/10"
-                                  : isSinfSoati
-                                  ? "border-indigo-300 font-bold text-indigo-950 dark:text-indigo-200"
-                                  : "border-border text-foreground"
-                              }`}
-                            >
-                              <option value="">⚠️ O'qituvchi tanlanmagan</option>
-                              {isSinfSoati && targetClass.homeroomTeacherId && (
-                                <option value={targetClass.homeroomTeacherId}>
-                                  ⭐ Sinf rahbari ({teacherMap.get(targetClass.homeroomTeacherId)?.fullName})
-                                </option>
-                              )}
-                              {teacherCandidates.length > 0 && (
-                                <optgroup label="⭐️ Mutaxassis o'qituvchilar:">
-                                  {teacherCandidates.map((t) => (
-                                    <option key={t.id} value={t.id}>
-                                      ⭐️ {t.fullName} ({t.weeklyHourCapacity} st)
-                                    </option>
-                                  ))}
-                                </optgroup>
-                              )}
-                              <optgroup label="Barcha o'qituvchilar:">
-                                {allTeachers.map((t) => (
-                                  <option key={t.id} value={t.id}>
-                                    {t.fullName} ({t.weeklyHourCapacity} st)
-                                  </option>
-                                ))}
-                              </optgroup>
-                            </select>
+                              onChange={(tId) => handleUpdateGroupTeacher(group.subjectId, "WHOLE", tId)}
+                              teachers={allTeachers}
+                              candidates={teacherCandidates}
+                              homeroomTeacherId={isSinfSoati ? targetClass.homeroomTeacherId : undefined}
+                              placeholder="⚠️ O'qituvchi tanlanmagan"
+                              theme={isSinfSoati ? "indigo" : "default"}
+                            />
 
                             {/* 1-bosishda tezkor ustoz tavsiya chiplari */}
                             <div className="flex items-center gap-1 flex-wrap mt-1.5">
@@ -1384,27 +1360,15 @@ export const CurriculumModal: React.FC<CurriculumModalProps> = ({
                                   🔵 1-Guruh o'qituvchisi:
                                 </span>
                               </div>
-                              <select
+                              <TeacherSelectCombobox
                                 value={item.teacherId}
-                                onChange={(e) => handleUpdateGroupTeacher(group.subjectId, "GROUP_1", e.target.value)}
-                                className={`w-full px-2.5 py-1.5 text-xs font-semibold rounded-xl border bg-background focus:ring-2 focus:ring-sky-500/25 cursor-pointer truncate ${
-                                  !item.teacherId
-                                    ? "border-amber-400 text-amber-700 dark:text-amber-400 font-bold bg-amber-500/10"
-                                    : "border-border text-foreground"
-                                }`}
-                              >
-                                <option value="">⚠️ 1-guruh o'qituvchisi tanlanmagan</option>
-                                {teacherCandidates.map((t) => (
-                                  <option key={t.id} value={t.id}>
-                                    ⭐️ {t.fullName} ({t.weeklyHourCapacity} st)
-                                  </option>
-                                ))}
-                                {allTeachers.filter((t) => !teacherCandidates.some((c) => c.id === t.id)).map((t) => (
-                                  <option key={t.id} value={t.id}>
-                                    {t.fullName}
-                                  </option>
-                                ))}
-                              </select>
+                                onChange={(tId) => handleUpdateGroupTeacher(group.subjectId, "GROUP_1", tId)}
+                                teachers={allTeachers}
+                                candidates={teacherCandidates}
+                                placeholder="⚠️ 1-guruh o'qituvchisi tanlanmagan"
+                                theme="sky"
+                                size="sm"
+                              />
                               <div className="flex items-center gap-1 flex-wrap mt-1">
                                 <span className="text-[9px] text-muted-foreground font-semibold">Tavsiya:</span>
                                 {teacherCandidates.slice(0, 3).map((candidate) => {
@@ -1436,27 +1400,15 @@ export const CurriculumModal: React.FC<CurriculumModalProps> = ({
                                   🟣 2-Guruh o'qituvchisi:
                                 </span>
                               </div>
-                              <select
+                              <TeacherSelectCombobox
                                 value={group2?.teacherId || ""}
-                                onChange={(e) => handleUpdateGroupTeacher(group.subjectId, "GROUP_2", e.target.value)}
-                                className={`w-full px-2.5 py-1.5 text-xs font-semibold rounded-xl border bg-background focus:ring-2 focus:ring-purple-500/25 cursor-pointer truncate ${
-                                  !group2?.teacherId
-                                    ? "border-amber-400 text-amber-700 dark:text-amber-400 font-bold bg-amber-500/10"
-                                    : "border-border text-foreground"
-                                }`}
-                              >
-                                <option value="">⚠️ 2-guruh o'qituvchisi tanlanmagan</option>
-                                {teacherCandidates.map((t) => (
-                                  <option key={t.id} value={t.id}>
-                                    ⭐️ {t.fullName} ({t.weeklyHourCapacity} st)
-                                  </option>
-                                ))}
-                                {allTeachers.filter((t) => !teacherCandidates.some((c) => c.id === t.id)).map((t) => (
-                                  <option key={t.id} value={t.id}>
-                                    {t.fullName}
-                                  </option>
-                                ))}
-                              </select>
+                                onChange={(tId) => handleUpdateGroupTeacher(group.subjectId, "GROUP_2", tId)}
+                                teachers={allTeachers}
+                                candidates={teacherCandidates}
+                                placeholder="⚠️ 2-guruh o'qituvchisi tanlanmagan"
+                                theme="purple"
+                                size="sm"
+                              />
                               <div className="flex items-center gap-1 flex-wrap mt-1">
                                 <span className="text-[9px] text-muted-foreground font-semibold">Tavsiya:</span>
                                 {teacherCandidates.slice(0, 4).map((candidate) => {
