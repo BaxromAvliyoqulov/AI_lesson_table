@@ -511,7 +511,7 @@ export default function SettingsPage() {
       <CurriculumModal
         isOpen={isCurriculumModalOpen}
         onClose={() => setIsCurriculumModalOpen(false)}
-        targetClass={curriculumClass}
+        targetClass={curriculumClass ? schoolClasses.find((c) => c.id === curriculumClass.id) || curriculumClass : null}
         allSubjects={schoolSubjects}
         allTeachers={schoolTeachers}
         allClasses={schoolClasses}

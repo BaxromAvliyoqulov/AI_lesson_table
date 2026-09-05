@@ -60,19 +60,22 @@ type SubjectCategory =
 function deduplicateClassSubjects(
   list: ClassSubject[],
   subjectMap: Map<string, Subject>,
+  allSubjects?: Subject[],
   homeroomTeacherId?: string | null
 ): ClassSubject[] {
   const result: ClassSubject[] = [];
   let seenSinfSoati = false;
   const seenSubjectIds = new Set<string>();
+  const seenSubjectNames = new Set<string>();
 
   for (const item of list) {
     if (!item || !item.subjectId) continue;
-    const sub = subjectMap.get(item.subjectId);
+    const sub = subjectMap.get(item.subjectId) || allSubjects?.find((s) => s.id === item.subjectId);
+    const subName = sub?.name || "";
     const isSinfSoati =
       item.subjectId === "sub_sinf_soati" ||
       item.subjectId === "sub_kelajak" ||
-      isKelajakOrSinfSoatiSubject(item.subjectId, sub?.name);
+      isKelajakOrSinfSoatiSubject(item.subjectId, subName);
 
     if (isSinfSoati) {
       if (seenSinfSoati) continue;
@@ -85,8 +88,13 @@ function deduplicateClassSubjects(
       continue;
     }
 
-    if (seenSubjectIds.has(item.subjectId)) {
-      const existingIdx = result.findIndex((r) => r.subjectId === item.subjectId);
+    const normName = subName.trim().toLowerCase();
+    if (seenSubjectIds.has(item.subjectId) || (normName && seenSubjectNames.has(normName))) {
+      const existingIdx = result.findIndex(
+        (r) =>
+          r.subjectId === item.subjectId ||
+          (normName && (subjectMap.get(r.subjectId)?.name.trim().toLowerCase() === normName))
+      );
       if (existingIdx >= 0 && !result[existingIdx].teacherId && item.teacherId) {
         result[existingIdx].teacherId = item.teacherId;
       }
@@ -94,6 +102,7 @@ function deduplicateClassSubjects(
     }
 
     seenSubjectIds.add(item.subjectId);
+    if (normName) seenSubjectNames.add(normName);
     result.push({ ...item });
   }
 
@@ -132,6 +141,16 @@ export const CurriculumModal: React.FC<CurriculumModalProps> = ({
   const subjectMap = useMemo(() => new Map(allSubjects.map((s) => [s.id, s])), [allSubjects]);
   const teacherMap = useMemo(() => new Map(allTeachers.map((t) => [t.id, t])), [allTeachers]);
 
+  // Reaktiv va 100% dublikatsiz fanlar ro'yxati (hech qachon 2 ta Kelajak soati chiqishi mumkin emas)
+  const cleanSubjectsList = useMemo(() => {
+    return deduplicateClassSubjects(
+      subjectsList,
+      subjectMap,
+      allSubjects,
+      targetClass?.homeroomTeacherId
+    );
+  }, [subjectsList, subjectMap, allSubjects, targetClass?.homeroomTeacherId]);
+
   useEffect(() => {
     if (!isOpen || !targetClass) {
       lastInitializedClassIdRef.current = null;
@@ -139,11 +158,13 @@ export const CurriculumModal: React.FC<CurriculumModalProps> = ({
       return;
     }
 
-    if (lastInitializedClassIdRef.current !== targetClass.id) {
-      lastInitializedClassIdRef.current = targetClass.id;
+    const classKey = `${targetClass.id}_${(targetClass.subjects || []).length}_${targetClass.homeroomTeacherId || ""}`;
+    if (lastInitializedClassIdRef.current !== classKey) {
+      lastInitializedClassIdRef.current = classKey;
       const cleanList = deduplicateClassSubjects(
         targetClass.subjects || [],
         subjectMap,
+        allSubjects,
         targetClass.homeroomTeacherId
       );
       setSubjectsList(cleanList);
@@ -152,7 +173,7 @@ export const CurriculumModal: React.FC<CurriculumModalProps> = ({
       setCatalogSearch("");
       setSelectedCatalogSubjectIds({});
     }
-  }, [isOpen, targetClass?.id, targetClass, subjectMap]);
+  }, [isOpen, targetClass?.id, targetClass?.subjects?.length, targetClass?.homeroomTeacherId, targetClass, subjectMap, allSubjects]);
 
   // Subject categorization helper
   const getSubjectCategory = useCallback((sub: Subject): SubjectCategory => {
@@ -216,13 +237,12 @@ export const CurriculumModal: React.FC<CurriculumModalProps> = ({
     let academic = 0;
     let homeroom = 0;
     let unassigned = 0;
-    for (const item of subjectsList) {
-      const sub = subjectMap.get(item.subjectId);
+    for (const item of cleanSubjectsList) {
+      const sub = subjectMap.get(item.subjectId) || allSubjects.find((s) => s.id === item.subjectId);
       const isSinfSoati =
         item.subjectId === "sub_sinf_soati" ||
         item.subjectId === "sub_kelajak" ||
-        sub?.name.toLowerCase().includes("sinf soati") ||
-        sub?.name.toLowerCase().includes("kelajak");
+        isKelajakOrSinfSoatiSubject(item.subjectId, sub?.name);
 
       const h = Number(item.weeklyHours) || 0;
       if (isSinfSoati) {
@@ -240,15 +260,15 @@ export const CurriculumModal: React.FC<CurriculumModalProps> = ({
       totalWeeklyHours: academic + homeroom,
       unassignedTeachersCount: unassigned,
     };
-  }, [subjectsList, subjectMap]);
+  }, [cleanSubjectsList, subjectMap, allSubjects]);
 
-  const assignedTeachersCount = subjectsList.length - unassignedTeachersCount;
-  const fulfillmentPercent = subjectsList.length > 0 ? Math.round((assignedTeachersCount / subjectsList.length) * 100) : 100;
+  const assignedTeachersCount = cleanSubjectsList.length - unassignedTeachersCount;
+  const fulfillmentPercent = cleanSubjectsList.length > 0 ? Math.round((assignedTeachersCount / cleanSubjectsList.length) * 100) : 100;
 
-  // Indexed list and filter
+  // Indexed list and filter - har doim toza ro'yxatdan
   const indexedSubjectsList = useMemo(() => {
-    return subjectsList.map((item, originalIndex) => ({ item, originalIndex }));
-  }, [subjectsList]);
+    return cleanSubjectsList.map((item, originalIndex) => ({ item, originalIndex }));
+  }, [cleanSubjectsList]);
 
   const visibleSubjectsList = useMemo(() => {
     if (curriculumFilter === "UNASSIGNED") {
@@ -341,15 +361,14 @@ export const CurriculumModal: React.FC<CurriculumModalProps> = ({
     if (!targetClass) return days;
 
     let dayIdx = 0;
-    subjectsList.forEach((item) => {
-      const sub = subjectMap.get(item.subjectId);
+    cleanSubjectsList.forEach((item) => {
+      const sub = subjectMap.get(item.subjectId) || allSubjects.find((s) => s.id === item.subjectId);
       if (!sub) return;
       const teacher = teacherMap.get(item.teacherId);
       const isSinfSoati =
         item.subjectId === "sub_sinf_soati" ||
         item.subjectId === "sub_kelajak" ||
-        sub.name.toLowerCase().includes("sinf soati") ||
-        sub.name.toLowerCase().includes("kelajak");
+        isKelajakOrSinfSoatiSubject(item.subjectId, sub.name);
 
       if (isSinfSoati) {
         days[0].unshift({ subject: sub, teacher, hoursCount: item.weeklyHours });
@@ -364,7 +383,7 @@ export const CurriculumModal: React.FC<CurriculumModalProps> = ({
     });
 
     return days;
-  }, [subjectsList, daysCount, subjectMap, teacherMap, targetClass]);
+  }, [cleanSubjectsList, daysCount, subjectMap, teacherMap, targetClass, allSubjects]);
 
   // 1-Click Davlat Standarti Shablonini yuklash
   const handleLoadStandardTemplate = () => {
@@ -382,7 +401,7 @@ export const CurriculumModal: React.FC<CurriculumModalProps> = ({
       return;
     }
 
-    setSubjectsList(deduplicateClassSubjects(generated, subjectMap, targetClass.homeroomTeacherId));
+    setSubjectsList(deduplicateClassSubjects(generated, subjectMap, allSubjects, targetClass.homeroomTeacherId));
     if (targetClass.grade <= 4) {
       showToast(`✅ ${targetClass.grade}-sinf standart rejasi yuklandi! Ona tili, O'qish va Matematika sinf rahbariga biriktirildi.`);
     } else {
@@ -399,8 +418,8 @@ export const CurriculumModal: React.FC<CurriculumModalProps> = ({
     const hrId = targetClass.homeroomTeacherId;
     let updatedCount = 0;
 
-    const updated = subjectsList.map((item) => {
-      const sub = subjectMap.get(item.subjectId);
+    const updated = cleanSubjectsList.map((item) => {
+      const sub = subjectMap.get(item.subjectId) || allSubjects.find((s) => s.id === item.subjectId);
       if (!sub) return item;
       const isCore = isHomeroomPrimarySubject(sub, targetClass.grade);
       if (isCore && item.teacherId !== hrId) {
@@ -410,7 +429,7 @@ export const CurriculumModal: React.FC<CurriculumModalProps> = ({
       return item;
     });
 
-    setSubjectsList(updated);
+    setSubjectsList(deduplicateClassSubjects(updated, subjectMap, allSubjects, targetClass.homeroomTeacherId));
     showToast(`✅ Boshlang'ich qoida qo'llandi: Ona tili, O'qish va Matematika sinf rahbariga biriktirildi!`);
   };
 
@@ -437,7 +456,7 @@ export const CurriculumModal: React.FC<CurriculumModalProps> = ({
       };
     });
 
-    setSubjectsList(copiedList);
+    setSubjectsList(deduplicateClassSubjects(copiedList, subjectMap, allSubjects, targetClass.homeroomTeacherId));
     setSelectedCopyClassId("");
   };
 
@@ -625,7 +644,7 @@ export const CurriculumModal: React.FC<CurriculumModalProps> = ({
   // Save full curriculum
   const handleSave = () => {
     if (!targetClass) return;
-    let finalList = [...subjectsList];
+    let finalList = [...cleanSubjectsList];
     const unassigned = finalList.filter((s) => !s.teacherId && Number(s.weeklyHours) > 0);
 
     if (unassigned.length > 0) {
@@ -639,12 +658,11 @@ export const CurriculumModal: React.FC<CurriculumModalProps> = ({
       finalList = finalList.map((item) => {
         if (item.teacherId) return item;
 
-        const sub = subjectMap.get(item.subjectId);
+        const sub = subjectMap.get(item.subjectId) || allSubjects.find((s) => s.id === item.subjectId);
         const isSinfSoati =
           item.subjectId === "sub_sinf_soati" ||
           item.subjectId === "sub_kelajak" ||
-          sub?.name.toLowerCase().includes("sinf soati") ||
-          sub?.name.toLowerCase().includes("kelajak");
+          isKelajakOrSinfSoatiSubject(item.subjectId, sub?.name);
 
         if (
           targetClass.homeroomTeacherId &&
@@ -678,6 +696,7 @@ export const CurriculumModal: React.FC<CurriculumModalProps> = ({
     const dedupedList = deduplicateClassSubjects(
       finalList,
       subjectMap,
+      allSubjects,
       targetClass.homeroomTeacherId
     );
     const validList = dedupedList.filter(
