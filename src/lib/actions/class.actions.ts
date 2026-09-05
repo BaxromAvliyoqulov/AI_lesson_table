@@ -181,7 +181,7 @@ export async function deleteClassAction(schoolId: string, classId: string) {
 export async function saveClassTarifficationAction(
   schoolId: string,
   classId: string,
-  subjects: Array<{ subjectId: string; teacherId: string; weeklyHours: number }>
+  subjects: Array<{ subjectId: string; teacherId: string; weeklyHours: number; groupType?: string }>
 ) {
   try {
     const school = await resolveSchool(schoolId);
@@ -214,6 +214,7 @@ export async function saveClassTarifficationAction(
               subjectId: sub.id,
               teacherId: teacher.id,
               weeklyHours: s.weeklyHours,
+              groupType: s.groupType || "WHOLE",
             },
           });
         }

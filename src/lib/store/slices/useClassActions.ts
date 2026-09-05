@@ -298,7 +298,12 @@ export function useClassActions() {
     saveClassTarifficationAction(
       storeState.currentSchoolId,
       classId,
-      subjects.map((s) => ({ subjectId: s.subjectId, teacherId: s.teacherId, weeklyHours: s.weeklyHours }))
+      subjects.map((s) => ({
+        subjectId: s.subjectId,
+        teacherId: s.teacherId,
+        weeklyHours: s.weeklyHours,
+        groupType: s.groupType || "WHOLE",
+      }))
     ).then((res) => {
       updateStore((prev) => ({ ...prev, syncStatus: res.success ? "synced" : "error" }));
     });

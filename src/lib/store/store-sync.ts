@@ -84,12 +84,13 @@ export function normalizeHomeroomSinfSoati({
       const cleanSubjects = existingSubjects.filter(
         (s) => !isSinfSoatiCheck(s.subjectId)
       );
-      // Fanlar dublikatini tozalash (Deduplication)
+      // Fanlar dublikatini tozalash (Deduplication) - Guruhlarni (GROUP_1, GROUP_2) saqlagan holda
       const dedupedClean: ClassSubject[] = [];
       const seenIds = new Set<string>();
       for (const s of cleanSubjects) {
-        if (!seenIds.has(s.subjectId)) {
-          seenIds.add(s.subjectId);
+        const subKey = `${s.subjectId}_${s.groupType || "WHOLE"}`;
+        if (!seenIds.has(subKey)) {
+          seenIds.add(subKey);
           dedupedClean.push(s);
         }
       }
@@ -105,12 +106,13 @@ export function normalizeHomeroomSinfSoati({
       (s) => !isSinfSoatiCheck(s.subjectId)
     );
 
-    // Boshqa fanlar dublikatini ham tozalash
+    // Boshqa fanlar dublikatini ham tozalash (GROUP_1 va GROUP_2 ni saqlaymiz)
     const dedupedOther: ClassSubject[] = [];
     const seenOtherIds = new Set<string>();
     for (const s of otherSubjects) {
-      if (!seenOtherIds.has(s.subjectId)) {
-        seenOtherIds.add(s.subjectId);
+      const subKey = `${s.subjectId}_${s.groupType || "WHOLE"}`;
+      if (!seenOtherIds.has(subKey)) {
+        seenOtherIds.add(subKey);
         dedupedOther.push(s);
       }
     }

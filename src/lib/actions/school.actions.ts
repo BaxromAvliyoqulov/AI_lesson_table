@@ -124,7 +124,7 @@ export async function deleteClassAction(schoolId: string, classId: string) {
 export async function saveClassTarifficationAction(
   schoolId: string,
   classId: string,
-  subjects: Array<{ subjectId: string; teacherId: string; weeklyHours: number }>
+  subjects: Array<{ subjectId: string; teacherId: string; weeklyHours: number; groupType?: string }>
 ) {
   return classMod.saveClassTarifficationAction(schoolId, classId, subjects);
 }
