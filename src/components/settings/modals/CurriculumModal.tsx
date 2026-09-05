@@ -313,10 +313,9 @@ export const CurriculumModal: React.FC<CurriculumModalProps> = ({
     return days;
   }, [subjectsList, daysCount, subjectMap, teacherMap, targetClass]);
 
-  if (!isOpen || !targetClass) return null;
-
   // 1-Click Davlat Standarti Shablonini yuklash
   const handleLoadStandardTemplate = () => {
+    if (!targetClass) return;
     const generated = generateStandardCurriculumForClass(
       targetClass.grade,
       targetClass.id,
@@ -340,7 +339,7 @@ export const CurriculumModal: React.FC<CurriculumModalProps> = ({
 
   // Boshlang'ich sinf qoidasi: Ona tili, O'qish, Matematika (va 1-sinfda Alifbe) -> Sinf rahbariga
   const handleApplyPrimaryHomeroomRule = () => {
-    if (!targetClass.homeroomTeacherId) {
+    if (!targetClass || !targetClass.homeroomTeacherId) {
       showToast("Avval ushbu sinfga sinf rahbarini tayinlang!");
       return;
     }
@@ -364,7 +363,7 @@ export const CurriculumModal: React.FC<CurriculumModalProps> = ({
 
   // Boshqa sinfdan o'quv rejasini ko'chirib olish
   const handleCopyFromOtherClass = () => {
-    if (!selectedCopyClassId) return;
+    if (!targetClass || !selectedCopyClassId) return;
     const sourceClass = allClasses.find((c) => c.id === selectedCopyClassId);
     if (!sourceClass || !sourceClass.subjects) return;
 
@@ -460,6 +459,7 @@ export const CurriculumModal: React.FC<CurriculumModalProps> = ({
 
   // Add all selected catalog subjects
   const handleAddSelectedFromCatalog = () => {
+    if (!targetClass) return;
     const toAdd: ClassSubject[] = [];
     const existingIds = new Set(subjectsList.map((s) => s.subjectId));
 
@@ -499,7 +499,7 @@ export const CurriculumModal: React.FC<CurriculumModalProps> = ({
   };
 
   // ⚡ Bo'sh fanlarga mutaxassislarni 1-bosishda avtomatik tayinlash
-  const handleAutoAssignSpecialists = useCallback(() => {
+  const handleAutoAssignSpecialists = () => {
     if (!targetClass || subjectsList.length === 0) return;
 
     const localTracker = new Map<string, number>();
@@ -567,10 +567,11 @@ export const CurriculumModal: React.FC<CurriculumModalProps> = ({
     } else {
       showToast("Barcha fanlarga allaqachon o'qituvchilar biriktirilgan");
     }
-  }, [targetClass, subjectsList, subjectMap, allTeachers]);
+  };
 
   // Save full curriculum
   const handleSave = () => {
+    if (!targetClass) return;
     let finalList = [...subjectsList];
     const unassigned = finalList.filter((s) => !s.teacherId && Number(s.weeklyHours) > 0);
 
@@ -627,6 +628,8 @@ export const CurriculumModal: React.FC<CurriculumModalProps> = ({
     onSave(targetClass.id, validList);
     onClose();
   };
+
+  if (!isOpen || !targetClass) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/70 backdrop-blur-md animate-in fade-in duration-200">
