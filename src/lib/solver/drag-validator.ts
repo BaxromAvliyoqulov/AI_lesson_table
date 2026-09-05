@@ -1,5 +1,6 @@
 import { Lesson, SchoolClass, Subject, Teacher, Room, Shift, Branch } from "@/types";
 import { getOfficialMethodDayForSubject, getEffectiveTeacherMethodDay } from "@/lib/constants/method-days";
+import { isClassSecondShift } from "@/lib/utils";
 
 export interface DropSlotValidation {
   status: "safe" | "warning" | "conflict";
@@ -31,6 +32,7 @@ export function validateDropSlot({
   teachers,
   subjects,
   rooms = [],
+  classes = [],
 }: {
   draggedLesson: Lesson;
   targetClass: SchoolClass;
@@ -40,6 +42,7 @@ export function validateDropSlot({
   teachers: Teacher[];
   subjects: Subject[];
   rooms?: Room[];
+  classes?: SchoolClass[];
 }): DropSlotValidation {
   const teacher = teachers.find((t) => t.id === draggedLesson.teacherId);
   const subject = subjects.find((s) => s.id === draggedLesson.subjectId);
@@ -52,13 +55,24 @@ export function validateDropSlot({
 
   // ─── 🔴 1. QIZIL: QAT'IY ZIDDIYATLAR (CONFLICTS) ───────────────────────────
 
-  // 1.1. O'qituvchi kolliziyasi (Ayni shu paytda boshqa sinfda darsi bor)
-  const teacherOtherLesson = otherLessons.find(
-    (l) =>
-      l.teacherId === draggedLesson.teacherId &&
-      l.dayOfWeek === targetDay &&
-      l.periodNumber === targetPeriod
-  );
+  // 1.1. O'qituvchi kolliziyasi (Ayni shu paytda va ayni shu SMENADA boshqa sinfda darsi bor)
+  const targetIsShift2 = isClassSecondShift(targetClass);
+  const teacherOtherLesson = otherLessons.find((l) => {
+    if (
+      l.teacherId !== draggedLesson.teacherId ||
+      l.dayOfWeek !== targetDay ||
+      l.periodNumber !== targetPeriod
+    ) {
+      return false;
+    }
+    // Agar boshqa sinf ma'lum bo'lsa va u boshqa smenada bo'lsa (biri ertalab, biri tushdan keyin) -> to'qnashuv EMAS!
+    const otherCls = classes.find((c) => c.id === l.classId);
+    if (otherCls) {
+      const otherIsShift2 = isClassSecondShift(otherCls);
+      if (targetIsShift2 !== otherIsShift2) return false;
+    }
+    return true;
+  });
 
   if (teacherOtherLesson) {
     conflicts.push(

@@ -6,6 +6,7 @@ import {
   Room,
   Lesson,
 } from "@/types";
+import { isClassSecondShift } from "@/lib/utils";
 import { OfficialTableCell } from "./Official39Cell";
 import { Official39TeacherSidebar } from "./Official39TeacherSidebar";
 
@@ -149,6 +150,15 @@ export const Official39Grid: React.FC<Official39GridProps> = ({
                       {cls.branchId === "b39_2" && (
                         <span className="text-[7.5px] font-bold text-amber-900">(Filial)</span>
                       )}
+                      {isClassSecondShift(cls) ? (
+                        <span className="text-[7px] font-extrabold text-indigo-700 bg-indigo-50 px-1 py-0.5 rounded border border-indigo-200 mt-0.5 whitespace-nowrap shadow-2xs">
+                          🌤️ 2-smena
+                        </span>
+                      ) : (
+                        <span className="text-[7px] font-extrabold text-amber-700 bg-amber-50 px-1 py-0.5 rounded border border-amber-200 mt-0.5 whitespace-nowrap shadow-2xs">
+                          ☀️ 1-smena
+                        </span>
+                      )}
                     </div>
                   </th>
                 );
@@ -248,6 +258,7 @@ export const Official39Grid: React.FC<Official39GridProps> = ({
                             teachers={teachers}
                             subjects={subjects}
                             rooms={rooms}
+                            classes={displayClasses}
                             cellLessons={cellLessons}
                             teacherNumberMap={teacherNumberMap}
                             onHoverTeacher={onHoverTeacher}

@@ -274,3 +274,49 @@ export function getCanonicalOrderedTeachers<
 
   return { orderedTeachers, teacherNumberMap };
 }
+
+/**
+ * Sinf 2-smenada (Abetdan keyin / Tushdan keyin) o'qiydimi yoki 1-smenadami (Abetgacha)
+ */
+export function isClassSecondShift(
+  cls?: { shiftId?: string; name?: string } | null,
+  shifts?: Array<{ id: string; name: string }>
+): boolean {
+  if (!cls || !cls.shiftId) return false;
+  if (shifts && shifts.length > 0) {
+    const s = shifts.find((sh) => sh.id === cls.shiftId);
+    if (s) {
+      const sName = s.name.toLowerCase();
+      if (
+        sName.includes("2") ||
+        sName.includes("tush") ||
+        sName.includes("abetdan") ||
+        sName.includes("ikkinchi") ||
+        sName.includes("keyin")
+      ) {
+        return true;
+      }
+      if (
+        sName.includes("1") ||
+        sName.includes("ertalab") ||
+        sName.includes("abetgacha") ||
+        sName.includes("birinchi")
+      ) {
+        return false;
+      }
+    }
+  }
+  const sId = cls.shiftId.toLowerCase();
+  return (
+    sId === "s39_2" ||
+    sId.includes("shift_2") ||
+    sId.includes("shift2") ||
+    sId.includes("smena_2") ||
+    sId.includes("smena2") ||
+    sId.includes("2") ||
+    sId.includes("tush") ||
+    sId.includes("ikkinchi") ||
+    sId.includes("abetdan")
+  );
+}
+

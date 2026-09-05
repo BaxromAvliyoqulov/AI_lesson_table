@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo, useCallback } from "react";
 import { SchoolClass, Branch, Shift, Teacher, Subject } from "@/types";
-import { sortClassesByName } from "@/lib/utils";
+import { sortClassesByName, isClassSecondShift } from "@/lib/utils";
 import { TeacherSelectCombobox } from "../shared/TeacherSelectCombobox";
 import { useSchoolStore } from "@/lib/store/useSchoolStore";
 import {
@@ -157,23 +157,7 @@ export const ClassesTab: React.FC<ClassesTabProps> = ({
   const totalStudents = useMemo(() => classes.reduce((sum, c) => sum + (c.studentCount || 25), 0), [classes]);
   const lockedCount = useMemo(() => classes.filter((c) => lockedClassIds.includes(c.id)).length, [classes, lockedClassIds]);
 
-  const isClassShift2 = useCallback((c: SchoolClass) => {
-    const s = shiftMap.get(c.shiftId);
-    const sName = (s?.name || "").toLowerCase();
-    const sId = (c.shiftId || "").toLowerCase();
-    return (
-      sId === "s39_2" ||
-      sId.includes("shift_2") ||
-      sId.includes("shift2") ||
-      sId.includes("smena_2") ||
-      sId.includes("smena2") ||
-      sName.includes("2") ||
-      sName.includes("tush") ||
-      sName.includes("ikkinchi") ||
-      sName.includes("keyin") ||
-      sName.includes("abetdan")
-    );
-  }, [shiftMap]);
+  const isClassShift2 = useCallback((c: SchoolClass) => isClassSecondShift(c, shifts), [shifts]);
 
   const isClassShift1 = useCallback((c: SchoolClass) => !isClassShift2(c), [isClassShift2]);
 
@@ -863,48 +847,21 @@ export const ClassesTab: React.FC<ClassesTabProps> = ({
                 }`}
               >
                 <div className="min-w-0">
-                  {/* Top card header */}
-                  <div className="flex items-start justify-between gap-2 mb-3 min-w-0">
-                    <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                      <div className="w-10 h-10 rounded-2xl bg-primary/10 text-primary flex items-center justify-center font-extrabold text-sm shadow-inner shrink-0">
+                  {/* Top card header: Sinf nomi va Qulflash/Tahrirlash/O'chirish */}
+                  <div className="flex items-center justify-between gap-2 mb-2.5 min-w-0">
+                    <div className="flex items-center gap-2 min-w-0 flex-1">
+                      <div className="w-10 h-10 rounded-2xl bg-primary/10 text-primary flex items-center justify-center font-black text-sm shadow-inner shrink-0">
                         {cls.name}
                       </div>
                       <div className="min-w-0 flex-1">
-                        <h4 className="font-bold text-foreground text-sm flex items-center gap-1.5 truncate">
-                          <span className="truncate">{cls.name}</span>
+                        <h4 className="font-extrabold text-foreground text-sm flex items-center gap-1.5 flex-wrap">
+                          <span>{cls.name}</span>
                           {cls.grade <= 4 && (
-                            <span className="text-[10px] px-1.5 py-0.2 rounded bg-amber-500/10 text-amber-600 font-bold border border-amber-500/20 shrink-0">
+                            <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-amber-500/10 text-amber-600 font-bold border border-amber-500/20 shrink-0 whitespace-nowrap">
                               5 kunlik
                             </span>
                           )}
                         </h4>
-                        <p className="text-[11px] text-muted-foreground flex items-center gap-1.5 truncate mt-1 flex-wrap">
-                          <button
-                            type="button"
-                            onClick={(e) => handleToggleClassShift(cls, e)}
-                            title="Smenani almashtirish uchun bosing (1-smena <-> 2-smena)"
-                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg font-bold text-[10px] transition-all cursor-pointer border shadow-2xs ${
-                              isShift2
-                                ? "bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border-indigo-500/30 hover:bg-indigo-500/20"
-                                : "bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/30 hover:bg-amber-500/20"
-                            }`}
-                          >
-                            {isShift2 ? (
-                              <Sunset className="w-3 h-3 text-indigo-500 shrink-0" />
-                            ) : (
-                              <Sun className="w-3 h-3 text-amber-500 shrink-0" />
-                            )}
-                            <span>{isShift2 ? "🌤️ 2-smena (Abetdan keyin)" : "☀️ 1-smena (Abetgacha)"}</span>
-                          </button>
-                          <span>•</span>
-                          <span>{cls.studentCount || 25} o'quvchi</span>
-                          {blockedDaysCount > 0 && (
-                            <>
-                              <span>•</span>
-                              <span className="text-rose-500 font-semibold">{blockedDaysCount} band kun</span>
-                            </>
-                          )}
-                        </p>
                       </div>
                     </div>
 
@@ -946,6 +903,36 @@ export const ClassesTab: React.FC<ClassesTabProps> = ({
                       >
                         <Trash2 className="w-4 h-4 text-rose-500" />
                       </button>
+                    </div>
+                  </div>
+
+                  {/* Smena va O'quvchilar qatori (Keng, erkin, chiroyli) */}
+                  <div className="flex items-center justify-between gap-1.5 py-1.5 px-2.5 rounded-xl bg-muted/40 border border-border/50 mb-2.5">
+                    <button
+                      type="button"
+                      onClick={(e) => handleToggleClassShift(cls, e)}
+                      title="Smenani almashtirish uchun bosing (1-smena <-> 2-smena)"
+                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg font-bold text-[11px] transition-all cursor-pointer border shadow-2xs whitespace-nowrap ${
+                        isShift2
+                          ? "bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 border-indigo-500/30 hover:bg-indigo-500/25"
+                          : "bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30 hover:bg-amber-500/25"
+                      }`}
+                    >
+                      {isShift2 ? (
+                        <Sunset className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 shrink-0" />
+                      ) : (
+                        <Sun className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
+                      )}
+                      <span>{isShift2 ? "🌤️ 2-smena" : "☀️ 1-smena"}</span>
+                    </button>
+
+                    <div className="flex items-center gap-1 text-[11px] text-muted-foreground font-semibold shrink-0">
+                      <span>{cls.studentCount || 25} o'quvchi</span>
+                      {blockedDaysCount > 0 && (
+                        <span className="text-rose-500 text-[10px] font-bold">
+                          • {blockedDaysCount} dam
+                        </span>
+                      )}
                     </div>
                   </div>
 

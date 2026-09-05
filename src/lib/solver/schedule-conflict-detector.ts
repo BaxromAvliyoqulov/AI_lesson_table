@@ -1,5 +1,6 @@
 import { Lesson, SchoolClass, Subject, Teacher } from "@/types";
 import { getOfficialMethodDayForSubject, getEffectiveTeacherMethodDay } from "@/lib/constants/method-days";
+import { isClassSecondShift } from "@/lib/utils";
 
 export const WEEKDAY_NAMES = [
   "",
@@ -65,11 +66,13 @@ export function detectScheduleConflicts({
   const conflictLessonIds = new Set<string>();
 
   // ─── 1. O'QITUVCHILAR TO'QNASHUVI (TEACHER COLLISIONS) ─────────────────────────
-  // Bir o'qituvchi bir vaqtning o'zida bir nechta sinfda dars o'tishi
+  // Bir o'qituvchi bir vaqtning o'zida bir nechta sinfda dars o'tishi (Smena bo'yicha ajratilgan)
   const teacherSlotMap = new Map<string, Lesson[]>();
   for (const l of lessons) {
     if (!l.teacherId) continue;
-    const key = `${l.teacherId}_${l.dayOfWeek}_${l.periodNumber}`;
+    const cls = classMap.get(l.classId);
+    const shiftGroup = isClassSecondShift(cls) ? "shift2" : "shift1";
+    const key = `${l.teacherId}_${l.dayOfWeek}_${l.periodNumber}_${shiftGroup}`;
     const existing = teacherSlotMap.get(key) || [];
     existing.push(l);
     teacherSlotMap.set(key, existing);
@@ -85,6 +88,8 @@ export function detectScheduleConflicts({
 
         const first = matchedLessons[0];
         const teacher = teacherMap.get(first.teacherId);
+        const is2 = isClassSecondShift(classMap.get(first.classId));
+        const shiftLabel = is2 ? "2-smena (Abetdan keyin)" : "1-smena (Abetgacha)";
         const classNames = matchedLessons
           .map((l) => classMap.get(l.classId)?.name || "Sinf")
           .join(" va ");
@@ -97,7 +102,7 @@ export function detectScheduleConflicts({
           type: "TEACHER_COLLISION",
           severity: "CRITICAL",
           title: `O'qituvchi Kolliziyasi (${matchedLessons.length} ta sinfda bir vaqtda)`,
-          description: `${teacher?.fullName || "O'qituvchi"} bir vaqtning o'zida (${WEEKDAY_NAMES[first.dayOfWeek]}, ${first.periodNumber}-dars) ${classNames} sinflariga (${subNames}) dars o'tishi kerak bo'lib qolgan.`,
+          description: `${teacher?.fullName || "O'qituvchi"} bir vaqtning o'zida (${WEEKDAY_NAMES[first.dayOfWeek]}, ${shiftLabel} ${first.periodNumber}-dars) ${classNames} sinflariga (${subNames}) dars o'tishi kerak bo'lib qolgan.`,
           className: classNames,
           classId: first.classId,
           subjectName: subNames,

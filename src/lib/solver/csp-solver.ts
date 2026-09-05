@@ -10,6 +10,7 @@ import {
 } from "@/types";
 import { generateStandardCurriculumForClass } from "@/lib/curriculum-templates";
 import { getOfficialMethodDayForSubject } from "@/lib/constants/method-days";
+import { isClassSecondShift } from "@/lib/utils";
 
 export class CSPSolver {
   private input: SolverInput;
@@ -213,7 +214,16 @@ export class CSPSolver {
     }
 
     // ── 2. QAT'IY BELGILANGAN VA QULFLANGAN DARSLAR (Lock / Pin) ───
-    const teacherOccupancy = new Map<string, number>(); // key: `${teacherId}_${day}_${period}` -> count
+    const getShiftGroup = (classId: string): string => {
+      const cls = this.classMap.get(classId);
+      return isClassSecondShift(cls) ? "shift2" : "shift1";
+    };
+
+    const getOccKey = (teacherId: string, day: number, period: number, classId: string): string => {
+      return `${teacherId}_${day}_${period}_${getShiftGroup(classId)}`;
+    };
+
+    const teacherOccupancy = new Map<string, number>(); // key: `${teacherId}_${day}_${period}_${shiftGroup}` -> count
     const teacherDailyHours = new Map<string, number>(); // key: `${teacherId}_${day}` -> count (Kunlik dars limiti nazorati)
     const lockedClassSet = new Set(this.input.lockedClassIds || []);
     const lockedTeacherSet = new Set(this.input.lockedTeacherIds || []);
@@ -235,7 +245,7 @@ export class CSPSolver {
             slot.groupType = el.groupType || "WHOLE";
             slot.isLocked = true;
 
-            const k = `${el.teacherId}_${el.dayOfWeek}_${el.periodNumber}`;
+            const k = getOccKey(el.teacherId, el.dayOfWeek, el.periodNumber, el.classId);
             teacherOccupancy.set(k, (teacherOccupancy.get(k) || 0) + 1);
 
             const dk = `${el.teacherId}_${el.dayOfWeek}`;
@@ -268,7 +278,7 @@ export class CSPSolver {
         slotD1P1.isLocked = true;
         slotD1P1.groupType = "WHOLE";
 
-        const k = `${homeroomId}_1_1`;
+        const k = getOccKey(homeroomId, 1, 1, cls.id);
         teacherOccupancy.set(k, (teacherOccupancy.get(k) || 0) + 1);
 
         const dk = `${homeroomId}_1`;
@@ -396,7 +406,7 @@ export class CSPSolver {
 
       // O'qituvchi boshqa sinflarda mutlaqo bo'sh bo'lgan (0 to'qnashuvli) slotlarni birinchi o'ringa qo'yish
       const conflictFreeSlots = emptySlots.filter((s) => {
-        const occKey = `${req.teacherId}_${s.day}_${s.period}`;
+        const occKey = getOccKey(req.teacherId, s.day, s.period, req.classId);
         return (teacherOccupancy.get(occKey) || 0) === 0;
       });
       const candidateSlots = conflictFreeSlots.length > 0 ? conflictFreeSlots : emptySlots;
@@ -406,7 +416,7 @@ export class CSPSolver {
 
       for (const slot of candidateSlots) {
         let score = 0;
-        const occKey = `${req.teacherId}_${slot.day}_${slot.period}`;
+        const occKey = getOccKey(req.teacherId, slot.day, slot.period, req.classId);
         const currentOcc = teacherOccupancy.get(occKey) || 0;
 
         if (currentOcc > 0) score += currentOcc * 50000000;
@@ -480,8 +490,8 @@ export class CSPSolver {
           score += Math.abs(slot.period - 3) * 15;
         }
 
-        const adj1 = teacherOccupancy.get(`${req.teacherId}_${slot.day}_${slot.period - 1}`) || 0;
-        const adj2 = teacherOccupancy.get(`${req.teacherId}_${slot.day}_${slot.period + 1}`) || 0;
+        const adj1 = teacherOccupancy.get(getOccKey(req.teacherId, slot.day, slot.period - 1, req.classId)) || 0;
+        const adj2 = teacherOccupancy.get(getOccKey(req.teacherId, slot.day, slot.period + 1, req.classId)) || 0;
         if (adj1 > 0 || adj2 > 0) score -= 30;
 
         const classHash = req.classId.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0);
@@ -522,7 +532,7 @@ export class CSPSolver {
       bestSlot.subjectId = req.subjectId;
       bestSlot.groupType = req.groupType;
 
-      const occKey = `${req.teacherId}_${bestSlot.day}_${bestSlot.period}`;
+      const occKey = getOccKey(req.teacherId, bestSlot.day, bestSlot.period, req.classId);
       teacherOccupancy.set(occKey, (teacherOccupancy.get(occKey) || 0) + 1);
 
       const dayKey = `${req.teacherId}_${bestSlot.day}`;
@@ -530,8 +540,8 @@ export class CSPSolver {
     }
 
     // ── 5. TEZ VA KUCHLI MIN-CONFLICTS LOCAL SEARCH (Max 200 iteration) ─────────
-    const countClashesForTeacher = (teacherId: string, day: number, period: number): number => {
-      const k = `${teacherId}_${day}_${period}`;
+    const countClashesForTeacher = (teacherId: string, day: number, period: number, classId: string): number => {
+      const k = getOccKey(teacherId, day, period, classId);
       return Math.max(0, (teacherOccupancy.get(k) || 0) - 1);
     };
 
@@ -549,7 +559,7 @@ export class CSPSolver {
         (s) =>
           s.teacherId &&
           !s.isLocked &&
-          countClashesForTeacher(s.teacherId, s.day, s.period) > 0
+          countClashesForTeacher(s.teacherId, s.day, s.period, s.classId) > 0
       );
 
       for (const slotA of clashingSlots) {
@@ -589,11 +599,11 @@ export class CSPSolver {
             }
           }
 
-          const clashesA_now = countClashesForTeacher(tA, slotA.day, slotA.period);
-          const clashesB_now = tB ? countClashesForTeacher(tB, slotB.day, slotB.period) : 0;
+          const clashesA_now = countClashesForTeacher(tA, slotA.day, slotA.period, slotA.classId);
+          const clashesB_now = tB ? countClashesForTeacher(tB, slotB.day, slotB.period, slotB.classId) : 0;
 
-          const occA_target = teacherOccupancy.get(`${tA}_${slotB.day}_${slotB.period}`) || 0;
-          const occB_target = tB ? (teacherOccupancy.get(`${tB}_${slotA.day}_${slotA.period}`) || 0) : 0;
+          const occA_target = teacherOccupancy.get(getOccKey(tA, slotB.day, slotB.period, slotB.classId)) || 0;
+          const occB_target = tB ? (teacherOccupancy.get(getOccKey(tB, slotA.day, slotA.period, slotA.classId)) || 0) : 0;
 
           const delta = clashesA_now + clashesB_now - (occA_target + occB_target);
 
@@ -612,11 +622,11 @@ export class CSPSolver {
           const sB = bestTarget.subjectId;
           const gB = bestTarget.groupType;
 
-          const keyA_old = `${tA}_${slotA.day}_${slotA.period}`;
+          const keyA_old = getOccKey(tA, slotA.day, slotA.period, slotA.classId);
           teacherOccupancy.set(keyA_old, (teacherOccupancy.get(keyA_old) || 1) - 1);
 
           if (tB) {
-            const keyB_old = `${tB}_${bestTarget.day}_${bestTarget.period}`;
+            const keyB_old = getOccKey(tB, bestTarget.day, bestTarget.period, bestTarget.classId);
             teacherOccupancy.set(keyB_old, (teacherOccupancy.get(keyB_old) || 1) - 1);
           }
 
@@ -628,11 +638,11 @@ export class CSPSolver {
           bestTarget.subjectId = sA;
           bestTarget.groupType = gA;
 
-          const keyA_new = `${tA}_${bestTarget.day}_${bestTarget.period}`;
+          const keyA_new = getOccKey(tA, bestTarget.day, bestTarget.period, bestTarget.classId);
           teacherOccupancy.set(keyA_new, (teacherOccupancy.get(keyA_new) || 0) + 1);
 
           if (tB) {
-            const keyB_new = `${tB}_${slotA.day}_${slotA.period}`;
+            const keyB_new = getOccKey(tB, slotA.day, slotA.period, slotA.classId);
             teacherOccupancy.set(keyB_new, (teacherOccupancy.get(keyB_new) || 0) + 1);
           }
 
@@ -671,7 +681,7 @@ export class CSPSolver {
                 const tId = later.teacherId!;
                 const sId = later.subjectId!;
 
-                const occ = teacherOccupancy.get(`${tId}_${day}_${slot.period}`) || 0;
+                const occ = teacherOccupancy.get(getOccKey(tId, day, slot.period, cls.id)) || 0;
                 const isMethod = this.isStrictMethodDay(day, tId, sId);
 
                 if (occ === 0 && !isMethod) {
@@ -686,12 +696,12 @@ export class CSPSolver {
                 const gType = foundTargetSlot.groupType;
 
                 teacherOccupancy.set(
-                  `${tId}_${day}_${foundTargetSlot.period}`,
-                  (teacherOccupancy.get(`${tId}_${day}_${foundTargetSlot.period}`) || 1) - 1
+                  getOccKey(tId, day, foundTargetSlot.period, cls.id),
+                  (teacherOccupancy.get(getOccKey(tId, day, foundTargetSlot.period, cls.id)) || 1) - 1
                 );
                 teacherOccupancy.set(
-                  `${tId}_${day}_${slot.period}`,
-                  (teacherOccupancy.get(`${tId}_${day}_${slot.period}`) || 0) + 1
+                  getOccKey(tId, day, slot.period, cls.id),
+                  (teacherOccupancy.get(getOccKey(tId, day, slot.period, cls.id)) || 0) + 1
                 );
 
                 slot.teacherId = tId;

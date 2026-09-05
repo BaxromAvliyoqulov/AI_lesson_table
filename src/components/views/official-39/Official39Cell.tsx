@@ -29,6 +29,7 @@ export interface OfficialTableCellProps {
   rooms: Room[];
   cellLessons?: Lesson[];
   teacherNumberMap?: Map<string, number>;
+  classes?: SchoolClass[];
   onHoverTeacher: (teacherId: string | null) => void;
   onCellClick: (cls: SchoolClass, day: number, period: number, lesson?: Lesson) => void;
   onResolveConflict?: (lesson: Lesson) => void;
@@ -53,6 +54,7 @@ export const OfficialTableCell: React.FC<OfficialTableCellProps> = ({
   rooms,
   cellLessons,
   teacherNumberMap,
+  classes = [],
   onHoverTeacher,
   onCellClick,
   onResolveConflict,
@@ -90,6 +92,7 @@ export const OfficialTableCell: React.FC<OfficialTableCellProps> = ({
       teachers,
       subjects,
       rooms,
+      classes,
     });
   }, [
     activeDragLesson,
@@ -102,6 +105,7 @@ export const OfficialTableCell: React.FC<OfficialTableCellProps> = ({
     teachers,
     subjects,
     rooms,
+    classes,
   ]);
 
   const bottomBorderClass = isLastPeriodOfDay
