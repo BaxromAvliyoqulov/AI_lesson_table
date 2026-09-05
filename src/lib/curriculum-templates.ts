@@ -1,4 +1,4 @@
-import { Subject, Teacher, ClassSubject } from "@/types";
+import { Subject, Teacher, ClassSubject, SchoolClass } from "@/types";
 
 export interface GradeCurriculumItem {
   subjectName: string;
@@ -350,6 +350,48 @@ export function isHomeroomPrimarySubject(subject: Subject, grade: number): boole
 }
 
 /**
+ * O'qituvchi boshlang'ich sinf (1-4) o'qituvchisi/sinf rahbari ekanligini aniqlash.
+ * Qat'iy pedagogik qoida: Boshlang'ich sinf o'qituvchilari va rahbarlari
+ * katta (5-11) sinflarga dars o'tishi va tavsiya qilinishi qat'iyan taqiqlanadi!
+ */
+export function isPrimaryGradeTeacher(
+  teacher?: Teacher | null,
+  allClasses?: SchoolClass[]
+): boolean {
+  if (!teacher) return false;
+  if (teacher.teachingStages === "PRIMARY") return true;
+  if (allClasses && allClasses.length > 0) {
+    const hrClass = allClasses.find(
+      (c) => c.homeroomTeacherId === teacher.id || c.id === teacher.homeroomClassId
+    );
+    if (hrClass && ((hrClass.grade !== undefined && hrClass.grade <= 4) || hrClass.isPrimary)) {
+      return true;
+    }
+  }
+  // Boshlang'ich sinf rahbarlari (masalan: Amina ustoz, Qurbonnazarova, Boltayeva va h.k.)
+  const upperName = (teacher.fullName || "").toUpperCase();
+  const knownPrimaryTeachers = [
+    "NABIYEVA AMINA",
+    "BOLTAYEVA MAVJUDA",
+    "DJO'RAYEVA SHAXLO",
+    "QURBONNAZAROVA SAYYORA",
+    "KUYUKOVA SAYYORA",
+    "RO'ZIBOYEVA GULRUXSOR",
+    "G'ABBOROVA SHAHODAT",
+    "O'RAZOVA DILOROM",
+    "HABIYEVA MAVLUDA",
+    "JUMAYEVA GULSARA",
+    "KARIMOVA LOBAR",
+    "ODINAYEVA SAFARMOX",
+    "SA'DIYEVA GULNISO",
+  ];
+  if (knownPrimaryTeachers.some((k) => upperName.includes(k))) {
+    return true;
+  }
+  return false;
+}
+
+/**
  * Maktabdagi mavjud fanlar va o'qituvchilar asosida
  * berilgan sinf uchun standart o'quv rejasini (ClassSubject[]) shakllantiradi
  */
@@ -359,7 +401,8 @@ export function generateStandardCurriculumForClass(
   homeroomTeacherId: string | null | undefined,
   allSubjects: Subject[],
   allTeachers: Teacher[],
-  workloadTracker?: Map<string, number>
+  workloadTracker?: Map<string, number>,
+  allClasses?: SchoolClass[]
 ): ClassSubject[] {
   const normalizedGrade = Math.max(1, Math.min(11, grade || 5));
   const template = UZBEKISTAN_STANDARD_CURRICULUM[normalizedGrade] || UZBEKISTAN_STANDARD_CURRICULUM[5];
@@ -423,9 +466,13 @@ export function generateStandardCurriculumForClass(
     // Mos fanni o'tadigan mutaxassis o'qituvchini topish (Faqat shu fanni o'tadigan mutaxassislar bo'lishi shart!)
     if (!assignedTeacherId && allTeachers.length > 0) {
       // Qat'iy qoida: fanni o'tadigan mutaxassis ustozlar (aloqasi yo'q boshqa fan ustozlari aslo biriktirilmaydi!)
-      const suitableTeachers = allTeachers.filter((t) =>
-        t.subjectIds?.includes(matchedSubject!.id)
-      );
+      // Katta sinflarga (5-11) boshlang'ich sinf rahbarlari/o'qituvchilari (Amina, Qurbonnazarova va b.) dars o'tishi qat'iyan taqiqlanadi!
+      const isHighGrade = normalizedGrade >= 5;
+      const suitableTeachers = allTeachers.filter((t) => {
+        if (!t.subjectIds?.includes(matchedSubject!.id)) return false;
+        if (isHighGrade && isPrimaryGradeTeacher(t, allClasses)) return false;
+        return true;
+      });
 
       if (suitableTeachers.length > 0) {
         // Boshlang'ich sinfda qolgan fanlarga sinf rahbarini emas, boshqa mutaxassis ustozlarni tanlash

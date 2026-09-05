@@ -7,6 +7,7 @@ import {
   isSubjectSuitableForGrade,
   isHomeroomPrimarySubject,
   isKelajakOrSinfSoatiSubject,
+  isPrimaryGradeTeacher,
   UZBEKISTAN_STANDARD_CURRICULUM,
 } from "@/lib/curriculum-templates";
 import { ConfirmActionModal } from "@/components/modals/ConfirmActionModal";
@@ -147,6 +148,16 @@ export const CurriculumModal: React.FC<CurriculumModalProps> = ({
 
   const subjectMap = useMemo(() => new Map(allSubjects.map((s) => [s.id, s])), [allSubjects]);
   const teacherMap = useMemo(() => new Map(allTeachers.map((t) => [t.id, t])), [allTeachers]);
+
+  const isTargetHighGrade = targetClass ? targetClass.grade >= 5 : false;
+
+  // Katta sinflarga (5-11) boshlang'ich sinf o'qituvchilari (va sinf rahbarlari) umuman aralashmaydi va ko'rsatilmaydi!
+  const availableTeachers = useMemo(() => {
+    if (isTargetHighGrade) {
+      return allTeachers.filter((t) => !isPrimaryGradeTeacher(t, allClasses));
+    }
+    return allTeachers;
+  }, [allTeachers, isTargetHighGrade, allClasses]);
 
   // Reaktiv va 100% dublikatsiz fanlar ro'yxati (hech qachon 2 ta Kelajak soati chiqishi mumkin emas)
   const cleanSubjectsList = useMemo(() => {
@@ -453,7 +464,9 @@ export const CurriculumModal: React.FC<CurriculumModalProps> = ({
       targetClass.id,
       targetClass.homeroomTeacherId,
       allSubjects,
-      allTeachers
+      allTeachers,
+      undefined,
+      allClasses
     );
 
     if (generated.length === 0) {
@@ -758,12 +771,22 @@ export const CurriculumModal: React.FC<CurriculumModalProps> = ({
       }
 
       // 2. Fanni o'tadigan haqiqiy mutaxassis o'qituvchilar
-      const specialistCandidates = allTeachers.filter((t) =>
-        t.subjectIds?.includes(item.subjectId)
+      const isHighGrade = targetClass.grade >= 5;
+      const specialistCandidates = allTeachers.filter((t) => {
+        if (!t.subjectIds?.includes(item.subjectId)) return false;
+        // Katta sinflarga (5-11) boshlang'ich sinf rahbarlari dars o'tishi mutlaqo taqiqlanadi!
+        if (isHighGrade && isPrimaryGradeTeacher(t, allClasses)) return false;
+        return true;
+      });
+
+      // Agar hozirgi ustoz katta sinfga dars o'tishi taqiqlangan boshlang'ich ustoz bo'lsa - darhol almashtirish!
+      const isCurrentTeacherPrimaryMismatch = isHighGrade && item.teacherId && isPrimaryGradeTeacher(
+        allTeachers.find((t) => t.id === item.teacherId) || ({ id: item.teacherId } as any),
+        allClasses
       );
 
-      // Agar hozirgi o'qituvchi mutaxassislar ro'yxatida bo'lsa - o'zgartirmaymiz
-      if (item.teacherId && specialistCandidates.some((c) => c.id === item.teacherId)) {
+      // Agar hozirgi o'qituvchi mutaxassislar ro'yxatida bo'lsa va mismatch bo'lmasa - o'zgartirmaymiz
+      if (item.teacherId && specialistCandidates.some((c) => c.id === item.teacherId) && !isCurrentTeacherPrimaryMismatch) {
         return item;
       }
 
@@ -1190,9 +1213,13 @@ export const CurriculumModal: React.FC<CurriculumModalProps> = ({
                   const item = group.group1;
                   const group2 = group.group2;
                   const sub = subjectMap.get(group.subjectId) || allSubjects.find((s) => s.id === group.subjectId);
-                  const teacherCandidates = allTeachers.filter((t) =>
-                    t.subjectIds?.includes(group.subjectId)
-                  );
+                  const isHighGrade = targetClass ? targetClass.grade >= 5 : false;
+                  const teacherCandidates = availableTeachers.filter((t) => {
+                    if (!t.subjectIds?.includes(group.subjectId)) return false;
+                    // Katta sinflarga (5-11) boshlang'ich sinf rahbarlari/o'qituvchilari (Amina, Qurbonnazarova va b.) dars o'tishi va tavsiya qilinishi qat'iyan taqiqlanadi!
+                    if (isHighGrade && isPrimaryGradeTeacher(t, allClasses)) return false;
+                    return true;
+                  });
                   const isSinfSoati =
                     group.subjectId === "sub_sinf_soati" ||
                     group.subjectId === "sub_kelajak" ||
@@ -1319,7 +1346,7 @@ export const CurriculumModal: React.FC<CurriculumModalProps> = ({
                             <TeacherSelectCombobox
                               value={item.teacherId}
                               onChange={(tId) => handleUpdateGroupTeacher(group.subjectId, "WHOLE", tId)}
-                              teachers={allTeachers}
+                              teachers={availableTeachers}
                               candidates={teacherCandidates}
                               homeroomTeacherId={isSinfSoati ? targetClass.homeroomTeacherId : undefined}
                               placeholder="⚠️ O'qituvchi tanlanmagan"
@@ -1381,7 +1408,7 @@ export const CurriculumModal: React.FC<CurriculumModalProps> = ({
                               <TeacherSelectCombobox
                                 value={item.teacherId}
                                 onChange={(tId) => handleUpdateGroupTeacher(group.subjectId, "GROUP_1", tId)}
-                                teachers={allTeachers}
+                                teachers={availableTeachers}
                                 candidates={teacherCandidates}
                                 placeholder="⚠️ 1-guruh o'qituvchisi tanlanmagan"
                                 theme="sky"
@@ -1421,7 +1448,7 @@ export const CurriculumModal: React.FC<CurriculumModalProps> = ({
                               <TeacherSelectCombobox
                                 value={group2?.teacherId || ""}
                                 onChange={(tId) => handleUpdateGroupTeacher(group.subjectId, "GROUP_2", tId)}
-                                teachers={allTeachers}
+                                teachers={availableTeachers}
                                 candidates={teacherCandidates}
                                 placeholder="⚠️ 2-guruh o'qituvchisi tanlanmagan"
                                 theme="purple"
