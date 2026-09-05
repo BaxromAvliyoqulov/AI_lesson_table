@@ -19,7 +19,15 @@ import {
 import { CSPSolver } from "@/lib/solver/csp-solver";
 import { sortClassesByName, getCanonicalOrderedTeachers } from "@/lib/utils";
 import { CheckCircle2, AlertTriangle, Sparkles } from "lucide-react";
-import { FilterScope, Official39TableViewProps, DAYS, PERIOD_TIMES } from "./official-39/types";
+import {
+  FilterScope,
+  Official39TableViewProps,
+  DAYS,
+  PERIOD_TIMES,
+  ShiftFilterType,
+  SHIFT_1_PERIOD_TIMES,
+  SHIFT_2_PERIOD_TIMES,
+} from "./official-39/types";
 import { validateDropSlot } from "@/lib/solver/drag-validator";
 import { detectScheduleConflicts } from "@/lib/solver/schedule-conflict-detector";
 import { isKelajakOrSinfSoatiSubject } from "@/lib/curriculum-templates";
@@ -250,6 +258,9 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
     showToast(msg, "success");
   };
 
+  // Smena filtri (Barcha smenalar / ☀️ Abetgacha / 🌤️ Abetdan keyin)
+  const [shiftFilter, setShiftFilter] = useState<ShiftFilterType>("ALL");
+
   // Asosiy bino va Filial bo'yicha aniq filtrlangan va tartiblangan sinflar
   const displayClasses = useMemo(() => {
     const isBranch = (c: SchoolClass) => {
@@ -308,12 +319,53 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
         break;
     }
 
+    // 2. Smena filtri (Abetgacha / Abetdan keyin)
+    const isShift2 = (c: SchoolClass) => {
+      if (c.shiftId) {
+        const s = (shifts || []).find((sh) => sh.id === c.shiftId);
+        if (s) {
+          const sName = s.name.toLowerCase();
+          if (
+            sName.includes("2") ||
+            sName.includes("tushdan") ||
+            sName.includes("abetdan") ||
+            sName.includes("ikkinchi")
+          ) {
+            return true;
+          }
+          if (
+            sName.includes("1") ||
+            sName.includes("ertalab") ||
+            sName.includes("abetgacha") ||
+            sName.includes("birinchi")
+          ) {
+            return false;
+          }
+        }
+        const sIdLower = c.shiftId.toLowerCase();
+        if (sIdLower.includes("2") || sIdLower === "s39_2") return true;
+        if (sIdLower.includes("1") || sIdLower === "s39_1") return false;
+      }
+      return false;
+    };
+
+    const isShift1 = (c: SchoolClass) => !isShift2(c);
+
+    if (shiftFilter === "SHIFT_1") {
+      list = list.filter(isShift1);
+    } else if (shiftFilter === "SHIFT_2") {
+      list = list.filter(isShift2);
+    }
+
     return sortClassesByName(list);
-  }, [classes, filterScope, allBranches]);
+  }, [classes, filterScope, allBranches, shiftFilter, shifts]);
 
   const isPrimaryOnly = filterScope === "MAIN_PRIMARY" || filterScope === "BRANCH_PRIMARY";
   const displayDays = useMemo(() => (isPrimaryOnly ? DAYS.slice(0, 5) : DAYS), [isPrimaryOnly]);
-  const displayPeriods = useMemo(() => (isPrimaryOnly ? PERIOD_TIMES.slice(0, 5) : PERIOD_TIMES), [isPrimaryOnly]);
+  const displayPeriods = useMemo(() => {
+    const basePeriods = shiftFilter === "SHIFT_2" ? SHIFT_2_PERIOD_TIMES : SHIFT_1_PERIOD_TIMES;
+    return isPrimaryOnly ? basePeriods.slice(0, 5) : basePeriods;
+  }, [isPrimaryOnly, shiftFilter]);
 
   const classTotalHours = useMemo(() => {
     const map = new Map<string, number>();
@@ -660,24 +712,38 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
   };
 
   const stageTitle = useMemo(() => {
+    let title = "";
     switch (filterScope) {
       case "MAIN_ALL":
-        return "ASOSIY MAKTAB (1-11 SINFLAR)";
+        title = "ASOSIY MAKTAB (1-11 SINFLAR)";
+        break;
       case "MAIN_HIGH":
-        return "ASOSIY MAKTAB KATTA VA O'RTA SINFLAR (5-11)";
+        title = "ASOSIY MAKTAB KATTA VA O'RTA SINFLAR (5-11)";
+        break;
       case "MAIN_PRIMARY":
-        return "ASOSIY MAKTAB BOSHLANG'ICH SINFLAR (1-4)";
+        title = "ASOSIY MAKTAB BOSHLANG'ICH SINFLAR (1-4)";
+        break;
       case "BRANCH_ALL":
-        return "FILIAL BINOSI (1-D .. 7-D SINFLAR)";
+        title = "FILIAL BINOSI (1-D .. 7-D SINFLAR)";
+        break;
       case "BRANCH_HIGH":
-        return "FILIAL KATTA SINFLAR (5-D, 6-D, 7-D)";
+        title = "FILIAL KATTA SINFLAR (5-D, 6-D, 7-D)";
+        break;
       case "BRANCH_PRIMARY":
-        return "FILIAL BOSHLANG'ICH SINFLAR (1-D .. 4-D)";
+        title = "FILIAL BOSHLANG'ICH SINFLAR (1-D .. 4-D)";
+        break;
       case "ALL":
       default:
-        return "UMUMIY MAKTAB (BARCHA FILIALLAR)";
+        title = "UMUMIY MAKTAB (BARCHA FILIALLAR)";
+        break;
     }
-  }, [filterScope]);
+    if (shiftFilter === "SHIFT_1") {
+      title += " • ☀️ ABETGACHA (1-SMENA)";
+    } else if (shiftFilter === "SHIFT_2") {
+      title += " • 🌤️ ABETDAN KEYIN (2-SMENA)";
+    }
+    return title;
+  }, [filterScope, shiftFilter]);
 
   return (
     <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
@@ -685,6 +751,8 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
         <Official39Filters
           filterScope={filterScope}
           onFilterScopeChange={setFilterScope}
+          shiftFilter={shiftFilter}
+          onShiftFilterChange={setShiftFilter}
           conflictsCount={teacherConflictsSet.size}
           isFixingConflicts={isFixingConflicts}
           onAutoFixConflicts={handleAutoFixConflicts}

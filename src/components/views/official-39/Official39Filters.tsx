@@ -1,5 +1,5 @@
 import React from "react";
-import { FilterScope } from "./types";
+import { FilterScope, ShiftFilterType } from "./types";
 import {
   Building2,
   CheckCircle2,
@@ -10,11 +10,15 @@ import {
   Settings,
   FileSpreadsheet,
   Printer,
+  Sun,
+  Sunset,
 } from "lucide-react";
 
 interface Official39FiltersProps {
   filterScope: FilterScope;
   onFilterScopeChange: (scope: FilterScope) => void;
+  shiftFilter?: ShiftFilterType;
+  onShiftFilterChange?: (shift: ShiftFilterType) => void;
   conflictsCount: number;
   isFixingConflicts: boolean;
   onAutoFixConflicts: () => void;
@@ -31,6 +35,8 @@ interface Official39FiltersProps {
 export const Official39Filters: React.FC<Official39FiltersProps> = ({
   filterScope,
   onFilterScopeChange,
+  shiftFilter = "ALL",
+  onShiftFilterChange,
   conflictsCount,
   isFixingConflicts,
   onAutoFixConflicts,
@@ -131,6 +137,50 @@ export const Official39Filters: React.FC<Official39FiltersProps> = ({
               }`}
             >
               🧑 Yuqori ({isBranch ? "5-7" : "5-11"})
+            </button>
+          </div>
+        )}
+
+        {/* 2.5. Smena Tanlash (Abetgacha / Abetdan keyin) */}
+        {onShiftFilterChange && (
+          <div className="flex items-center gap-0.5 bg-slate-200/80 p-0.5 rounded-xl text-xs font-bold shadow-inner">
+            <button
+              type="button"
+              onClick={() => onShiftFilterChange("ALL")}
+              className={`px-2.5 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1 text-[11px] ${
+                shiftFilter === "ALL"
+                  ? "bg-white text-slate-900 shadow-sm font-extrabold"
+                  : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/50"
+              }`}
+              title="Barcha smenalardagi sinflar"
+            >
+              <span>Barcha smenalar</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => onShiftFilterChange("SHIFT_1")}
+              className={`px-2.5 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1 text-[11px] ${
+                shiftFilter === "SHIFT_1"
+                  ? "bg-white text-amber-700 shadow-sm font-extrabold"
+                  : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/50"
+              }`}
+              title="1-smena: Ertalabki darslar (Abetgacha / 08:00 - 13:00)"
+            >
+              <Sun className="w-3.5 h-3.5 text-amber-500" />
+              <span>☀️ Abetgacha</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => onShiftFilterChange("SHIFT_2")}
+              className={`px-2.5 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1 text-[11px] ${
+                shiftFilter === "SHIFT_2"
+                  ? "bg-white text-indigo-700 shadow-sm font-extrabold"
+                  : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/50"
+              }`}
+              title="2-smena: Tushdan keyingi darslar (Abetdan keyin / 13:15 - 18:00)"
+            >
+              <Sunset className="w-3.5 h-3.5 text-indigo-500" />
+              <span>🌤️ Abetdan keyin</span>
             </button>
           </div>
         )}

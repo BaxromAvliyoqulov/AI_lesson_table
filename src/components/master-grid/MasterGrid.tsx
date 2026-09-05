@@ -261,9 +261,17 @@ export const MasterGrid: React.FC<MasterGridProps> = ({
         break;
     }
 
-    // 2. Smena filtri
+    // 2. Smena filtri (Abetgacha / Abetdan keyin)
     if (shiftFilter !== "ALL") {
-      list = list.filter((c) => c.shiftId === shiftFilter);
+      list = list.filter((c) => {
+        const isShift2 =
+          c.shiftId?.toLowerCase().includes("2") ||
+          c.shiftId === "s39_2" ||
+          (shifts || []).find((s) => s.id === c.shiftId)?.name.toLowerCase().includes("2") ||
+          (shifts || []).find((s) => s.id === c.shiftId)?.name.toLowerCase().includes("tushdan") ||
+          (shifts || []).find((s) => s.id === c.shiftId)?.name.toLowerCase().includes("abetdan");
+        return shiftFilter === "SHIFT_2" ? isShift2 : !isShift2;
+      });
     }
 
     // 3. Qidiruv
@@ -273,7 +281,7 @@ export const MasterGrid: React.FC<MasterGridProps> = ({
     }
 
     return list;
-  }, [classes, filterScope, shiftFilter, searchQuery]);
+  }, [classes, filterScope, shiftFilter, searchQuery, shifts]);
 
   // Lessons map: `${classId}_${day}_${period}` -> Lesson
   const lessonMap = useMemo(() => {
@@ -582,6 +590,45 @@ export const MasterGrid: React.FC<MasterGridProps> = ({
                 {tab.label}
               </button>
             ))}
+          </div>
+
+          {/* O'rta: Smena Filtrlari (Abetgacha / Abetdan keyin) */}
+          <div className="flex items-center rounded-xl border border-border p-0.5 bg-background shadow-sm">
+            <button
+              type="button"
+              onClick={() => setShiftFilter("ALL")}
+              className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
+                shiftFilter === "ALL"
+                  ? "bg-primary text-primary-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              Barcha smenalar
+            </button>
+            <button
+              type="button"
+              onClick={() => setShiftFilter("SHIFT_1")}
+              className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                shiftFilter === "SHIFT_1"
+                  ? "bg-amber-500 text-white shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+              title="1-smena: Ertalabki darslar (Abetgacha)"
+            >
+              <span>☀️ Abetgacha</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setShiftFilter("SHIFT_2")}
+              className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                shiftFilter === "SHIFT_2"
+                  ? "bg-indigo-600 text-white shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+              title="2-smena: Tushdan keyingi darslar (Abetdan keyin)"
+            >
+              <span>🌤️ Abetdan keyin</span>
+            </button>
           </div>
 
           {/* O'ng: Qidiruv, Zichlik va Zoom */}
