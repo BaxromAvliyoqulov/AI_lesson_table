@@ -13,7 +13,8 @@
     "prisma:generate": "prisma generate",
     "prisma:push": "prisma db push",
     "prisma:seed": "npx tsx prisma/seed.ts",
-    "db:setup": "prisma db push && npm run prisma:seed"
+    "db:setup": "prisma db push && npm run prisma:seed",
+    "code-8": "npx tsx scripts/restore_code_8.ts"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
