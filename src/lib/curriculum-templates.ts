@@ -420,40 +420,43 @@ export function generateStandardCurriculumForClass(
       }
     }
 
-    // Mos fanni o'tadigan boshqa o'qituvchini dinamik (Least-Loaded Dynamic Balancing) usulida topish
+    // Mos fanni o'tadigan mutaxassis o'qituvchini topish (Faqat shu fanni o'tadigan mutaxassislar bo'lishi shart!)
     if (!assignedTeacherId && allTeachers.length > 0) {
-      // 1-navbatda: fanni o'tadigan mutaxassis ustozlar
+      // Qat'iy qoida: fanni o'tadigan mutaxassis ustozlar (aloqasi yo'q boshqa fan ustozlari aslo biriktirilmaydi!)
       const suitableTeachers = allTeachers.filter((t) =>
         t.subjectIds?.includes(matchedSubject!.id)
       );
 
-      const pool = suitableTeachers.length > 0 ? suitableTeachers : allTeachers;
+      if (suitableTeachers.length > 0) {
+        // Boshlang'ich sinfda qolgan fanlarga sinf rahbarini emas, boshqa mutaxassis ustozlarni tanlash
+        const nonHomeroomPool = normalizedGrade <= 4 && homeroomTeacherId
+          ? suitableTeachers.filter((t) => t.id !== homeroomTeacherId)
+          : suitableTeachers;
+        const candidatePool = nonHomeroomPool.length > 0 ? nonHomeroomPool : suitableTeachers;
 
-      // Boshlang'ich sinfda qolgan fanlarga sinf rahbarini emas, boshqa ustozlarni tanlash
-      const nonHomeroomPool = normalizedGrade <= 4 && homeroomTeacherId
-        ? pool.filter((t) => t.id !== homeroomTeacherId)
-        : pool;
-      const candidatePool = nonHomeroomPool.length > 0 ? nonHomeroomPool : pool;
+        // Eng kam yuklama olgan va stavkasidan oshmagan ustozni tanlash
+        let bestTeacher = candidatePool[0];
+        let minLoad = Infinity;
 
-      // Eng kam yuklama olgan va stavkasidan (20 soat) oshmagan ustozni tanlash
-      let bestTeacher = candidatePool[0];
-      let minLoad = Infinity;
+        for (const teacher of candidatePool) {
+          const currentLoad = localTracker.get(teacher.id) || 0;
+          const capacity = teacher.weeklyHourCapacity || 20;
 
-      for (const teacher of candidatePool) {
-        const currentLoad = localTracker.get(teacher.id) || 0;
-        const capacity = teacher.weeklyHourCapacity || 20;
+          const effectiveScore = currentLoad + (currentLoad >= capacity ? 1000 : 0);
 
-        // Agar stavkadan oshmagan bo'lsa ustunlik beriladi
-        const effectiveScore = currentLoad + (currentLoad >= capacity ? 1000 : 0);
-
-        if (effectiveScore < minLoad) {
-          minLoad = effectiveScore;
-          bestTeacher = teacher;
+          if (effectiveScore < minLoad) {
+            minLoad = effectiveScore;
+            bestTeacher = teacher;
+          }
         }
-      }
 
-      if (bestTeacher) {
-        assignedTeacherId = bestTeacher.id;
+        if (bestTeacher) {
+          assignedTeacherId = bestTeacher.id;
+        }
+      } else {
+        // Agar maktabda bu fanga mutaxassis bo'lmasa, mutlaqo boshqa fan ustozini majburlab qo'ymaymiz!
+        // assignedTeacherId bo'sh qoladi (""), foydalanuvchi o'zi aniq ko'radi va tayinlaydi.
+        assignedTeacherId = "";
       }
     }
 

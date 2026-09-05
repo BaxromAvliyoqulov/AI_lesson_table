@@ -732,9 +732,9 @@ export const CurriculumModal: React.FC<CurriculumModalProps> = ({
     });
 
     let assignedCountNow = 0;
-    const updated = subjectsList.map((item) => {
-      if (item.teacherId) return item;
+    let fixedMismatchCount = 0;
 
+    const updated = subjectsList.map((item) => {
       const sub = subjectMap.get(item.subjectId);
       const isSinfSoati =
         item.subjectId === "sub_sinf_soati" ||
@@ -747,20 +747,32 @@ export const CurriculumModal: React.FC<CurriculumModalProps> = ({
         targetClass.homeroomTeacherId &&
         (isSinfSoati || (targetClass.grade <= 4 && sub && isHomeroomPrimarySubject(sub, targetClass.grade)))
       ) {
-        assignedCountNow++;
-        return { ...item, teacherId: targetClass.homeroomTeacherId };
+        if (item.teacherId !== targetClass.homeroomTeacherId) {
+          assignedCountNow++;
+          return { ...item, teacherId: targetClass.homeroomTeacherId };
+        }
+        return item;
       }
 
-      // 2. Fanni o'tadigan mutaxassis o'qituvchilar
+      // 2. Fanni o'tadigan haqiqiy mutaxassis o'qituvchilar
       const specialistCandidates = allTeachers.filter((t) =>
         t.subjectIds?.includes(item.subjectId)
       );
-      const pool = specialistCandidates.length > 0 ? specialistCandidates : allTeachers;
-      if (pool.length === 0) return item;
 
-      let bestTeacher = pool[0];
+      // Agar hozirgi o'qituvchi mutaxassislar ro'yxatida bo'lsa - o'zgartirmaymiz
+      if (item.teacherId && specialistCandidates.some((c) => c.id === item.teacherId)) {
+        return item;
+      }
+
+      // Agar maktabda bu fanga mutaxassis bo'lmasa, mutlaqo boshqa fan ustozini majburlamaymiz!
+      if (specialistCandidates.length === 0) {
+        return item;
+      }
+
+      // Hozirgi ustoz mutaxassis emas (masalan boshqa fan ustozi) yoki bo'sh: haqiqiy mutaxassisni tanlaymiz
+      let bestTeacher = specialistCandidates[0];
       let minLoad = Infinity;
-      for (const t of pool) {
+      for (const t of specialistCandidates) {
         const load = localTracker.get(t.id) || 0;
         const cap = t.weeklyHourCapacity || 20;
         const score = load + (load >= cap ? 1000 : 0);
@@ -771,7 +783,8 @@ export const CurriculumModal: React.FC<CurriculumModalProps> = ({
       }
 
       if (bestTeacher) {
-        assignedCountNow++;
+        if (item.teacherId) fixedMismatchCount++;
+        else assignedCountNow++;
         const cur = localTracker.get(bestTeacher.id) || 0;
         localTracker.set(bestTeacher.id, cur + (Number(item.weeklyHours) || 0));
         return { ...item, teacherId: bestTeacher.id };
@@ -781,10 +794,12 @@ export const CurriculumModal: React.FC<CurriculumModalProps> = ({
     });
 
     setSubjectsList(updated);
-    if (assignedCountNow > 0) {
-      showToast(`🎉 ${assignedCountNow} ta fanga mutaxassis o'qituvchilar avtomatik biriktirildi!`);
+    if (assignedCountNow > 0 || fixedMismatchCount > 0) {
+      showToast(
+        `🎉 ${assignedCountNow + fixedMismatchCount} ta fan mutaxassislari muvaffaqiyatli yangilandi!`
+      );
     } else {
-      showToast("Barcha fanlarga allaqachon o'qituvchilar biriktirilgan");
+      showToast("Barcha fanlarga o'z mutaxassislari to'g'ri biriktirilgan!");
     }
   };
 
@@ -1009,10 +1024,10 @@ export const CurriculumModal: React.FC<CurriculumModalProps> = ({
               type="button"
               onClick={handleAutoAssignSpecialists}
               className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border border-emerald-500/35 hover:bg-emerald-500/25 transition-all shadow-xs cursor-pointer"
-              title="Bo'sh turgan barcha fanlarga mos mutaxassis o'qituvchilarni avtomatik biriktirish"
+              title="Barcha fanlarga o'z mutaxassis o'qituvchilarini to'g'rilash va avtomatik biriktirish"
             >
               <Sparkles className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-              <span>⚡ Bo'sh fanlarga mutaxassislarni tayinlash</span>
+              <span>⚡ Mutaxassislarni to'g'rilash va tayinlash</span>
             </button>
 
             {/* Boshlang'ich sinf qoidasi (1-4-sinflar): Ona tili, O'qish, Matematika -> Sinf rahbariga */}

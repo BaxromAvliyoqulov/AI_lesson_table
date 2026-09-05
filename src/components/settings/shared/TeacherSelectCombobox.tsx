@@ -39,6 +39,7 @@ export const TeacherSelectCombobox: React.FC<TeacherSelectComboboxProps> = ({
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState("");
+  const [showOtherTeachers, setShowOtherTeachers] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [coords, setCoords] = useState<{
     top: number;
@@ -60,6 +61,16 @@ export const TeacherSelectCombobox: React.FC<TeacherSelectComboboxProps> = ({
     [teachers, value]
   );
 
+  const candidateIdSet = useMemo(
+    () => new Set(candidates.map((c) => c.id)),
+    [candidates]
+  );
+
+  const isCurrentTeacherNonSpecialist = useMemo(() => {
+    if (!selectedTeacher || candidates.length === 0) return false;
+    return !candidateIdSet.has(selectedTeacher.id);
+  }, [selectedTeacher, candidates.length, candidateIdSet]);
+
   const homeroomTeacher = useMemo(
     () => (homeroomTeacherId ? teachers.find((t) => t.id === homeroomTeacherId) : undefined),
     [teachers, homeroomTeacherId]
@@ -69,7 +80,7 @@ export const TeacherSelectCombobox: React.FC<TeacherSelectComboboxProps> = ({
   const updatePosition = useCallback(() => {
     if (!buttonRef.current) return;
     const rect = buttonRef.current.getBoundingClientRect();
-    const dropdownHeight = 340;
+    const dropdownHeight = 350;
     const spaceBelow = window.innerHeight - rect.bottom;
     const placeAbove = spaceBelow < dropdownHeight && rect.top > dropdownHeight;
 
@@ -92,6 +103,7 @@ export const TeacherSelectCombobox: React.FC<TeacherSelectComboboxProps> = ({
     if (!isOpen) {
       updatePosition();
       setSearch("");
+      setShowOtherTeachers(false);
       setIsOpen(true);
       setTimeout(() => {
         searchInputRef.current?.focus();
@@ -105,7 +117,6 @@ export const TeacherSelectCombobox: React.FC<TeacherSelectComboboxProps> = ({
     if (!isOpen) return;
 
     const handleScrollOrResize = (e: Event) => {
-      // If scroll inside popover, ignore
       if (popoverRef.current && popoverRef.current.contains(e.target as Node)) {
         return;
       }
@@ -155,11 +166,6 @@ export const TeacherSelectCombobox: React.FC<TeacherSelectComboboxProps> = ({
     );
   }, [candidates, q]);
 
-  const candidateIdSet = useMemo(
-    () => new Set(candidates.map((c) => c.id)),
-    [candidates]
-  );
-
   const filteredOtherTeachers = useMemo(() => {
     const others = teachers.filter((t) => !candidateIdSet.has(t.id));
     if (!q) return others;
@@ -177,6 +183,9 @@ export const TeacherSelectCombobox: React.FC<TeacherSelectComboboxProps> = ({
     }
     if (!value) {
       return "border-amber-400/80 bg-amber-500/10 text-amber-800 dark:text-amber-300 font-bold hover:bg-amber-500/15";
+    }
+    if (isCurrentTeacherNonSpecialist) {
+      return "border-amber-400 bg-amber-500/10 text-foreground hover:border-amber-500";
     }
     if (isOpen) {
       if (theme === "sky") return "border-sky-500 ring-2 ring-sky-500/20 bg-background shadow-xs";
@@ -211,6 +220,8 @@ export const TeacherSelectCombobox: React.FC<TeacherSelectComboboxProps> = ({
                 className={`w-5 h-5 rounded-md flex items-center justify-center text-[10px] font-black shrink-0 ${
                   candidateIdSet.has(selectedTeacher.id)
                     ? "bg-amber-500 text-white shadow-xs"
+                    : isCurrentTeacherNonSpecialist
+                    ? "bg-amber-600 text-white"
                     : theme === "sky"
                     ? "bg-sky-500 text-white"
                     : theme === "purple"
@@ -223,7 +234,12 @@ export const TeacherSelectCombobox: React.FC<TeacherSelectComboboxProps> = ({
               <span className="truncate font-bold text-foreground">
                 {selectedTeacher.fullName}
               </span>
-              {selectedTeacher.weeklyHourCapacity !== undefined && (
+              {isCurrentTeacherNonSpecialist && (
+                <span className="text-[9px] font-black text-amber-700 dark:text-amber-300 bg-amber-500/20 px-1.5 py-0.5 rounded border border-amber-400/40 shrink-0">
+                  Mutaxassis emas
+                </span>
+              )}
+              {selectedTeacher.weeklyHourCapacity !== undefined && !isCurrentTeacherNonSpecialist && (
                 <span className="text-[10px] font-medium text-muted-foreground shrink-0 bg-muted px-1.5 py-0.5 rounded-md">
                   {selectedTeacher.weeklyHourCapacity} st
                 </span>
@@ -277,7 +293,7 @@ export const TeacherSelectCombobox: React.FC<TeacherSelectComboboxProps> = ({
               maxWidth: "calc(100vw - 32px)",
               zIndex: 99999,
             }}
-            className="bg-popover/98 backdrop-blur-xl border border-border/80 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150 flex flex-col max-h-[360px]"
+            className="bg-popover/98 backdrop-blur-xl border border-border/80 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150 flex flex-col max-h-[380px]"
           >
             {/* Search Bar Header */}
             <div className="p-2 border-b border-border/60 bg-muted/40 shrink-0">
@@ -286,7 +302,7 @@ export const TeacherSelectCombobox: React.FC<TeacherSelectComboboxProps> = ({
                 <input
                   ref={searchInputRef}
                   type="text"
-                  placeholder="O'qituvchi ismini qidiring..."
+                  placeholder="Mutaxassis o'qituvchini qidiring..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   className="w-full pl-8 pr-7 py-1.5 text-xs rounded-xl bg-background border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary placeholder:text-muted-foreground/60 text-foreground font-medium"
@@ -305,6 +321,19 @@ export const TeacherSelectCombobox: React.FC<TeacherSelectComboboxProps> = ({
 
             {/* Scrollable Teacher List */}
             <div className="overflow-y-auto p-1.5 space-y-1 custom-scrollbar flex-1">
+              {/* If current teacher is non-specialist, show clear warning banner */}
+              {isCurrentTeacherNonSpecialist && (
+                <div className="p-2 bg-amber-500/10 border border-amber-500/25 rounded-xl text-xs text-amber-900 dark:text-amber-200 space-y-1">
+                  <div className="flex items-center gap-1.5 font-bold">
+                    <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                    <span>Hozirgi ustoz ushbu fan mutaxassisi emas!</span>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground leading-tight">
+                    «{selectedTeacher?.fullName}» boshqa fan o'qituvchisi. Quyidagi haqiqiy mutaxassislardan birini tanlang:
+                  </p>
+                </div>
+              )}
+
               {/* Unassign option */}
               <button
                 type="button"
@@ -347,9 +376,13 @@ export const TeacherSelectCombobox: React.FC<TeacherSelectComboboxProps> = ({
                     <div className="flex items-center gap-2 truncate">
                       <span className="text-amber-400 text-xs">⭐</span>
                       <span className="truncate font-semibold">{homeroomTeacher.fullName}</span>
-                      <span className={`text-[10px] px-1.5 py-0.2 rounded font-medium ${
-                        value === homeroomTeacher.id ? "bg-white/20 text-white" : "bg-muted text-muted-foreground"
-                      }`}>
+                      <span
+                        className={`text-[10px] px-1.5 py-0.2 rounded font-medium ${
+                          value === homeroomTeacher.id
+                            ? "bg-white/20 text-white"
+                            : "bg-muted text-muted-foreground"
+                        }`}
+                      >
                         {homeroomTeacher.weeklyHourCapacity} st
                       </span>
                     </div>
@@ -358,7 +391,7 @@ export const TeacherSelectCombobox: React.FC<TeacherSelectComboboxProps> = ({
                 </div>
               )}
 
-              {/* Recommended Specialists */}
+              {/* Recommended Specialists (Always shown if available) */}
               {filteredCandidates.length > 0 && (
                 <div className="pt-1 pb-0.5">
                   <div className="px-2 py-0.5 text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-wider flex items-center gap-1">
@@ -399,62 +432,88 @@ export const TeacherSelectCombobox: React.FC<TeacherSelectComboboxProps> = ({
                 </div>
               )}
 
-              {/* All other teachers */}
-              {filteredOtherTeachers.length > 0 && (
-                <div className="pt-1 pb-0.5">
-                  <div className="px-2 py-0.5 text-[10px] font-black text-muted-foreground uppercase tracking-wider flex items-center gap-1">
-                    <GraduationCap className="w-3 h-3" />
-                    <span>Barcha o'qituvchilar ({filteredOtherTeachers.length})</span>
-                  </div>
-                  {filteredOtherTeachers.map((t) => {
-                    const isSelected = t.id === value;
-                    return (
-                      <button
-                        key={t.id}
-                        type="button"
-                        onClick={() => {
-                          onChange(t.id);
-                          setIsOpen(false);
-                        }}
-                        className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs transition-colors text-left mt-0.5 ${
-                          isSelected
-                            ? "bg-primary text-white font-bold"
-                            : "hover:bg-muted text-foreground"
-                        }`}
-                      >
-                        <div className="flex items-center gap-2 truncate">
-                          <div
-                            className={`w-4 h-4 rounded flex items-center justify-center text-[9px] font-bold shrink-0 ${
-                              isSelected ? "bg-white/20 text-white" : "bg-muted text-muted-foreground"
-                            }`}
-                          >
-                            {t.fullName.charAt(0)}
-                          </div>
-                          <span className="truncate font-medium">{t.fullName}</span>
-                          <span
-                            className={`text-[10px] px-1.5 py-0.2 rounded font-medium ${
-                              isSelected ? "bg-white/20 text-white" : "bg-muted text-muted-foreground"
-                            }`}
-                          >
-                            {t.weeklyHourCapacity} st
-                          </span>
-                        </div>
-                        {isSelected && <Check className="w-3.5 h-3.5 shrink-0 ml-2" />}
-                      </button>
-                    );
-                  })}
+              {/* If no candidates exist for this subject in the whole school */}
+              {candidates.length === 0 && (
+                <div className="py-2 px-3 text-center text-xs text-amber-700 dark:text-amber-300 bg-amber-500/10 rounded-xl">
+                  ⚠️ Ushbu fanga maktabda biriktirilgan mutaxassis yo'q
                 </div>
               )}
 
-              {/* Empty state */}
-              {filteredCandidates.length === 0 && filteredOtherTeachers.length === 0 && (
-                <div className="py-8 text-center px-4 space-y-1">
-                  <p className="text-xs font-bold text-foreground">O'qituvchi topilmadi</p>
-                  <p className="text-[11px] text-muted-foreground">
-                    "{search}" so'rovi bo'yicha hech qanday o'qituvchi topilmadi.
-                  </p>
-                </div>
+              {/* Toggle to view other non-specialist teachers */}
+              {candidates.length > 0 && !q && (
+                <button
+                  type="button"
+                  onClick={() => setShowOtherTeachers(!showOtherTeachers)}
+                  className="w-full py-1.5 px-2 text-[11px] font-semibold text-muted-foreground hover:text-foreground bg-muted/40 hover:bg-muted/70 rounded-xl transition-all text-center flex items-center justify-center gap-1 border border-dashed border-border mt-1.5"
+                >
+                  <GraduationCap className="w-3 h-3" />
+                  <span>
+                    {showOtherTeachers
+                      ? "▲ Faqat mutaxassislarni ko'rsatish"
+                      : `➕ Boshqa fan o'qituvchilari (${filteredOtherTeachers.length})`}
+                  </span>
+                </button>
               )}
+
+              {/* Non-specialist other teachers (ONLY shown when expanded or explicitly searched) */}
+              {(showOtherTeachers || !!q || candidates.length === 0) &&
+                filteredOtherTeachers.length > 0 && (
+                  <div className="pt-1 pb-0.5">
+                    <div className="px-2 py-0.5 text-[10px] font-black text-muted-foreground uppercase tracking-wider flex items-center gap-1">
+                      <GraduationCap className="w-3 h-3" />
+                      <span>Boshqa o'qituvchilar ({filteredOtherTeachers.length})</span>
+                    </div>
+                    {filteredOtherTeachers.map((t) => {
+                      const isSelected = t.id === value;
+                      return (
+                        <button
+                          key={t.id}
+                          type="button"
+                          onClick={() => {
+                            onChange(t.id);
+                            setIsOpen(false);
+                          }}
+                          className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs transition-colors text-left mt-0.5 ${
+                            isSelected
+                              ? "bg-primary text-white font-bold"
+                              : "hover:bg-muted text-foreground"
+                          }`}
+                        >
+                          <div className="flex items-center gap-2 truncate">
+                            <div
+                              className={`w-4 h-4 rounded flex items-center justify-center text-[9px] font-bold shrink-0 ${
+                                isSelected ? "bg-white/20 text-white" : "bg-muted text-muted-foreground"
+                              }`}
+                            >
+                              {t.fullName.charAt(0)}
+                            </div>
+                            <span className="truncate font-medium">{t.fullName}</span>
+                            <span
+                              className={`text-[10px] px-1.5 py-0.2 rounded font-medium ${
+                                isSelected ? "bg-white/20 text-white" : "bg-muted text-muted-foreground"
+                              }`}
+                            >
+                              {t.weeklyHourCapacity} st
+                            </span>
+                          </div>
+                          {isSelected && <Check className="w-3.5 h-3.5 shrink-0 ml-2" />}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+
+              {/* Empty state */}
+              {filteredCandidates.length === 0 &&
+                (showOtherTeachers || !!q || candidates.length === 0) &&
+                filteredOtherTeachers.length === 0 && (
+                  <div className="py-8 text-center px-4 space-y-1">
+                    <p className="text-xs font-bold text-foreground">O'qituvchi topilmadi</p>
+                    <p className="text-[11px] text-muted-foreground">
+                      "{search}" so'rovi bo'yicha hech qanday o'qituvchi topilmadi.
+                    </p>
+                  </div>
+                )}
             </div>
           </div>,
           document.body
