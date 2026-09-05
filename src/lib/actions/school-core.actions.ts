@@ -527,6 +527,7 @@ export async function syncFullSchoolDataAction(
                   weeklyHourCapacity: t.weeklyHourCapacity || 20,
                   maxConsecutiveHours: t.maxConsecutiveHours || 4,
                   methodDay: t.methodDayOfWeek !== undefined ? t.methodDayOfWeek : null,
+                  teachingStages: (t.teachingStages as any) || "BOTH",
                 },
               });
             } else {
@@ -538,6 +539,7 @@ export async function syncFullSchoolDataAction(
                   weeklyHourCapacity: t.weeklyHourCapacity || 20,
                   maxConsecutiveHours: t.maxConsecutiveHours || 4,
                   methodDay: t.methodDayOfWeek !== undefined ? t.methodDayOfWeek : null,
+                  teachingStages: (t.teachingStages as any) || "BOTH",
                 },
               });
             }
@@ -627,6 +629,57 @@ export async function syncFullSchoolDataAction(
                     });
                   }
                 }
+              }
+            }
+          }
+        }
+
+        // 7.5. Sinf Rahbarligi (Two-Way Homeroom Canonical Synchronization)
+        // Avval maktabdagi barcha o'qituvchilarning homeroomClassId sini tozalaymiz (xavfsiz qayta biriktirish uchun)
+        await tx.teacher.updateMany({
+          where: { schoolId: actualSchoolId },
+          data: { homeroomClassId: null },
+        });
+
+        const assignedDbTeachers = new Set<string>();
+        const assignedDbClasses = new Set<string>();
+
+        // 1-ustuvorlik: Sinflardan (fullData.classes)
+        if (fullData.classes && fullData.classes.length > 0) {
+          for (const c of fullData.classes) {
+            const dbClassId = classMap.get(c.id) || classMap.get(c.name.trim());
+            if (!dbClassId || assignedDbClasses.has(dbClassId)) continue;
+
+            const tid = c.homeroomTeacherId;
+            if (tid) {
+              const dbTeacherId = teacherMap.get(tid);
+              if (dbTeacherId && !assignedDbTeachers.has(dbTeacherId)) {
+                await tx.teacher.update({
+                  where: { id: dbTeacherId },
+                  data: { homeroomClassId: dbClassId },
+                });
+                assignedDbTeachers.add(dbTeacherId);
+                assignedDbClasses.add(dbClassId);
+              }
+            }
+          }
+        }
+
+        // 2-ustuvorlik: O'qituvchilardan (fullData.teachers)
+        if (fullData.teachers && fullData.teachers.length > 0) {
+          for (const t of fullData.teachers) {
+            const dbTeacherId = teacherMap.get(t.id) || teacherMap.get(t.fullName.trim());
+            if (!dbTeacherId || assignedDbTeachers.has(dbTeacherId)) continue;
+
+            if (t.homeroomClassId) {
+              const dbClassId = classMap.get(t.homeroomClassId);
+              if (dbClassId && !assignedDbClasses.has(dbClassId)) {
+                await tx.teacher.update({
+                  where: { id: dbTeacherId },
+                  data: { homeroomClassId: dbClassId },
+                });
+                assignedDbTeachers.add(dbTeacherId);
+                assignedDbClasses.add(dbClassId);
               }
             }
           }

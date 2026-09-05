@@ -18,8 +18,10 @@ describe("conflict-solver-engine", () => {
     id: "t_1",
     fullName: "Aliyev Vali",
     schoolId: "sch_1",
+    branchIds: ["b_1"],
+    maxConsecutiveHours: 4,
     subjectIds: ["sub_math"],
-    weeklyHours: 18,
+    weeklyHourCapacity: 18,
     methodDayOfWeek: 2, // Seshanba metod kuni
   };
 
@@ -27,8 +29,10 @@ describe("conflict-solver-engine", () => {
     id: "t_2",
     fullName: "Karimov Sherzod",
     schoolId: "sch_1",
+    branchIds: ["b_1"],
+    maxConsecutiveHours: 4,
     subjectIds: ["sub_math"],
-    weeklyHours: 18,
+    weeklyHourCapacity: 18,
     methodDayOfWeek: 4, // Payshanba metod kuni
   };
 
@@ -37,6 +41,8 @@ describe("conflict-solver-engine", () => {
     name: "Matematika",
     shortName: "Mat",
     schoolId: "sch_1",
+    colorTag: "#3B82F6",
+    allowDoubleLesson: true,
     difficultyScore: 8,
   };
 
@@ -46,6 +52,7 @@ describe("conflict-solver-engine", () => {
       id: "l_1",
       scheduleId: "sch",
       schoolId: "sch_1",
+      branchId: "b_1",
       classId: "cls_1",
       subjectId: "sub_math",
       teacherId: "t_1",
@@ -57,6 +64,7 @@ describe("conflict-solver-engine", () => {
       id: "l_2",
       scheduleId: "sch",
       schoolId: "sch_1",
+      branchId: "b_1",
       classId: "cls_2",
       subjectId: "sub_math",
       teacherId: "t_1",

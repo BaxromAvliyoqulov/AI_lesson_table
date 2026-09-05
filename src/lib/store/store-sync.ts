@@ -30,15 +30,58 @@ export function normalizeHomeroomSinfSoati({
     subjects.find((s) => s.id === "sub_sinf_soati");
   const finalSubId = sinfSoatiSub?.id || "sub_sinf_soati";
 
-  // 1. Sinflarni tekshirish: har bir sinfda FAQAT VA FAQAT 1 DONA Sinf soati (1 soat) bo'lishini kafolatlash
-  const normalizedClasses = classes.map((c) => {
-    const teacherByClass = teachers.find((t) => t.homeroomClassId === c.id);
-    const hrTeacherId = c.homeroomTeacherId || teacherByClass?.id;
+  // 1. Qat'iy 1-ga-1 xarita (One-to-One Canonical Homeroom Map):
+  // 1 sinf = faqat 1 nafar o'qituvchi.
+  // 1 o'qituvchi = faqat 1 ta sinf.
+  const classToTeacherMap = new Map<string, string>();
+  const assignedTeachers = new Set<string>();
 
+  // 1-bosqich: Sinflar o'zida ko'rsatilgan homeroomTeacherId (eng ustun va aktual)
+  for (const c of classes) {
+    if (c.homeroomTeacherId && !assignedTeachers.has(c.homeroomTeacherId)) {
+      const teacherExists = teachers.some((t) => t.id === c.homeroomTeacherId);
+      if (teacherExists) {
+        classToTeacherMap.set(c.id, c.homeroomTeacherId);
+        assignedTeachers.add(c.homeroomTeacherId);
+      }
+    }
+  }
+
+  // 2-bosqich: O'qituvchilarda homeroomClassId ko'rsatilgan bo'lsa (faqat hali band bo'lmaganlar)
+  for (const t of teachers) {
+    if (
+      t.homeroomClassId &&
+      !assignedTeachers.has(t.id) &&
+      !classToTeacherMap.has(t.homeroomClassId)
+    ) {
+      const classExists = classes.some((c) => c.id === t.homeroomClassId);
+      if (classExists) {
+        classToTeacherMap.set(t.homeroomClassId, t.id);
+        assignedTeachers.add(t.id);
+      }
+    }
+  }
+
+  // Reverse map: teacherId -> classId
+  const teacherToClassMap = new Map<string, string>();
+  for (const [clsId, tId] of classToTeacherMap.entries()) {
+    teacherToClassMap.set(tId, clsId);
+  }
+
+  // 2. Sinflarni tekshirish: har bir sinfda FAQAT VA FAQAT 1 DONA Sinf soati (1 soat) bo'lishini kafolatlash
+  const normalizedClasses = classes.map((c) => {
+    const hrTeacherId = classToTeacherMap.get(c.id);
     const existingSubjects = c.subjects || [];
 
     if (!hrTeacherId) {
-      return c;
+      const cleanSubjects = existingSubjects.filter(
+        (s) => !isKelajakOrSinfSoatiSubject(s.subjectId)
+      );
+      return {
+        ...c,
+        homeroomTeacherId: undefined,
+        subjects: cleanSubjects,
+      };
     }
 
     // Barcha eski va dublikat Sinf soatlarini butunlay tozalaymiz
@@ -65,11 +108,12 @@ export function normalizeHomeroomSinfSoati({
     };
   });
 
-  // 2. O'qituvchilarni tekshirish: sinf rahbarlariga Sinf soati fanini qo'shish va toifani (Boshlang'ich/Katta/Hammasi) avtomatik aniqlash
+  // 3. O'qituvchilarni tekshirish: sinf rahbarlariga Sinf soati fanini qo'shish va toifani (Boshlang'ich/Katta/Hammasi) avtomatik aniqlash
   const normalizedTeachers = teachers.map((t) => {
-    const hrClass = normalizedClasses.find(
-      (c) => c.homeroomTeacherId === t.id || t.homeroomClassId === c.id
-    );
+    const assignedClassId = teacherToClassMap.get(t.id);
+    const hrClass = assignedClassId
+      ? normalizedClasses.find((c) => c.id === assignedClassId)
+      : undefined;
 
     let teachingStages = t.teachingStages;
     if (!teachingStages || teachingStages === "BOTH") {
@@ -123,8 +167,11 @@ export function normalizeHomeroomSinfSoati({
         teachingStages: teachingStages || "BOTH",
       };
     }
+
+    // Sinf rahbari bo'lmagan o'qituvchilarda homeroomClassId qat'iy undefined bo'ladi (arvoh ziddiyatlar yo'qoladi)
     return {
       ...t,
+      homeroomClassId: undefined,
       teachingStages: teachingStages || "BOTH",
     };
   });

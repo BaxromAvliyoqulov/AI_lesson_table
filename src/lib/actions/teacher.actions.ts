@@ -428,12 +428,20 @@ export async function setHomeroomTeacherAction(
       }
 
       const teacher = await tx.teacher.findFirst({
-        where: { OR: [{ id: teacherId }, { schoolId: actualSchoolId, fullName: teacherId }] },
+        where: {
+          schoolId: actualSchoolId,
+          OR: [{ id: teacherId }, { fullName: teacherId }],
+        },
       });
 
       if (!teacher) return;
 
-      // 3. O'qituvchi homeroom bog'lamasini yangilash
+      // 3. O'qituvchi homeroom bog'lamasini yangilash (avvalgi sinfi bo'lsa tozalab, keyin yangisini qo'yish)
+      await tx.teacher.update({
+        where: { id: teacher.id },
+        data: { homeroomClassId: null },
+      });
+
       await tx.teacher.update({
         where: { id: teacher.id },
         data: { homeroomClassId: cls.id },

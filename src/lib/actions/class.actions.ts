@@ -15,18 +15,34 @@ export async function upsertClassAction(schoolId: string, cls: SchoolClass) {
 
     await prisma.$transaction(async (tx) => {
       // Filial va smena mavjudligini tekshirish
-      let branch = await tx.branch.findFirst({
-        where: { OR: [{ id: cls.branchId }, { schoolId: actualSchoolId }] },
-      });
+      let branch = cls.branchId
+        ? await tx.branch.findFirst({
+            where: { schoolId: actualSchoolId, id: cls.branchId },
+          })
+        : null;
+      if (!branch) {
+        branch = await tx.branch.findFirst({
+          where: { schoolId: actualSchoolId },
+          orderBy: { isMain: "desc" },
+        });
+      }
       if (!branch) {
         branch = await tx.branch.create({
           data: { schoolId: actualSchoolId, name: "Asosiy bino", isMain: true },
         });
       }
 
-      let shift = await tx.shift.findFirst({
-        where: { OR: [{ id: cls.shiftId }, { schoolId: actualSchoolId }] },
-      });
+      let shift = cls.shiftId
+        ? await tx.shift.findFirst({
+            where: { schoolId: actualSchoolId, id: cls.shiftId },
+          })
+        : null;
+      if (!shift) {
+        shift = await tx.shift.findFirst({
+          where: { schoolId: actualSchoolId },
+          orderBy: { order: "asc" },
+        });
+      }
       if (!shift) {
         shift = await tx.shift.create({
           data: {
@@ -40,7 +56,7 @@ export async function upsertClassAction(schoolId: string, cls: SchoolClass) {
       }
 
       const existing = await tx.class.findFirst({
-        where: { OR: [{ id: cls.id }, { schoolId: actualSchoolId, name: cls.name.trim() }] },
+        where: { schoolId: actualSchoolId, OR: [{ id: cls.id }, { name: cls.name.trim() }] },
       });
 
       let classId = cls.id;
@@ -71,7 +87,7 @@ export async function upsertClassAction(schoolId: string, cls: SchoolClass) {
       }
 
       // Sinf rahbari tayinlash / bekor qilish
-      if (cls.homeroomTeacherId) {
+      if (cls.homeroomTeacherId && cls.homeroomTeacherId.trim() !== "") {
         // Avval bu sinfga biriktirilgan boshqa o'qituvchilarni tozalash
         await tx.teacher.updateMany({
           where: { schoolId: actualSchoolId, homeroomClassId: classId },
@@ -79,9 +95,21 @@ export async function upsertClassAction(schoolId: string, cls: SchoolClass) {
         });
 
         const teacher = await tx.teacher.findFirst({
-          where: { OR: [{ id: cls.homeroomTeacherId }, { schoolId: actualSchoolId }] },
+          where: {
+            schoolId: actualSchoolId,
+            OR: [
+              { id: cls.homeroomTeacherId },
+              { fullName: cls.homeroomTeacherId },
+            ],
+          },
         });
         if (teacher) {
+          // O'qituvchining boshqa sinfi bo'lsa tozalash
+          await tx.teacher.update({
+            where: { id: teacher.id },
+            data: { homeroomClassId: null },
+          });
+
           await tx.teacher.update({
             where: { id: teacher.id },
             data: { homeroomClassId: classId },
