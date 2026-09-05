@@ -171,7 +171,7 @@ export class CSPSolver {
     // ── 1. SLOTLARNI QURISH (Dam kunlari va Band soatlarni to'liq hisobga olgan holda) ────────────
     for (const cls of this.input.classes) {
       if (cls.isClosed) continue;
-      const isPrimary = cls.isPrimary || cls.grade <= 4;
+      const isPrimary = Boolean(cls.isPrimary) || (cls.grade !== undefined && Number(cls.grade) <= 4);
       const blockedDaysSet = new Set(
         cls.blockedDays || (isPrimary ? [6] : [])
       );
@@ -180,6 +180,7 @@ export class CSPSolver {
       );
 
       const days = this.daysCount;
+      // QAT'IY SANPIN VA MAKTAB QOIDASI: Boshlang'ich sinflarda (1-4) kunlik maksimal dars 5 soat, 6-soat QAT'IYAN TAQIQLANADI!
       const maxP = isPrimary ? 5 : 6;
 
       const slots: Slot[] = [];
@@ -366,6 +367,14 @@ export class CSPSolver {
     });
 
     remaining.sort((a, b) => {
+      // 0. Boshlang'ich sinflarda haftalik soati kunlar soniga teng bo'lgan fanlar (5 soatlik Matematika, 4 soatlik Ona tili):
+      // Ular haftadagi har bir kunga tushishi SHART (erkinlik darajasi 0). Mutaxassislar kunlarni egallab qo'ymasligi uchun birinchi joylashtiriladi!
+      const isPrimaryA = a.grade <= 4;
+      const isPrimaryB = b.grade <= 4;
+      const bottleneckA = (isPrimaryA && a.weeklyHours >= 4) ? a.weeklyHours * 20 : 0;
+      const bottleneckB = (isPrimaryB && b.weeklyHours >= 4) ? b.weeklyHours * 20 : 0;
+      if (bottleneckB !== bottleneckA) return bottleneckB - bottleneckA;
+
       // 1. O'qituvchi qancha ko'p sinfga kirsa, u eng qattiq cheklovli (bottleneck) — birinchi teriladi!
       const classesA = teacherClassCount.get(a.teacherId)?.size || 0;
       const classesB = teacherClassCount.get(b.teacherId)?.size || 0;
@@ -376,11 +385,15 @@ export class CSPSolver {
       const hB = teacherHourCount.get(b.teacherId) || 0;
       if (hB !== hA) return hB - hA;
 
-      // 3. Fanning murakkablik darajasi (SanPiN)
+      // 3. Fanning haftalik soati
+      if (b.weeklyHours !== a.weeklyHours) return b.weeklyHours - a.weeklyHours;
+
+      // 4. Fanning murakkablik darajasi (SanPiN)
       return b.difficulty - a.difficulty;
     });
 
     // ── 4. CHAQMOQDEK TEZ HEURISTIC BIRINCHI JOYLASHTIRISH ─────────────────────
+    const unassignedReqs: ReqLesson[] = [];
     while (remaining.length > 0) {
       const req = remaining.shift()!;
       const slots = classSlots.get(req.classId) || [];
@@ -417,6 +430,9 @@ export class CSPSolver {
       // QAT'IY METOD KUNI VA BIR KUNDA 1 FAN PROTOKOLI:
       const emptySlots = slots.filter((s) => {
         if (s.isLocked || s.teacherId !== null) return false;
+
+        // Boshlang'ich sinflarda 6-soat dars QAT'IYAN TAQIQLANADI!
+        if (isPrimary && s.period >= 6) return false;
 
         // Parallel slotlar filtri: GROUP_2 faqat GROUP_2 slotiga, boshqalar asosiy slotlarga
         if (req.groupType === "GROUP_2") {
@@ -468,7 +484,10 @@ export class CSPSolver {
         return true;
       });
 
-      if (emptySlots.length === 0) continue;
+      if (emptySlots.length === 0) {
+        unassignedReqs.push(req);
+        continue;
+      }
 
       // O'qituvchi boshqa sinflarda mutlaqo bo'sh bo'lgan (0 to'qnashuvli) slotlarni birinchi o'ringa qo'yish
       const conflictFreeSlots = emptySlots.filter((s) => {
@@ -640,6 +659,105 @@ export class CSPSolver {
       }
     }
 
+    // ── 4.5. UNASSIGNED DARS LARNI BUMPING / REPAIR BILAN JOYLASHTIRISH ─────────
+    for (const req of unassignedReqs) {
+      const clsSlots = classSlots.get(req.classId) || [];
+      const isPrimary = req.grade <= 4;
+      const subObj = this.subjectMap.get(req.subjectId);
+      const allowDouble = !isPrimary && Boolean(subObj?.allowDoubleLesson);
+
+      let placed = false;
+
+      // 1-usul: Bo'sh slotlar ichidan metod kuni bo'lmagan, lekin boshqa o'qituvchi band bo'lgan slotni tekshirish
+      // 2-usul: Mavjud darsni (victim) boshqa bo'sh joyga ko'chirib, o'rniga req ni qo'yish (Kempe-Chain Bumping)
+      for (const targetSlot of clsSlots) {
+        if (targetSlot.isLocked || !targetSlot.teacherId || !targetSlot.subjectId) continue;
+        if (targetSlot.groupType === "GROUP_2") continue;
+        if (isPrimary && targetSlot.period >= 6) continue;
+        if (this.isStrictMethodDay(targetSlot.day, req.teacherId, req.subjectId)) continue;
+
+        // req o'qituvchisi ayni shu vaqtda bo'sh bo'lishi shart
+        const occKeyReq = getOccKey(req.teacherId, targetSlot.day, targetSlot.period, req.classId);
+        if ((teacherOccupancy.get(occKeyReq) || 0) > 0) continue;
+
+        // targetSlot.day da req fani takrorlanmasligi shart
+        const sameSubOnTargetDay = clsSlots.some(
+          (s) => s !== targetSlot && s.day === targetSlot.day && s.subjectId === req.subjectId && s.groupType === req.groupType
+        );
+        if (!allowDouble && sameSubOnTargetDay) continue;
+
+        const victimTeacherId = targetSlot.teacherId;
+        const victimSubjectId = targetSlot.subjectId;
+        const victimGroupType = targetSlot.groupType;
+        const victimSubObj = this.subjectMap.get(victimSubjectId);
+        const victimAllowDouble = !isPrimary && Boolean(victimSubObj?.allowDoubleLesson);
+
+        // Victim darsni ko'chirib o'tkazish mumkin bo'lgan bo'sh slot bormi?
+        const altSlot = clsSlots.find((alt) => {
+          if (alt.teacherId !== null || alt.isLocked) return false;
+          if (alt.groupType === "GROUP_2") return false;
+          if (isPrimary && alt.period >= 6) return false;
+          if (this.isStrictMethodDay(alt.day, victimTeacherId, victimSubjectId)) return false;
+
+          const occAlt = teacherOccupancy.get(getOccKey(victimTeacherId, alt.day, alt.period, req.classId)) || 0;
+          if (occAlt > 0) return false;
+
+          const dupVictimOnAltDay = clsSlots.some(
+            (s) => s.day === alt.day && s.subjectId === victimSubjectId && s.groupType === victimGroupType
+          );
+          if (!victimAllowDouble && dupVictimOnAltDay) return false;
+
+          return true;
+        });
+
+        if (altSlot) {
+          // 1. Victimni altSlotga ko'chirish
+          const oldOccVictim = getOccKey(victimTeacherId, targetSlot.day, targetSlot.period, req.classId);
+          teacherOccupancy.set(oldOccVictim, Math.max(0, (teacherOccupancy.get(oldOccVictim) || 1) - 1));
+
+          altSlot.teacherId = victimTeacherId;
+          altSlot.subjectId = victimSubjectId;
+          altSlot.groupType = victimGroupType;
+          const newOccVictim = getOccKey(victimTeacherId, altSlot.day, altSlot.period, req.classId);
+          teacherOccupancy.set(newOccVictim, (teacherOccupancy.get(newOccVictim) || 0) + 1);
+
+          // 2. targetSlot ga req ni o'rnatish
+          targetSlot.teacherId = req.teacherId;
+          targetSlot.subjectId = req.subjectId;
+          targetSlot.groupType = req.groupType;
+          teacherOccupancy.set(occKeyReq, (teacherOccupancy.get(occKeyReq) || 0) + 1);
+
+          placed = true;
+          break;
+        }
+      }
+
+      if (!placed) {
+        // Agar bumping topilmasa, fanning takrorlanmaslik qoidasiga mos keladigan bo'sh slotga qo'yamiz
+        // va 5-qadamdagi Min-Conflicts local search o'qituvchining boshqa sinfdagi darsini surib ziddiyatni bartaraf etadi
+        const fallbackSlot = clsSlots.find((s) => {
+          if (s.teacherId !== null || s.isLocked) return false;
+          if (s.groupType === "GROUP_2") return false;
+          if (isPrimary && s.period >= 6) return false;
+          if (this.isStrictMethodDay(s.day, req.teacherId, req.subjectId)) return false;
+          const dup = clsSlots.some(
+            (other) => other.day === s.day && other.subjectId === req.subjectId && other.groupType === req.groupType
+          );
+          if (!allowDouble && dup) return false;
+          return true;
+        });
+
+        if (fallbackSlot) {
+          fallbackSlot.teacherId = req.teacherId;
+          fallbackSlot.subjectId = req.subjectId;
+          fallbackSlot.groupType = req.groupType;
+          const k = getOccKey(req.teacherId, fallbackSlot.day, fallbackSlot.period, req.classId);
+          teacherOccupancy.set(k, (teacherOccupancy.get(k) || 0) + 1);
+          placed = true;
+        }
+      }
+    }
+
     // ── 5. TEZ VA KUCHLI MIN-CONFLICTS LOCAL SEARCH (Max 200 iteration) ─────────
     const countClashesForTeacher = (teacherId: string, day: number, period: number, classId: string): number => {
       const k = getOccKey(teacherId, day, period, classId);
@@ -682,7 +800,10 @@ export class CSPSolver {
           if (tB && sB && this.isStrictMethodDay(slotA.day, tB, sB)) continue;
 
           // QAT'IY PROTOKOL: Bir kunda bir xil fanning takrorlanishi taqiqlanadi!
-          const isPrimaryClsA = (this.classMap.get(slotA.classId)?.grade ?? 5) <= 4;
+          const clsA = this.classMap.get(slotA.classId);
+          const isPrimaryClsA = Boolean(clsA?.isPrimary) || ((clsA?.grade ?? 5) <= 4);
+          if (isPrimaryClsA && slotB.period >= 6) continue;
+
           const subObjA = this.subjectMap.get(sA);
           const allowDoubleA = !isPrimaryClsA && Boolean(subObjA?.allowDoubleLesson);
           if (!allowDoubleA) {
@@ -693,7 +814,10 @@ export class CSPSolver {
           }
 
           if (tB && sB) {
-            const isPrimaryClsB = (this.classMap.get(slotB.classId)?.grade ?? 5) <= 4;
+            const clsB = this.classMap.get(slotB.classId);
+            const isPrimaryClsB = Boolean(clsB?.isPrimary) || ((clsB?.grade ?? 5) <= 4);
+            if (isPrimaryClsB && slotA.period >= 6) continue;
+
             const subObjB = this.subjectMap.get(sB);
             const allowDoubleB = !isPrimaryClsB && Boolean(subObjB?.allowDoubleLesson);
             if (!allowDoubleB) {
@@ -839,6 +963,10 @@ export class CSPSolver {
         for (let i = 0; i < daySlots.length; i++) {
           const gapSlot = daySlots[i];
           if (!gapSlot.teacherId && !gapSlot.isLocked) {
+            const clsObj = this.classMap.get(cls.id);
+            const isPrimaryCls = Boolean(clsObj?.isPrimary) || ((clsObj?.grade ?? 5) <= 4);
+            if (isPrimaryCls && gapSlot.period >= 6) continue;
+
             const hasLater = daySlots.slice(i + 1).some((s) => s.teacherId && !s.isLocked);
             if (!hasLater) continue; // darcha emas
 
