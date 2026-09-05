@@ -28,6 +28,8 @@ import {
   Unlock,
   Layers,
   BarChart3,
+  Sun,
+  Sunset,
 } from "lucide-react";
 
 interface ClassesTabProps {
@@ -64,9 +66,10 @@ export const ClassesTab: React.FC<ClassesTabProps> = ({
   onOpenEMaktabImport,
   onBulkAddClasses,
 }) => {
-  const { lockedClassIds = [], toggleLockClass } = useSchoolStore();
+  const { lockedClassIds = [], toggleLockClass, updateClass } = useSchoolStore();
   const [search, setSearch] = useState("");
   const [filterType, setFilterType] = useState<ClassFilterType>("ALL");
+  const [shiftFilter, setShiftFilter] = useState<"ALL" | "SHIFT_1" | "SHIFT_2">("ALL");
   const [selectedGrade, setSelectedGrade] = useState<number | null>(null);
 
   // Ommaviy generator holati
@@ -154,6 +157,42 @@ export const ClassesTab: React.FC<ClassesTabProps> = ({
   const totalStudents = useMemo(() => classes.reduce((sum, c) => sum + (c.studentCount || 25), 0), [classes]);
   const lockedCount = useMemo(() => classes.filter((c) => lockedClassIds.includes(c.id)).length, [classes, lockedClassIds]);
 
+  const isClassShift2 = useCallback((c: SchoolClass) => {
+    const s = shiftMap.get(c.shiftId);
+    const sName = (s?.name || "").toLowerCase();
+    const sId = (c.shiftId || "").toLowerCase();
+    return (
+      sId === "s39_2" ||
+      sId.includes("shift_2") ||
+      sId.includes("shift2") ||
+      sId.includes("smena_2") ||
+      sId.includes("smena2") ||
+      sName.includes("2") ||
+      sName.includes("tush") ||
+      sName.includes("ikkinchi") ||
+      sName.includes("keyin") ||
+      sName.includes("abetdan")
+    );
+  }, [shiftMap]);
+
+  const isClassShift1 = useCallback((c: SchoolClass) => !isClassShift2(c), [isClassShift2]);
+
+  const shift1Count = useMemo(() => classes.filter(isClassShift1).length, [classes, isClassShift1]);
+  const shift2Count = useMemo(() => classes.filter(isClassShift2).length, [classes, isClassShift2]);
+
+  const handleToggleClassShift = useCallback((cls: SchoolClass, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const is2 = isClassShift2(cls);
+    const s1 = shifts.find((s) => !s.id.toLowerCase().includes("2") && !s.name.toLowerCase().includes("2")) || shifts[0];
+    const s2 = shifts.find((s) => s.id.toLowerCase().includes("2") || s.name.toLowerCase().includes("2") || s.name.toLowerCase().includes("tush")) || shifts[1] || shifts[0];
+    const targetShiftId = is2 ? (s1?.id || "s39_1") : (s2?.id || "s39_2");
+
+    updateClass({
+      ...cls,
+      shiftId: targetShiftId,
+    });
+  }, [isClassShift2, shifts, updateClass]);
+
   const noHomeroomCount = useMemo(
     () => classes.filter((c) => !getClassHomeroomTeacher(c)).length,
     [classes, getClassHomeroomTeacher]
@@ -173,6 +212,13 @@ export const ClassesTab: React.FC<ClassesTabProps> = ({
 
   const filteredClasses = useMemo(() => {
     let list = classes;
+
+    // Smena filtri (Abetgacha / Abetdan keyin)
+    if (shiftFilter === "SHIFT_1") {
+      list = list.filter(isClassShift1);
+    } else if (shiftFilter === "SHIFT_2") {
+      list = list.filter(isClassShift2);
+    }
 
     if (selectedGrade !== null) {
       list = list.filter((c) => c.grade === selectedGrade);
@@ -199,7 +245,7 @@ export const ClassesTab: React.FC<ClassesTabProps> = ({
     }
 
     return sortClassesByName(list);
-  }, [classes, selectedGrade, filterType, search, getClassHomeroomTeacher, lockedClassIds]);
+  }, [classes, shiftFilter, isClassShift1, isClassShift2, selectedGrade, filterType, search, getClassHomeroomTeacher, lockedClassIds]);
 
   // Ommaviy sinflarni yaratish
   const handleCreateBulkClasses = () => {
@@ -627,79 +673,130 @@ export const ClassesTab: React.FC<ClassesTabProps> = ({
           </div>
         </div>
 
-        {/* Filter pills: Bosqichlar */}
-        <div className="flex items-center gap-1.5 pt-2 border-t border-border/60 overflow-x-auto no-scrollbar">
-          <button
-            onClick={() => { setFilterType("ALL"); setSelectedGrade(null); }}
-            className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
-              filterType === "ALL" && selectedGrade === null
-                ? "bg-foreground text-background font-bold shadow-xs"
-                : "bg-muted/40 hover:bg-muted text-muted-foreground"
-            }`}
-          >
-            Barchasi ({classes.length})
-          </button>
-
-          <button
-            onClick={() => { setFilterType("PRIMARY"); setSelectedGrade(null); }}
-            className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
-              filterType === "PRIMARY" && selectedGrade === null
-                ? "bg-primary text-primary-foreground font-bold shadow-xs"
-                : "bg-muted/40 hover:bg-muted text-muted-foreground"
-            }`}
-          >
-            1-4 sinf ({primaryCount})
-          </button>
-
-          <button
-            onClick={() => { setFilterType("MIDDLE"); setSelectedGrade(null); }}
-            className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
-              filterType === "MIDDLE" && selectedGrade === null
-                ? "bg-primary text-primary-foreground font-bold shadow-xs"
-                : "bg-muted/40 hover:bg-muted text-muted-foreground"
-            }`}
-          >
-            5-9 sinf ({middleCount})
-          </button>
-
-          <button
-            onClick={() => { setFilterType("HIGH"); setSelectedGrade(null); }}
-            className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
-              filterType === "HIGH" && selectedGrade === null
-                ? "bg-primary text-primary-foreground font-bold shadow-xs"
-                : "bg-muted/40 hover:bg-muted text-muted-foreground"
-            }`}
-          >
-            10-11 sinf ({highCount})
-          </button>
-
-          {lockedCount > 0 && (
+        {/* Filter pills: Bosqichlar va Smena filtrlari (Abetgacha / Abetdan keyin) */}
+        <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-2.5 pt-2 border-t border-border/60">
+          {/* Chap: Bosqichlar bo'yicha filtrlar */}
+          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
             <button
-              onClick={() => { setFilterType("LOCKED"); setSelectedGrade(null); }}
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
-                filterType === "LOCKED"
-                  ? "bg-rose-600 text-white shadow-xs"
-                  : "bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-900/60"
+              type="button"
+              onClick={() => { setFilterType("ALL"); setSelectedGrade(null); }}
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
+                filterType === "ALL" && selectedGrade === null
+                  ? "bg-foreground text-background font-bold shadow-xs"
+                  : "bg-muted/40 hover:bg-muted text-muted-foreground"
               }`}
             >
-              <Lock className="w-3.5 h-3.5 shrink-0" />
-              <span>🔒 Qulflanganlar ({lockedCount})</span>
+              Barchasi ({classes.length})
             </button>
-          )}
 
-          {noHomeroomCount > 0 && (
             <button
-              onClick={() => { setFilterType("NO_HOMEROOM"); setSelectedGrade(null); }}
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
-                filterType === "NO_HOMEROOM"
-                  ? "bg-rose-600 text-white shadow-xs"
-                  : "bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-900/60"
+              type="button"
+              onClick={() => { setFilterType("PRIMARY"); setSelectedGrade(null); }}
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
+                filterType === "PRIMARY" && selectedGrade === null
+                  ? "bg-primary text-primary-foreground font-bold shadow-xs"
+                  : "bg-muted/40 hover:bg-muted text-muted-foreground"
               }`}
             >
-              <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
-              <span>⚠️ Rahbari yo'qlar ({noHomeroomCount})</span>
+              1-4 sinf ({primaryCount})
             </button>
-          )}
+
+            <button
+              type="button"
+              onClick={() => { setFilterType("MIDDLE"); setSelectedGrade(null); }}
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
+                filterType === "MIDDLE" && selectedGrade === null
+                  ? "bg-primary text-primary-foreground font-bold shadow-xs"
+                  : "bg-muted/40 hover:bg-muted text-muted-foreground"
+              }`}
+            >
+              5-9 sinf ({middleCount})
+            </button>
+
+            <button
+              type="button"
+              onClick={() => { setFilterType("HIGH"); setSelectedGrade(null); }}
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
+                filterType === "HIGH" && selectedGrade === null
+                  ? "bg-primary text-primary-foreground font-bold shadow-xs"
+                  : "bg-muted/40 hover:bg-muted text-muted-foreground"
+              }`}
+            >
+              10-11 sinf ({highCount})
+            </button>
+
+            {lockedCount > 0 && (
+              <button
+                type="button"
+                onClick={() => { setFilterType("LOCKED"); setSelectedGrade(null); }}
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
+                  filterType === "LOCKED"
+                    ? "bg-rose-600 text-white shadow-xs"
+                    : "bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-900/60"
+                }`}
+              >
+                <Lock className="w-3.5 h-3.5 shrink-0" />
+                <span>🔒 Qulflanganlar ({lockedCount})</span>
+              </button>
+            )}
+
+            {noHomeroomCount > 0 && (
+              <button
+                type="button"
+                onClick={() => { setFilterType("NO_HOMEROOM"); setSelectedGrade(null); }}
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
+                  filterType === "NO_HOMEROOM"
+                    ? "bg-rose-600 text-white shadow-xs"
+                    : "bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-900/60"
+                }`}
+              >
+                <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                <span>⚠️ Rahbari yo'qlar ({noHomeroomCount})</span>
+              </button>
+            )}
+          </div>
+
+          {/* O'ng: Smena Filtrlari (Bo'sh turgan joyni to'ldiradi) */}
+          <div className="flex items-center gap-1 bg-muted/60 p-1 rounded-2xl border border-border/70 shrink-0 self-start lg:self-auto shadow-xs">
+            <span className="text-[10px] font-extrabold text-muted-foreground uppercase px-2 shrink-0">
+              Smena:
+            </span>
+            <button
+              type="button"
+              onClick={() => setShiftFilter("ALL")}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+                shiftFilter === "ALL"
+                  ? "bg-background text-foreground shadow-xs font-extrabold border border-border/80"
+                  : "text-muted-foreground hover:text-foreground hover:bg-background/40"
+              }`}
+            >
+              Barcha smenalar ({classes.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setShiftFilter("SHIFT_1")}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+                shiftFilter === "SHIFT_1"
+                  ? "bg-amber-500 text-white shadow-xs font-extrabold"
+                  : "text-amber-700 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-950/40"
+              }`}
+            >
+              <Sun className="w-3.5 h-3.5 shrink-0 text-amber-300" />
+              <span>☀️ Abetgacha ({shift1Count})</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setShiftFilter("SHIFT_2")}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+                shiftFilter === "SHIFT_2"
+                  ? "bg-indigo-600 text-white shadow-xs font-extrabold"
+                  : "text-indigo-700 dark:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-950/40"
+              }`}
+            >
+              <Sunset className="w-3.5 h-3.5 shrink-0 text-indigo-200" />
+              <span>🌤️ Abetdan keyin ({shift2Count})</span>
+            </button>
+          </div>
         </div>
 
         {/* 🔢 Aniq sinf parallellari (1 dan 11 gacha) mikro-filtri */}
@@ -752,6 +849,7 @@ export const ClassesTab: React.FC<ClassesTabProps> = ({
               0
             );
             const blockedDaysCount = (cls.blockedDays || (cls.grade <= 4 ? [6] : [])).length;
+            const isShift2 = isClassShift2(cls);
 
             return (
               <div
@@ -780,8 +878,24 @@ export const ClassesTab: React.FC<ClassesTabProps> = ({
                             </span>
                           )}
                         </h4>
-                        <p className="text-[11px] text-muted-foreground flex items-center gap-1 truncate mt-0.5">
-                          <span>{shift?.name || "1-smena"}</span>
+                        <p className="text-[11px] text-muted-foreground flex items-center gap-1.5 truncate mt-1 flex-wrap">
+                          <button
+                            type="button"
+                            onClick={(e) => handleToggleClassShift(cls, e)}
+                            title="Smenani almashtirish uchun bosing (1-smena <-> 2-smena)"
+                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg font-bold text-[10px] transition-all cursor-pointer border shadow-2xs ${
+                              isShift2
+                                ? "bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border-indigo-500/30 hover:bg-indigo-500/20"
+                                : "bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/30 hover:bg-amber-500/20"
+                            }`}
+                          >
+                            {isShift2 ? (
+                              <Sunset className="w-3 h-3 text-indigo-500 shrink-0" />
+                            ) : (
+                              <Sun className="w-3 h-3 text-amber-500 shrink-0" />
+                            )}
+                            <span>{isShift2 ? "🌤️ 2-smena (Abetdan keyin)" : "☀️ 1-smena (Abetgacha)"}</span>
+                          </button>
                           <span>•</span>
                           <span>{cls.studentCount || 25} o'quvchi</span>
                           {blockedDaysCount > 0 && (
