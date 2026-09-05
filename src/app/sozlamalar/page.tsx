@@ -409,9 +409,10 @@ export default function SettingsPage() {
 
         {activeTab === "BELLS" && (
           <BellsTab
+            shifts={schoolShifts}
             bellPeriods={store.bellPeriods}
-            onSaveBells={(bells) => {
-              store.updateBellPeriods(bells);
+            onSaveBells={(bells, shiftId) => {
+              store.updateBellPeriods(bells, shiftId);
               showToast("Qo'ng'iroqlar jadvali yangilandi", "success");
             }}
           />

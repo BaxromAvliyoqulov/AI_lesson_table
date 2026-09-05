@@ -37,14 +37,24 @@ const DAYS = [
   { id: 6, name: "Shanba", short: "Shan" },
 ];
 
-const PERIOD_TIMES: Record<number, string> = {
+const SHIFT_1_PERIOD_TIMES: Record<number, string> = {
   1: "08:00–08:45",
-  2: "08:55–09:40",
-  3: "09:50–10:35",
-  4: "10:55–11:40",
-  5: "11:50–12:35",
-  6: "12:45–13:30",
-  7: "13:40–14:25",
+  2: "08:50–09:35",
+  3: "09:40–10:25",
+  4: "10:35–11:20",
+  5: "11:25–12:10",
+  6: "12:15–13:00",
+  7: "13:05–13:50",
+};
+
+const SHIFT_2_PERIOD_TIMES: Record<number, string> = {
+  1: "13:00–13:45",
+  2: "13:50–14:35",
+  3: "14:45–15:30",
+  4: "15:35–16:20",
+  5: "16:25–17:10",
+  6: "17:15–18:00",
+  7: "18:05–18:50",
 };
 
 export const ClassModal: React.FC<ClassModalProps> = ({
@@ -365,10 +375,27 @@ export const ClassModal: React.FC<ClassModalProps> = ({
           <div className="p-4 rounded-2xl bg-muted/30 border border-border/70 space-y-3">
             <div className="flex items-center justify-between">
               <div>
-                <h4 className="text-xs font-bold text-foreground flex items-center gap-1.5">
-                  <Clock className="w-4 h-4 text-blue-500" />
-                  Band soatlar (aniq kun va soat)
-                </h4>
+                <div className="flex items-center gap-2">
+                  <h4 className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                    <Clock className="w-4 h-4 text-blue-500" />
+                    Band soatlar (aniq kun va soat)
+                  </h4>
+                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold border ${
+                    (shifts.find((s) => s.id === shiftId)?.order === 2 ||
+                     shifts.find((s) => s.id === shiftId)?.name.toLowerCase().includes("2") ||
+                     shifts.find((s) => s.id === shiftId)?.startTime.startsWith("13") ||
+                     name.trim().toUpperCase().endsWith("D"))
+                      ? "bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30"
+                      : "bg-blue-500/15 text-blue-700 dark:text-blue-300 border-blue-500/30"
+                  }`}>
+                    {(shifts.find((s) => s.id === shiftId)?.order === 2 ||
+                      shifts.find((s) => s.id === shiftId)?.name.toLowerCase().includes("2") ||
+                      shifts.find((s) => s.id === shiftId)?.startTime.startsWith("13") ||
+                      name.trim().toUpperCase().endsWith("D"))
+                      ? "🌤️ 2-smena (13:00 dan)"
+                      : "☀️ 1-smena (08:00 dan)"}
+                  </span>
+                </div>
                 <p className="text-[11px] text-muted-foreground mt-0.5">
                   Katakni bosib band qiling — o'sha kun-soatga dars qo'yilmaydi (tarbiyaviy soat yoki sinf tadbiri uchun).
                 </p>
@@ -387,7 +414,7 @@ export const ClassModal: React.FC<ClassModalProps> = ({
               <table className="w-full text-xs text-center border-collapse">
                 <thead>
                   <tr className="bg-primary text-primary-foreground font-semibold">
-                    <th className="py-2 px-2 border-r border-primary-foreground/20 w-16">Soat</th>
+                    <th className="py-2 px-2 border-r border-primary-foreground/20 w-24">Soat & Vaqt</th>
                     {DAYS.map((day) => (
                       <th key={day.id} className="py-2 px-2 border-r last:border-r-0 border-primary-foreground/20">
                         {day.name}
@@ -396,12 +423,19 @@ export const ClassModal: React.FC<ClassModalProps> = ({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/60">
-                  {Array.from({ length: 6 }, (_, i) => i + 1).map((periodNum) => (
+                  {Array.from({ length: 6 }, (_, i) => i + 1).map((periodNum) => {
+                    const isShift2 =
+                      shifts.find((s) => s.id === shiftId)?.order === 2 ||
+                      shifts.find((s) => s.id === shiftId)?.name.toLowerCase().includes("2") ||
+                      shifts.find((s) => s.id === shiftId)?.startTime.startsWith("13") ||
+                      name.trim().toUpperCase().endsWith("D");
+                    const activePeriodTimes = isShift2 ? SHIFT_2_PERIOD_TIMES : SHIFT_1_PERIOD_TIMES;
+                    return (
                     <tr key={periodNum} className="hover:bg-muted/20">
                       <td className="py-2 px-1 font-bold border-r border-border/60 bg-muted/30">
-                        <div>{periodNum}</div>
-                        <div className="text-[9px] text-muted-foreground font-normal">
-                          {PERIOD_TIMES[periodNum]?.split("–")[0] || ""}
+                        <div>{periodNum}-soat</div>
+                        <div className="text-[10px] text-muted-foreground font-semibold tracking-tight">
+                          {activePeriodTimes[periodNum] || ""}
                         </div>
                       </td>
                       {DAYS.map((day) => {
@@ -433,7 +467,8 @@ export const ClassModal: React.FC<ClassModalProps> = ({
                         );
                       })}
                     </tr>
-                  ))}
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

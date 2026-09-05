@@ -69,10 +69,32 @@ export function useMetaAndUIActions() {
     }
   }, []);
 
-  const updateBellPeriods = useCallback((bellPeriods: BellPeriod[]) => {
-    updateStore((prev) => ({ ...prev, bellPeriods }));
+  const updateBellPeriods = useCallback((bellPeriods: BellPeriod[], shiftId?: string) => {
+    updateStore((prev) => {
+      const updatedShifts = prev.shifts.map((s) => {
+        if (shiftId ? s.id === shiftId : s.order === 1 || prev.shifts[0]?.id === s.id) {
+          const firstPeriod = bellPeriods[0];
+          const lastPeriod = bellPeriods[bellPeriods.length - 1];
+          return {
+            ...s,
+            bellPeriods,
+            periodsCount: bellPeriods.length,
+            startTime: firstPeriod?.startTime || s.startTime,
+            endTime: lastPeriod?.endTime || s.endTime,
+          };
+        }
+        return s;
+      });
+
+      const isFirstShift = !shiftId || shiftId === prev.shifts[0]?.id;
+      return {
+        ...prev,
+        bellPeriods: isFirstShift ? bellPeriods : prev.bellPeriods,
+        shifts: updatedShifts,
+      };
+    });
     addAuditLog("Qo'ng'iroqlar yangilandi", "Dars va tanaffus vaqtlari o'zgartirildi");
-    saveBellPeriodsAction(storeState.currentSchoolId, bellPeriods).catch(console.error);
+    saveBellPeriodsAction(storeState.currentSchoolId, bellPeriods, shiftId).catch(console.error);
   }, []);
 
   const addSubstitution = useCallback((sub: SubstitutionRecord) => {

@@ -279,13 +279,16 @@ export function getCanonicalOrderedTeachers<
  * Sinf 2-smenada (Abetdan keyin / Tushdan keyin) o'qiydimi yoki 1-smenadami (Abetgacha)
  */
 export function isClassSecondShift(
-  cls?: { shiftId?: string; name?: string } | null,
-  shifts?: Array<{ id: string; name: string }>
+  cls?: { shiftId?: string; name?: string; grade?: number } | null,
+  shifts?: Array<{ id: string; name: string; order?: number }>
 ): boolean {
-  if (!cls || !cls.shiftId) return false;
-  if (shifts && shifts.length > 0) {
+  if (!cls) return false;
+
+  if (shifts && shifts.length > 0 && cls.shiftId) {
     const s = shifts.find((sh) => sh.id === cls.shiftId);
     if (s) {
+      if (s.order === 2) return true;
+      if (s.order === 1) return false;
       const sName = s.name.toLowerCase();
       if (
         sName.includes("2") ||
@@ -306,18 +309,29 @@ export function isClassSecondShift(
       }
     }
   }
-  const sId = cls.shiftId.toLowerCase();
-  return (
-    sId === "s39_2" ||
-    sId.includes("shift_2") ||
-    sId.includes("shift2") ||
-    sId.includes("smena_2") ||
-    sId.includes("smena2") ||
-    sId.includes("2") ||
-    sId.includes("tush") ||
-    sId.includes("ikkinchi") ||
-    sId.includes("abetdan")
-  );
+
+  // 39-maktab qoidasi: D sinflari (filial) tushdan keyin (2-smena) o'qiydi
+  if (cls.name) {
+    const trimmed = cls.name.trim().toUpperCase();
+    if (trimmed.endsWith("D")) return true;
+  }
+
+  if (cls.shiftId) {
+    const sId = cls.shiftId.toLowerCase();
+    return (
+      sId === "s39_2" ||
+      sId.includes("shift_2") ||
+      sId.includes("shift2") ||
+      sId.includes("smena_2") ||
+      sId.includes("smena2") ||
+      sId.includes("2") ||
+      sId.includes("tush") ||
+      sId.includes("ikkinchi") ||
+      sId.includes("abetdan")
+    );
+  }
+
+  return false;
 }
 
 /**

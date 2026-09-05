@@ -147,7 +147,11 @@ export async function deleteSubjectAction(schoolId: string, subjectId: string) {
 }
 
 // ── 6. Bell Schedule Actions ──────────────────────────────────────────────────
-export async function saveBellPeriodsAction(schoolId: string, bellPeriods: BellPeriod[]) {
-  return core.saveBellPeriodsAction(schoolId, bellPeriods);
+export async function saveBellPeriodsAction(
+  schoolId: string,
+  bellPeriods: BellPeriod[],
+  shiftId?: string
+) {
+  return core.saveBellPeriodsAction(schoolId, bellPeriods, shiftId);
 }
 

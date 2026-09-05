@@ -138,6 +138,8 @@ export async function getSchoolFullData(schoolId?: string) {
       startTime: s.startTime,
       endTime: s.endTime,
       periodsCount: s.periodsCount,
+      order: s.order,
+      bellPeriods: (s.bellPeriods as unknown as BellPeriod[]) || [],
     }));
 
     const subjects: Subject[] = school.subjects.map((sub) => ({
@@ -854,7 +856,11 @@ export async function syncFullSchoolDataAction(
 /**
  * Qo'ng'iroqlar jadvalini (Dars va tanaffus vaqtlari) Neon DB dagi Shift modeliga saqlash
  */
-export async function saveBellPeriodsAction(schoolId: string, bellPeriods: BellPeriod[]) {
+export async function saveBellPeriodsAction(
+  schoolId: string,
+  bellPeriods: BellPeriod[],
+  shiftId?: string
+) {
   try {
     const school = await resolveSchool(schoolId);
     if (!school) return { success: false, error: "Maktab topilmadi" };
@@ -862,15 +868,35 @@ export async function saveBellPeriodsAction(schoolId: string, bellPeriods: BellP
     const firstPeriod = bellPeriods[0];
     const lastPeriod = bellPeriods[bellPeriods.length - 1];
 
-    await prisma.shift.updateMany({
-      where: { schoolId: school.id },
-      data: {
-        bellPeriods: bellPeriods as any,
-        periodsCount: bellPeriods.length,
-        startTime: firstPeriod?.startTime || "08:00",
-        endTime: lastPeriod?.endTime || "13:00",
-      },
-    });
+    if (shiftId) {
+      // Aniq tanlangan smena bo'yicha qo'ng'iroqlarni yangilash
+      await prisma.shift.update({
+        where: { id: shiftId },
+        data: {
+          bellPeriods: bellPeriods as any,
+          periodsCount: bellPeriods.length,
+          startTime: firstPeriod?.startTime || "08:00",
+          endTime: lastPeriod?.endTime || "13:00",
+        },
+      });
+    } else {
+      // Default: birinchi smenani yangilash
+      const targetShift = await prisma.shift.findFirst({
+        where: { schoolId: school.id },
+        orderBy: { order: "asc" },
+      });
+      if (targetShift) {
+        await prisma.shift.update({
+          where: { id: targetShift.id },
+          data: {
+            bellPeriods: bellPeriods as any,
+            periodsCount: bellPeriods.length,
+            startTime: firstPeriod?.startTime || "08:00",
+            endTime: lastPeriod?.endTime || "13:00",
+          },
+        });
+      }
+    }
 
     return { success: true };
   } catch (error: any) {

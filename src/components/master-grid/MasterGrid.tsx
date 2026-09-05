@@ -23,6 +23,7 @@ import {
   DragValidationResult,
 } from "@/types";
 import { LessonCard, GridDensity } from "./LessonCard";
+import { isClassSecondShift } from "@/lib/utils";
 import {
   AlertCircle,
   CheckCircle2,
@@ -311,15 +312,20 @@ export const MasterGrid: React.FC<MasterGridProps> = ({
     const teacher = teacherMap.get(lessonToMove.teacherId);
     const subject = subjectMap.get(lessonToMove.subjectId);
 
-    // 1. HARD CONSTRAINT: O'qituvchi ish grafigi / Metod kuni
+    // 1. HARD CONSTRAINT: O'qituvchi ish grafigi / Metod kuni (Shift-aware)
+    const targetClass = classes.find((c) => c.id === targetClassId);
+    const targetIsShift2 = isClassSecondShift(targetClass);
+    const targetPeriodKey = targetIsShift2 ? 10 + targetPeriod : targetPeriod;
+
     if (teacher?.availabilities) {
       const av = teacher.availabilities.find(
-        (a) => a.dayOfWeek === targetDay && a.period === targetPeriod
+        (a) => a.dayOfWeek === targetDay && a.period === targetPeriodKey
       );
       if (av && !av.isAvailable) {
+        const shiftName = targetIsShift2 ? "2-smena (Abetdan keyin)" : "1-smena (Ertalabki)";
         return {
           status: "danger",
-          message: `Bu joyga qo'yib bo'lmaydi — bu ${teacher.fullName}ning metod kuni yoki band vaqti.`,
+          message: `Bu joyga qo'yib bo'lmaydi — bu ${teacher.fullName}ning ${shiftName}dagi band vaqti.`,
           conflicts: ["teacher_unavailable"],
         };
       }
@@ -374,7 +380,6 @@ export const MasterGrid: React.FC<MasterGridProps> = ({
         l.id !== lessonToMove.id
     );
 
-    const targetClass = classes.find((c) => c.id === targetClassId);
     const isPrimary = targetClass ? targetClass.grade <= 4 : false;
     const maxDayLessons = isPrimary ? 5 : 6;
 

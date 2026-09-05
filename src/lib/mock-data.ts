@@ -68,7 +68,7 @@ export const initialShifts: Shift[] = [
     "id": "s39_2",
     "schoolId": "school_39",
     "name": "2-Smena (Tushdan keyin)",
-    "startTime": "13:15",
+    "startTime": "13:00",
     "endTime": "18:00",
     "periodsCount": 6
   }

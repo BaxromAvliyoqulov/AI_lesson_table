@@ -33,6 +33,7 @@ export function validateDropSlot({
   subjects,
   rooms = [],
   classes = [],
+  shifts = [],
 }: {
   draggedLesson: Lesson;
   targetClass: SchoolClass;
@@ -43,6 +44,7 @@ export function validateDropSlot({
   subjects: Subject[];
   rooms?: Room[];
   classes?: SchoolClass[];
+  shifts?: Shift[];
 }): DropSlotValidation {
   const teacher = teachers.find((t) => t.id === draggedLesson.teacherId);
   const subject = subjects.find((s) => s.id === draggedLesson.subjectId);
@@ -56,7 +58,7 @@ export function validateDropSlot({
   // ─── 🔴 1. QIZIL: QAT'IY ZIDDIYATLAR (CONFLICTS) ───────────────────────────
 
   // 1.1. O'qituvchi kolliziyasi (Ayni shu paytda va ayni shu SMENADA boshqa sinfda darsi bor)
-  const targetIsShift2 = isClassSecondShift(targetClass);
+  const targetIsShift2 = isClassSecondShift(targetClass, shifts);
   const teacherOtherLesson = otherLessons.find((l) => {
     if (
       l.teacherId !== draggedLesson.teacherId ||
@@ -68,7 +70,7 @@ export function validateDropSlot({
     // Agar boshqa sinf ma'lum bo'lsa va u boshqa smenada bo'lsa (biri ertalab, biri tushdan keyin) -> to'qnashuv EMAS!
     const otherCls = classes.find((c) => c.id === l.classId);
     if (otherCls) {
-      const otherIsShift2 = isClassSecondShift(otherCls);
+      const otherIsShift2 = isClassSecondShift(otherCls, shifts);
       if (targetIsShift2 !== otherIsShift2) return false;
     }
     return true;
@@ -104,6 +106,20 @@ export function validateDropSlot({
     );
   }
 
+  // 1.2.B. O'qituvchining Shaxsiy Bandlik Matrisasi (Teacher Availability - Shift Aware)
+  if (teacher?.availabilities && teacher.availabilities.length > 0) {
+    const targetPeriodKey = targetIsShift2 ? 10 + targetPeriod : targetPeriod;
+    const av = teacher.availabilities.find(
+      (a) => a.dayOfWeek === targetDay && a.period === targetPeriodKey
+    );
+    if (av && av.isAvailable === false) {
+      const shiftName = targetIsShift2 ? "2-smena (Abetdan keyin)" : "1-smena (Ertalabki)";
+      conflicts.push(
+        `🛑 ${teacher.fullName} ushbu vaqtda (${shiftName}, ${targetPeriod}-soat) shaxsiy jadval bo'yicha band qilingan!`
+      );
+    }
+  }
+
   // 1.3. Xona / Laboratoriya kolliziyasi
   if (draggedLesson.roomId) {
     const roomOccupied = otherLessons.find(
@@ -121,6 +137,18 @@ export function validateDropSlot({
   // 1.4. Boshlang'ich sinflar uchun Shanba kuni dars taqiqlanishi
   if (targetClass.isPrimary && targetDay === 6) {
     conflicts.push(`🧒 Boshlang'ich sinflar (${targetClass.name}) uchun Shanba dam olish kuni!`);
+  }
+
+  // 1.4.B. Sinfning Dam Kunlari yoki Band Soatlari
+  if (targetClass.blockedDays && targetClass.blockedDays.includes(targetDay)) {
+    const dayName = WEEKDAY_NAMES[targetDay] || `${targetDay}-kun`;
+    conflicts.push(`🛑 ${targetClass.name} sinfi uchun ${dayName} dam kuni deb belgilangan!`);
+  }
+  if (
+    targetClass.blockedPeriods &&
+    targetClass.blockedPeriods.some((bp) => bp.dayOfWeek === targetDay && bp.periodNumber === targetPeriod)
+  ) {
+    conflicts.push(`🛑 ${targetClass.name} sinfida ushbu soat (${targetPeriod}-soat) band qilingan!`);
   }
 
   // 1.5. Bir kunda bitta sinfda bir xil fan takrorlanishi (QAT'IY QOIDA: 1 KUNDA 1 XIL DARS 2 MARTA BO'LMAYDI)

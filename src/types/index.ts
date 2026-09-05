@@ -31,6 +31,8 @@ export interface Shift {
   startTime: string;
   endTime: string;
   periodsCount: number;
+  order?: number;
+  bellPeriods?: BellPeriod[];
 }
 
 export interface Subject {

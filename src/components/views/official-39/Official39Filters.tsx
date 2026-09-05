@@ -177,7 +177,7 @@ export const Official39Filters: React.FC<Official39FiltersProps> = ({
                   ? "bg-white text-indigo-700 shadow-sm font-extrabold"
                   : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/50"
               }`}
-              title="2-smena: Tushdan keyingi darslar (Abetdan keyin / 13:15 - 18:00)"
+              title="2-smena: Tushdan keyingi darslar (Abetdan keyin / 13:00 - 18:00)"
             >
               <Sunset className="w-3.5 h-3.5 text-indigo-500" />
               <span>🌤️ Abetdan keyin</span>

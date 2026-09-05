@@ -72,10 +72,10 @@ export const SHIFT_1_PERIOD_TIMES = [
 ];
 
 export const SHIFT_2_PERIOD_TIMES = [
-  { period: 1, time: "13.15-14.00" },
-  { period: 2, time: "14.05-14.50" },
-  { period: 3, time: "14.55-15.40" },
-  { period: 4, time: "15.45-16.30" },
-  { period: 5, time: "16.35-17.20" },
-  { period: 6, time: "17.25-18.10" },
+  { period: 1, time: "13.00-13.45" },
+  { period: 2, time: "13.50-14.35" },
+  { period: 3, time: "14.45-15.30" },
+  { period: 4, time: "15.35-16.20" },
+  { period: 5, time: "16.25-17.10" },
+  { period: 6, time: "17.15-18.00" },
 ];

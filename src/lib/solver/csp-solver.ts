@@ -75,7 +75,13 @@ export class CSPSolver {
    * 1. Metod kuni (shaxsiy yoki kafedra standarti)
    * 2. Shaxsiy bandlik matrisasi (TeacherAvailability: agar isAvailable === false bo'lsa, dars qo'yish QAT'IYAN TAQIQLANADI)
    */
-  public isTeacherSlotAvailable(day: number, period: number, teacherId?: string | null, subjectId?: string | null): boolean {
+  public isTeacherSlotAvailable(
+    day: number,
+    period: number,
+    teacherId?: string | null,
+    subjectId?: string | null,
+    shiftGroup?: "shift1" | "shift2" | string
+  ): boolean {
     if (!teacherId) return true;
     const t = this.teacherMap.get(teacherId);
     if (!t) return true;
@@ -87,9 +93,18 @@ export class CSPSolver {
 
     // 2. Shaxsiy bandlik matrisasi (Qo'lda belgilangan Band / Bo'sh soatlar):
     if (t.availabilities && t.availabilities.length > 0) {
-      const av = t.availabilities.find((a) => a.dayOfWeek === day && a.period === period);
-      if (av && av.isAvailable === false) {
-        return false;
+      if (shiftGroup === "shift2") {
+        // 2-smena (Abetdan keyin): 10 + period bo'yicha bandlik tekshiriladi
+        const av2 = t.availabilities.find((a) => a.dayOfWeek === day && a.period === (10 + period));
+        if (av2 && av2.isAvailable === false) {
+          return false;
+        }
+      } else {
+        // 1-smena (Ertalabki): period bo'yicha bandlik tekshiriladi
+        const av1 = t.availabilities.find((a) => a.dayOfWeek === day && a.period === period);
+        if (av1 && av1.isAvailable === false) {
+          return false;
+        }
       }
     }
 
@@ -481,11 +496,11 @@ export class CSPSolver {
               (other) => other.day === s.day && other.period === s.period && other.groupType === "GROUP_2"
             );
             if (!parallelSlot || parallelSlot.teacherId !== null) return false;
-            if (!this.isTeacherSlotAvailable(s.day, s.period, matchingGroup2Req.teacherId, matchingGroup2Req.subjectId)) return false;
+            if (!this.isTeacherSlotAvailable(s.day, s.period, matchingGroup2Req.teacherId, matchingGroup2Req.subjectId, getShiftGroup(req.classId))) return false;
           }
         }
 
-        if (!this.isTeacherSlotAvailable(s.day, s.period, req.teacherId, req.subjectId)) return false;
+        if (!this.isTeacherSlotAvailable(s.day, s.period, req.teacherId, req.subjectId, getShiftGroup(req.classId))) return false;
 
         const sameSubjectSlotsInDay = slots.filter(
           (other) =>
@@ -716,7 +731,7 @@ export class CSPSolver {
         if (targetSlot.isLocked || !targetSlot.teacherId || !targetSlot.subjectId) continue;
         if (targetSlot.groupType === "GROUP_2") continue;
         if (isPrimary && targetSlot.period >= 6) continue;
-        if (!this.isTeacherSlotAvailable(targetSlot.day, targetSlot.period, req.teacherId, req.subjectId)) continue;
+        if (!this.isTeacherSlotAvailable(targetSlot.day, targetSlot.period, req.teacherId, req.subjectId, getShiftGroup(req.classId))) continue;
 
         // req o'qituvchisi ayni shu vaqtda bo'sh bo'lishi shart
         const occKeyReq = getOccKey(req.teacherId, targetSlot.day, targetSlot.period, req.classId);
@@ -739,7 +754,7 @@ export class CSPSolver {
           if (alt.teacherId !== null || alt.isLocked) return false;
           if (alt.groupType === "GROUP_2") return false;
           if (isPrimary && alt.period >= 6) return false;
-          if (!this.isTeacherSlotAvailable(alt.day, alt.period, victimTeacherId, victimSubjectId)) return false;
+          if (!this.isTeacherSlotAvailable(alt.day, alt.period, victimTeacherId, victimSubjectId, getShiftGroup(req.classId))) return false;
 
           const occAlt = teacherOccupancy.get(getOccKey(victimTeacherId, alt.day, alt.period, req.classId)) || 0;
           if (occAlt > 0) return false;
@@ -781,7 +796,7 @@ export class CSPSolver {
           if (s.teacherId !== null || s.isLocked) return false;
           if (s.groupType === "GROUP_2") return false;
           if (isPrimary && s.period >= 6) return false;
-          if (!this.isTeacherSlotAvailable(s.day, s.period, req.teacherId, req.subjectId)) return false;
+          if (!this.isTeacherSlotAvailable(s.day, s.period, req.teacherId, req.subjectId, getShiftGroup(req.classId))) return false;
           const dup = clsSlots.some(
             (other) => other.day === s.day && other.subjectId === req.subjectId && other.groupType === req.groupType
           );
@@ -838,8 +853,9 @@ export class CSPSolver {
           const sB = slotB.subjectId;
 
           // QAT'IY METOD KUNI & BAND VAQT TAQIQI: slotB vaqti tA/sA uchun yoki slotA vaqti tB/sB uchun taqiqlangan bo'lsa o'tish mumkin emas!
-          if (!this.isTeacherSlotAvailable(slotB.day, slotB.period, tA, sA)) continue;
-          if (tB && sB && !this.isTeacherSlotAvailable(slotA.day, slotA.period, tB, sB)) continue;
+          const swapShiftGrp = getShiftGroup(slotA.classId);
+          if (!this.isTeacherSlotAvailable(slotB.day, slotB.period, tA, sA, swapShiftGrp)) continue;
+          if (tB && sB && !this.isTeacherSlotAvailable(slotA.day, slotA.period, tB, sB, swapShiftGrp)) continue;
 
           // QAT'IY PROTOKOL: Bir kunda bir xil fanning takrorlanishi taqiqlanadi!
           const clsA = this.classMap.get(slotA.classId);
@@ -1025,9 +1041,9 @@ export class CSPSolver {
                 const sId = candidate.subjectId!;
 
                 // 1. O'qituvchi bo'sh va metod kuni yoki band vaqt emas
-                const occGap = teacherOccupancy.get(`${tId}_${day}_${gapSlot.period}`) || 0;
+                const occGap = teacherOccupancy.get(getOccKey(tId, day, gapSlot.period, gapSlot.classId)) || 0;
                 if (occGap > 0) continue;
-                if (!this.isTeacherSlotAvailable(day, gapSlot.period, tId, sId)) continue;
+                if (!this.isTeacherSlotAvailable(day, gapSlot.period, tId, sId, getShiftGroup(gapSlot.classId))) continue;
 
                 // 2. Bir kunda takroriy fan bo'lmasligi
                 const isPrimaryCls = (this.classMap.get(candidate.classId)?.grade ?? 5) <= 4;
@@ -1039,10 +1055,10 @@ export class CSPSolver {
                 }
 
                 teacherOccupancy.set(
-                  `${tId}_${otherDay}_${candidate.period}`,
-                  (teacherOccupancy.get(`${tId}_${otherDay}_${candidate.period}`) || 1) - 1
+                  getOccKey(tId, otherDay, candidate.period, candidate.classId),
+                  (teacherOccupancy.get(getOccKey(tId, otherDay, candidate.period, candidate.classId)) || 1) - 1
                 );
-                teacherOccupancy.set(`${tId}_${day}_${gapSlot.period}`, 1);
+                teacherOccupancy.set(getOccKey(tId, day, gapSlot.period, gapSlot.classId), 1);
 
                 gapSlot.teacherId = tId;
                 gapSlot.subjectId = sId;
@@ -1070,7 +1086,7 @@ export class CSPSolver {
       if (!slot.teacherId || !slot.subjectId) continue;
       const cls = this.classMap.get(slot.classId)!;
 
-      if (!this.isTeacherSlotAvailable(slot.day, slot.period, slot.teacherId, slot.subjectId)) {
+      if (!this.isTeacherSlotAvailable(slot.day, slot.period, slot.teacherId, slot.subjectId, getShiftGroup(slot.classId))) {
         methodDayViolations++;
       }
 

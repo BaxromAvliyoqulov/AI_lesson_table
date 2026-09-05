@@ -363,9 +363,19 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
   const isPrimaryOnly = filterScope === "MAIN_PRIMARY" || filterScope === "BRANCH_PRIMARY";
   const displayDays = useMemo(() => (isPrimaryOnly ? DAYS.slice(0, 5) : DAYS), [isPrimaryOnly]);
   const displayPeriods = useMemo(() => {
-    const basePeriods = shiftFilter === "SHIFT_2" ? SHIFT_2_PERIOD_TIMES : SHIFT_1_PERIOD_TIMES;
+    const shift2Obj = shifts?.find((s) => s.order === 2 || s.name.includes("2"));
+    const shift1Obj = shifts?.find((s) => s.order === 1 || s.name.includes("1"));
+    const targetShift = shiftFilter === "SHIFT_2" ? shift2Obj : shift1Obj;
+
+    let basePeriods = shiftFilter === "SHIFT_2" ? SHIFT_2_PERIOD_TIMES : SHIFT_1_PERIOD_TIMES;
+    if (targetShift?.bellPeriods && Array.isArray(targetShift.bellPeriods) && targetShift.bellPeriods.length > 0) {
+      basePeriods = targetShift.bellPeriods.map((bp) => ({
+        period: bp.periodNumber,
+        time: `${bp.startTime.replace(":", ".")}-${bp.endTime.replace(":", ".")}`,
+      }));
+    }
     return isPrimaryOnly ? basePeriods.slice(0, 5) : basePeriods;
-  }, [isPrimaryOnly, shiftFilter]);
+  }, [isPrimaryOnly, shiftFilter, shifts]);
 
   const classTotalHours = useMemo(() => {
     const map = new Map<string, number>();
@@ -530,6 +540,7 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
       teachers,
       subjects,
       rooms,
+      shifts,
     });
 
     if (val.status === "conflict") {

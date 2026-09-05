@@ -14,6 +14,9 @@ import {
   Zap,
   RotateCcw,
   Star,
+  Sun,
+  Moon,
+  Layers,
 } from "lucide-react";
 
 interface AvailabilityTabProps {
@@ -30,18 +33,39 @@ const DAYS = [
   { id: 6, name: "Shanba" },
 ];
 
-const PERIODS = [1, 2, 3, 4, 5, 6, 7];
+const SHIFT_1_PERIOD_LIST = [
+  { period: 1, time: "08:00–08:45" },
+  { period: 2, time: "08:50–09:35" },
+  { period: 3, time: "09:40–10:25" },
+  { period: 4, time: "10:35–11:20" },
+  { period: 5, time: "11:25–12:10" },
+  { period: 6, time: "12:15–13:00" },
+  { period: 7, time: "13:05–13:50" },
+];
+
+const SHIFT_2_PERIOD_LIST = [
+  { period: 1, time: "13:00–13:45" },
+  { period: 2, time: "13:50–14:35" },
+  { period: 3, time: "14:45–15:30" },
+  { period: 4, time: "15:35–16:20" },
+  { period: 5, time: "16:25–17:10" },
+  { period: 6, time: "17:15–18:00" },
+  { period: 7, time: "18:05–18:50" },
+];
+
+type ShiftViewMode = "SHIFT_1" | "SHIFT_2" | "BOTH";
 
 export const AvailabilityTab: React.FC<AvailabilityTabProps> = ({
   teachers,
   onSaveAvailability,
 }) => {
-  const { setTeacherMethodDay, subjects = [] } = useSchoolStore();
+  const { setTeacherMethodDay, subjects = [], shifts = [] } = useSchoolStore();
   const [selectedTeacherId, setSelectedTeacherId] = useState<string>(
     teachers[0]?.id || ""
   );
   const [availabilities, setAvailabilities] = useState<TeacherAvailability[]>([]);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [activeShiftTab, setActiveShiftTab] = useState<ShiftViewMode>("SHIFT_1");
 
   const selectedTeacher = teachers.find((t) => t.id === selectedTeacherId);
 
@@ -63,20 +87,29 @@ export const AvailabilityTab: React.FC<AvailabilityTabProps> = ({
     setTeacherMethodDay(selectedTeacherId, dayId);
   };
 
-  const isCellAvailable = (day: number, period: number): boolean => {
-    // If it's teacher's or subject's official method day, automatically unavailable
+  /**
+   * Smena bo'yicha katak bo'sh yoki bandligini tekshirish:
+   * - 1-smena uchun: period (1..7)
+   * - 2-smena uchun: 10 + period (11..17)
+   */
+  const isCellAvailable = (day: number, period: number, shift: "SHIFT_1" | "SHIFT_2"): boolean => {
     if (methodDayInfo.day === day) return false;
 
-    const av = availabilities.find((a) => a.dayOfWeek === day && a.period === period);
-    return av ? av.isAvailable : true; // Default true
+    const key = shift === "SHIFT_2" ? 10 + period : period;
+    const av = availabilities.find((a) => a.dayOfWeek === day && a.period === key);
+    return av ? av.isAvailable : true;
   };
 
-  const toggleCell = (day: number, period: number) => {
-    if (methodDayInfo.day === day) return; // Cannot toggle on method day
+  /**
+   * Smena bo'yicha katakni bosib bo'sh/band holatini almashtirish
+   */
+  const toggleCell = (day: number, period: number, shift: "SHIFT_1" | "SHIFT_2") => {
+    if (methodDayInfo.day === day) return; // Metod kunida o'zgarmaydi
 
-    const current = isCellAvailable(day, period);
+    const key = shift === "SHIFT_2" ? 10 + period : period;
+    const current = isCellAvailable(day, period, shift);
     const existingIndex = availabilities.findIndex(
-      (a) => a.dayOfWeek === day && a.period === period
+      (a) => a.dayOfWeek === day && a.period === key
     );
 
     let updated: TeacherAvailability[];
@@ -90,7 +123,7 @@ export const AvailabilityTab: React.FC<AvailabilityTabProps> = ({
         {
           teacherId: selectedTeacherId,
           dayOfWeek: day,
-          period,
+          period: key,
           isAvailable: !current,
         },
       ];
@@ -100,12 +133,25 @@ export const AvailabilityTab: React.FC<AvailabilityTabProps> = ({
     setHasUnsavedChanges(true);
   };
 
-  const handleSetAll = (available: boolean) => {
-    const updated: TeacherAvailability[] = [];
+  /**
+   * Tanlangan smenani to'liq bo'sh yoki to'liq band qilish
+   */
+  const handleSetShiftAll = (shift: "SHIFT_1" | "SHIFT_2", available: boolean) => {
+    if (!selectedTeacherId) return;
+
+    const periodOffset = shift === "SHIFT_2" ? 10 : 0;
+    const periodsToUpdate = Array.from({ length: 7 }, (_, i) => periodOffset + i + 1);
+
+    // Boshqa smenadagi darslarni saqlab qolamiz
+    const otherShiftAvails = availabilities.filter(
+      (a) => !periodsToUpdate.includes(a.period)
+    );
+
+    const newShiftAvails: TeacherAvailability[] = [];
     DAYS.forEach((d) => {
       if (selectedTeacher?.methodDayOfWeek !== d.id) {
-        PERIODS.forEach((p) => {
-          updated.push({
+        periodsToUpdate.forEach((p) => {
+          newShiftAvails.push({
             teacherId: selectedTeacherId,
             dayOfWeek: d.id,
             period: p,
@@ -114,7 +160,16 @@ export const AvailabilityTab: React.FC<AvailabilityTabProps> = ({
         });
       }
     });
-    setAvailabilities(updated);
+
+    setAvailabilities([...otherShiftAvails, ...newShiftAvails]);
+    setHasUnsavedChanges(true);
+  };
+
+  /**
+   * Butun haftani (har ikkala smenani) to'liq bo'sh qilish
+   */
+  const handleResetAll = () => {
+    setAvailabilities([]);
     setHasUnsavedChanges(true);
   };
 
@@ -124,13 +179,173 @@ export const AvailabilityTab: React.FC<AvailabilityTabProps> = ({
     setHasUnsavedChanges(false);
   };
 
+  // Smenalar bo'yicha band soatlar statistikasi
+  const shiftStats = useMemo(() => {
+    let s1Blocked = 0;
+    let s2Blocked = 0;
+
+    availabilities.forEach((a) => {
+      if (a.isAvailable === false) {
+        if (a.period >= 11 && a.period <= 17) {
+          s2Blocked++;
+        } else if (a.period >= 1 && a.period <= 7) {
+          s1Blocked++;
+        }
+      }
+    });
+
+    return { s1Blocked, s2Blocked };
+  }, [availabilities]);
+
+  const renderShiftMatrix = (
+    shift: "SHIFT_1" | "SHIFT_2",
+    title: string,
+    badgeText: string,
+    periodList: Array<{ period: number; time: string }>,
+    accentColor: "blue" | "amber"
+  ) => {
+    const isAmber = accentColor === "amber";
+
+    return (
+      <div className={`p-5 rounded-3xl bg-card border ${
+        isAmber ? "border-amber-500/30 shadow-xs" : "border-border shadow-xs"
+      } space-y-4`}>
+        {/* Smena sarlavhasi va tezkor amallar */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-3 border-b border-border/70">
+          <div className="flex items-center gap-2.5">
+            <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-bold ${
+              isAmber
+                ? "bg-amber-500/20 text-amber-700 dark:text-amber-300"
+                : "bg-blue-500/20 text-blue-700 dark:text-blue-300"
+            }`}>
+              {isAmber ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h4 className="text-sm font-bold text-foreground">{title}</h4>
+                <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold border ${
+                  isAmber
+                    ? "bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30"
+                    : "bg-blue-500/15 text-blue-700 dark:text-blue-300 border-blue-500/30"
+                }`}>
+                  {badgeText}
+                </span>
+              </div>
+              <p className="text-[11px] text-muted-foreground mt-0.5">
+                Katakchalarni bosish orqali ushbu smenada dars qo&apos;yish mumkin (yashil) yoki mumkin emas (qizil) holatini belgilang
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              type="button"
+              onClick={() => handleSetShiftAll(shift, true)}
+              className="px-2.5 py-1.5 rounded-xl text-xs font-semibold border border-border hover:bg-muted transition-colors cursor-pointer"
+              title="Ushbu smenadagi barcha soatlarni bo'sh qilish"
+            >
+              Smenani bo&apos;sh qilish
+            </button>
+            <button
+              type="button"
+              onClick={() => handleSetShiftAll(shift, false)}
+              className="px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-rose-500/10 text-rose-700 dark:text-rose-400 border border-rose-500/30 hover:bg-rose-500/20 transition-colors cursor-pointer"
+              title={`Ushbu o'qituvchi ${isAmber ? "faqat ertalab" : "faqat abetdan keyin"} dars o'tadigan bo'lsa, shu smenani to'liq band qilib qo'yadi`}
+            >
+              Smenani to&apos;liq band qilish
+            </button>
+          </div>
+        </div>
+
+        {/* Matritsa jadvali */}
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse">
+            <thead>
+              <tr>
+                <th className="p-2.5 text-xs font-bold text-muted-foreground text-left w-28 border-b border-border">
+                  Dars & Vaqt
+                </th>
+                {DAYS.map((d) => {
+                  const isMethodDay = methodDayInfo.day === d.id;
+                  return (
+                    <th
+                      key={d.id}
+                      className={`p-2.5 text-xs font-bold text-center border-b border-border transition-colors ${
+                        isMethodDay
+                          ? "bg-amber-500/20 text-amber-800 dark:text-amber-200 font-black"
+                          : "text-foreground"
+                      }`}
+                    >
+                      <div className="flex flex-col items-center gap-1">
+                        <span className="font-extrabold">{d.name}</span>
+                      </div>
+                    </th>
+                  );
+                })}
+              </tr>
+            </thead>
+            <tbody>
+              {periodList.map(({ period, time }) => (
+                <tr key={period} className="border-b border-border/40 hover:bg-muted/10">
+                  <td className="p-2 text-xs font-bold text-muted-foreground">
+                    <div className="flex items-center gap-1.5">
+                      <span className={`w-5 h-5 rounded-md flex items-center justify-center text-[11px] font-black ${
+                        isAmber ? "bg-amber-500/20 text-amber-700 dark:text-amber-300" : "bg-primary/10 text-primary"
+                      }`}>
+                        {period}
+                      </span>
+                      <div>
+                        <div>{period}-soat</div>
+                        <div className="text-[10px] text-muted-foreground/80 font-medium tracking-tight">
+                          {time}
+                        </div>
+                      </div>
+                    </div>
+                  </td>
+                  {DAYS.map((day) => {
+                    const isMethodDay = methodDayInfo.day === day.id;
+                    const available = isCellAvailable(day.id, period, shift);
+
+                    return (
+                      <td key={day.id} className="p-1.5 text-center">
+                        {isMethodDay ? (
+                          <div className="py-2.5 px-2 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-700 dark:text-amber-300 text-xs font-bold select-none cursor-not-allowed flex items-center justify-center gap-1">
+                            <Star className="w-3 h-3 fill-amber-500 text-amber-500" />
+                            <span>Metod kuni</span>
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => toggleCell(day.id, period, shift)}
+                            className={`w-full py-2.5 px-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+                              available
+                                ? "bg-emerald-500/15 border-emerald-500/40 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500/25 shadow-2xs"
+                                : "bg-rose-500/15 border-rose-500/40 text-rose-700 dark:text-rose-400 hover:bg-rose-500/25 shadow-2xs"
+                            }`}
+                            title={`Bosib ${available ? "Band qilish (dars qo'yilmasin)" : "Bo'sh qilish (dars qo'yilishi mumkin)"}`}
+                          >
+                            {available ? "Bo'sh" : "Band"}
+                          </button>
+                        )}
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-4">
       {/* Top toolbar */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-3xl bg-card border border-border">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-3xl bg-card border border-border shadow-xs">
         <div className="w-full sm:w-80">
           <label className="block text-xs font-semibold text-muted-foreground mb-1.5">
-            O'qituvchini tanlang
+            O&apos;qituvchini tanlang
           </label>
           <TeacherSelectCombobox
             value={selectedTeacherId}
@@ -144,17 +359,11 @@ export const AvailabilityTab: React.FC<AvailabilityTabProps> = ({
           <div className="flex items-center gap-2 flex-wrap">
             <button
               type="button"
-              onClick={() => handleSetAll(true)}
+              onClick={handleResetAll}
               className="px-3 py-2 rounded-xl text-xs font-semibold border border-border hover:bg-muted transition-colors cursor-pointer"
+              title="Barcha smenalardagi bandliklarni tozalab, bo'sh qilish"
             >
-              Barchasini bo'sh qilish
-            </button>
-            <button
-              type="button"
-              onClick={() => handleSetAll(false)}
-              className="px-3 py-2 rounded-xl text-xs font-semibold border border-border hover:bg-muted transition-colors cursor-pointer"
-            >
-              Barchasini band qilish
+              Barcha vaqtlarni bo&apos;sh qilish
             </button>
             <button
               type="button"
@@ -162,7 +371,7 @@ export const AvailabilityTab: React.FC<AvailabilityTabProps> = ({
               disabled={!hasUnsavedChanges}
               className={`px-5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                 hasUnsavedChanges
-                  ? "bg-primary text-primary-foreground shadow-md shadow-primary/20 hover:bg-primary/90"
+                  ? "bg-primary text-primary-foreground shadow-md shadow-primary/20 hover:bg-primary/90 ring-2 ring-primary/20"
                   : "bg-muted text-muted-foreground cursor-not-allowed"
               }`}
             >
@@ -172,11 +381,11 @@ export const AvailabilityTab: React.FC<AvailabilityTabProps> = ({
         )}
       </div>
 
-      {/* Availability Matrix */}
+      {/* Smena Switcher va Asosiy Panellar */}
       {selectedTeacher ? (
-        <div className="p-6 rounded-3xl bg-card border border-border shadow-sm">
-          {/* O'qituvchi nomi va ko'rsatkichlar */}
-          <div className="flex items-center justify-between mb-4 pb-4 border-b border-border/80">
+        <div className="space-y-4">
+          {/* O'qituvchi nomi, metod kuni va smena tablari */}
+          <div className="p-4 rounded-3xl bg-card border border-border shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
             <div>
               <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
                 <span>{selectedTeacher.fullName}</span>
@@ -193,28 +402,65 @@ export const AvailabilityTab: React.FC<AvailabilityTabProps> = ({
                 )}
               </h3>
               <p className="text-xs text-muted-foreground mt-0.5">
-                Katakchalarni bosish orqali dars qo'yish mumkin (yashil) yoki mumkin emas (qizil) holatini belgilang
+                Ertalabki va abetdan keyingi smenalar uchun vaqtlarni alohida sozlang
               </p>
             </div>
 
-            <div className="flex items-center gap-4 text-xs">
-              <span className="flex items-center gap-1.5">
-                <span className="w-3.5 h-3.5 rounded-md bg-emerald-500/20 border border-emerald-500 flex items-center justify-center text-emerald-600 text-[10px] font-bold">
-                  ✓
-                </span>
-                <span className="text-muted-foreground">Bo'sh (Dars qo'yiladi)</span>
-              </span>
-              <span className="flex items-center gap-1.5">
-                <span className="w-3.5 h-3.5 rounded-md bg-rose-500/20 border border-rose-500 flex items-center justify-center text-rose-600 text-[10px] font-bold">
-                  ✕
-                </span>
-                <span className="text-muted-foreground">Band (Dars qo'yilmasin)</span>
-              </span>
+            {/* Smena ko'rinish rejimi tablari */}
+            <div className="flex items-center gap-1.5 p-1 bg-muted/60 rounded-2xl border border-border">
+              <button
+                type="button"
+                onClick={() => setActiveShiftTab("SHIFT_1")}
+                className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  activeShiftTab === "SHIFT_1"
+                    ? "bg-primary text-primary-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground hover:bg-card/50"
+                }`}
+              >
+                <Sun className="w-3.5 h-3.5" />
+                <span>☀️ 1-Smena (Ertalab)</span>
+                {shiftStats.s1Blocked > 0 && (
+                  <span className="ml-1 text-[10px] px-1.5 py-0.2 rounded-md bg-rose-500 text-white font-extrabold">
+                    {shiftStats.s1Blocked} band
+                  </span>
+                )}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setActiveShiftTab("SHIFT_2")}
+                className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  activeShiftTab === "SHIFT_2"
+                    ? "bg-amber-500 text-slate-950 shadow-sm"
+                    : "text-muted-foreground hover:text-foreground hover:bg-card/50"
+                }`}
+              >
+                <Moon className="w-3.5 h-3.5" />
+                <span>🌤️ 2-Smena (Abetdan keyin)</span>
+                {shiftStats.s2Blocked > 0 && (
+                  <span className="ml-1 text-[10px] px-1.5 py-0.2 rounded-md bg-rose-500 text-white font-extrabold">
+                    {shiftStats.s2Blocked} band
+                  </span>
+                )}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setActiveShiftTab("BOTH")}
+                className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  activeShiftTab === "BOTH"
+                    ? "bg-slate-900 text-white dark:bg-white dark:text-slate-950 shadow-sm"
+                    : "text-muted-foreground hover:text-foreground hover:bg-card/50"
+                }`}
+              >
+                <Layers className="w-3.5 h-3.5" />
+                <span>Ikkala smena</span>
+              </button>
             </div>
           </div>
 
           {/* ⭐ METOD KUNI TEZKOR TANLASH VA BOSHQARUV PANELI */}
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/25 mb-4">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/25">
             <div className="flex items-center gap-2.5">
               <div className="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-600 flex items-center justify-center shrink-0">
                 <Star className="w-4 h-4 fill-amber-500" />
@@ -230,7 +476,7 @@ export const AvailabilityTab: React.FC<AvailabilityTabProps> = ({
                     : "Metod kuni belgilanmagan"}
                 </div>
                 <div className="text-[11px] text-amber-700/80 dark:text-amber-400">
-                  Metod kunida o'qituvchiga dars qo'yilmaydi va barcha soatlar avtomatik bloklanadi
+                  Metod kunida o&apos;qituvchiga dars qo&apos;yilmaydi va barcha soatlar avtomatik bloklanadi
                 </div>
               </div>
             </div>
@@ -270,89 +516,31 @@ export const AvailabilityTab: React.FC<AvailabilityTabProps> = ({
             </div>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse">
-              <thead>
-                <tr>
-                  <th className="p-2.5 text-xs font-bold text-muted-foreground text-left w-20 border-b border-border">
-                    Dars
-                  </th>
-                  {DAYS.map((d) => {
-                    const isMethodDay = methodDayInfo.day === d.id;
-                    return (
-                      <th
-                        key={d.id}
-                        className={`p-2.5 text-xs font-bold text-center border-b border-border transition-colors ${
-                          isMethodDay
-                            ? "bg-amber-500/20 text-amber-800 dark:text-amber-200 font-black"
-                            : "text-foreground"
-                        }`}
-                      >
-                        <div className="flex flex-col items-center gap-1">
-                          <span className="font-extrabold">{d.name}</span>
-                          <button
-                            type="button"
-                            onClick={() => handleSelectMethodDay(isMethodDay && selectedTeacher.methodDayOfWeek === d.id ? null : d.id)}
-                            className={`px-2 py-0.5 rounded-lg text-[10px] font-bold transition-all cursor-pointer ${
-                              isMethodDay
-                                ? "bg-amber-500 text-slate-950 shadow-xs"
-                                : "text-muted-foreground/70 hover:text-amber-600 hover:bg-amber-500/10 border border-border/60"
-                            }`}
-                            title={isMethodDay ? "Metod kunini bekor qilish" : `${d.name}ni metod kuni deb belgilash`}
-                          >
-                            {isMethodDay ? "⭐ Metod kuni" : "+ Metod kuni"}
-                          </button>
-                        </div>
-                      </th>
-                    );
-                  })}
-                </tr>
-              </thead>
-              <tbody>
-                {PERIODS.map((period) => (
-                  <tr key={period} className="border-b border-border/40 hover:bg-muted/10">
-                    <td className="p-2.5 text-xs font-bold text-muted-foreground">
-                      {period}-soat
-                    </td>
-                    {DAYS.map((day) => {
-                      const isMethodDay = methodDayInfo.day === day.id;
-                      const available = isCellAvailable(day.id, period);
+          {/* Matritsa render qilish */}
+          {(activeShiftTab === "SHIFT_1" || activeShiftTab === "BOTH") &&
+            renderShiftMatrix(
+              "SHIFT_1",
+              "☀️ 1-Smena (Ertalabki darslar)",
+              "08:00 – 13:00",
+              SHIFT_1_PERIOD_LIST,
+              "blue"
+            )}
 
-                      return (
-                        <td key={day.id} className="p-1.5 text-center">
-                          {isMethodDay ? (
-                            <div className="py-2.5 px-2 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-700 dark:text-amber-300 text-xs font-bold select-none cursor-not-allowed flex items-center justify-center gap-1">
-                              <Star className="w-3 h-3 fill-amber-500 text-amber-500" />
-                              <span>Metod kuni</span>
-                            </div>
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={() => toggleCell(day.id, period)}
-                              className={`w-full py-2.5 px-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
-                                available
-                                  ? "bg-emerald-500/15 border-emerald-500/40 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500/25"
-                                  : "bg-rose-500/15 border-rose-500/40 text-rose-700 dark:text-rose-400 hover:bg-rose-500/25"
-                              }`}
-                            >
-                              {available ? "Bo'sh" : "Band"}
-                            </button>
-                          )}
-                        </td>
-                      );
-                    })}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          {(activeShiftTab === "SHIFT_2" || activeShiftTab === "BOTH") &&
+            renderShiftMatrix(
+              "SHIFT_2",
+              "🌤️ 2-Smena (Abetdan keyingi darslar)",
+              "13:00 – 18:00",
+              SHIFT_2_PERIOD_LIST,
+              "amber"
+            )}
         </div>
       ) : (
         <div className="py-16 text-center rounded-3xl border border-dashed border-border bg-card/40">
           <Calendar className="w-12 h-12 text-muted-foreground/40 mx-auto mb-3" />
-          <p className="text-sm font-semibold text-foreground">O'qituvchi tanlanmagan</p>
+          <p className="text-sm font-semibold text-foreground">O&apos;qituvchi tanlanmagan</p>
           <p className="text-xs text-muted-foreground mt-1">
-            Yuqoridagi ro'yxatdan o'qituvchini tanlang
+            Yuqoridagi ro&apos;yxatdan o&apos;qituvchini tanlang
           </p>
         </div>
       )}
