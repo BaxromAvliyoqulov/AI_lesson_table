@@ -81,7 +81,7 @@ export const TarifficationByClassView: React.FC<TarifficationByClassViewProps> =
   // Hozirgi tanlangan sinfning me'yori va jami soatlari (activeClass bo'sh bo'lishidan himoyalangan)
   const maxStandardHours = activeClass ? (GRADE_STANDARD_LIMITS[activeClass.grade] || 25) : 25;
   const currentTotalHours = (activeClass?.subjects || []).reduce(
-    (sum, s) => sum + s.weeklyHours,
+    (sum, s) => sum + (s.groupType === "GROUP_2" ? 0 : s.weeklyHours),
     0
   );
   const remainingHours = maxStandardHours - currentTotalHours;
@@ -163,7 +163,7 @@ export const TarifficationByClassView: React.FC<TarifficationByClassViewProps> =
             filteredClasses.map((cls) => {
               const isSelected = activeClass.id === cls.id;
               const totalHours = (cls.subjects || []).reduce(
-                (sum, s) => sum + s.weeklyHours,
+                (sum, s) => sum + (s.groupType === "GROUP_2" ? 0 : s.weeklyHours),
                 0
               );
               const classMaxHours = GRADE_STANDARD_LIMITS[cls.grade] || 25;

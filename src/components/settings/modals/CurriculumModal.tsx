@@ -419,6 +419,9 @@ export const CurriculumModal: React.FC<CurriculumModalProps> = ({
 
     let dayIdx = 0;
     cleanSubjectsList.forEach((item) => {
+      // 2-guruh darsi 1-guruh bilan bir vaqtda parallel o'tiladi, alohida dars sifatida boshqa kunga qo'shilmaydi
+      if (item.groupType === "GROUP_2") return;
+
       const sub = subjectMap.get(item.subjectId) || allSubjects.find((s) => s.id === item.subjectId);
       if (!sub) return;
       const teacher = teacherMap.get(item.teacherId);

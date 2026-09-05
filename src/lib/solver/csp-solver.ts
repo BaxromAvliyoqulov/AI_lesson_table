@@ -114,7 +114,10 @@ export class CSPSolver {
 
       let subjects = cls.subjects && cls.subjects.length > 0 ? [...cls.subjects] : [];
 
-      const currentHours = subjects.reduce((sum, s) => sum + (Number(s.weeklyHours) || 0), 0);
+      const currentHours = subjects.reduce(
+        (sum, s) => sum + (s.groupType === "GROUP_2" ? 0 : (Number(s.weeklyHours) || 0)),
+        0
+      );
       if (currentHours < 15) {
         const standard = generateStandardCurriculumForClass(
           cls.grade,
@@ -378,12 +381,25 @@ export class CSPSolver {
     });
 
     // ── 4. CHAQMOQDEK TEZ HEURISTIC BIRINCHI JOYLASHTIRISH ─────────────────────
-    for (const req of remaining) {
+    while (remaining.length > 0) {
+      const req = remaining.shift()!;
       const slots = classSlots.get(req.classId) || [];
       const subObj = this.subjectMap.get(req.subjectId);
       const isPrimary = req.grade <= 4;
       const is5DayWeek = isPrimary || Boolean(this.classMap.get(req.classId)?.isPrimary);
       const daysCount = is5DayWeek ? 5 : 6;
+
+      // Agar bu 1-guruh darsi bo'lsa, unga mos parallel 2-guruh talabi bormi qidiramiz
+      let matchingGroup2Req: ReqLesson | null = null;
+      let matchingGroup2Idx = -1;
+      if (req.groupType === "GROUP_1") {
+        matchingGroup2Idx = remaining.findIndex(
+          (r) => r.classId === req.classId && r.subjectId === req.subjectId && r.groupType === "GROUP_2"
+        );
+        if (matchingGroup2Idx >= 0) {
+          matchingGroup2Req = remaining[matchingGroup2Idx];
+        }
+      }
 
       // QAT'IY SANPIN VA PEDAGOGIKA QOIDASI:
       // 1. Boshlang'ich sinflarda (1-4) JUFT DARS QAT'IYAN TAQIQLANADI! (SanPiN 0341-17)
@@ -405,8 +421,26 @@ export class CSPSolver {
         // Parallel slotlar filtri: GROUP_2 faqat GROUP_2 slotiga, boshqalar asosiy slotlarga
         if (req.groupType === "GROUP_2") {
           if (s.groupType !== "GROUP_2") return false;
+          // GROUP_2 faqat 1-guruh bilan bir vaqtda parallel tushishi shart
+          const group1Slot = slots.find(
+            (other) =>
+              other.day === s.day &&
+              other.period === s.period &&
+              other.subjectId === req.subjectId &&
+              other.groupType === "GROUP_1"
+          );
+          if (!group1Slot) return false;
         } else {
           if (s.groupType === "GROUP_2") return false;
+          // Agar GROUP_1 bo'lsa va 2-guruh ham bor bo'lsa:
+          // Ayni shu vaqtdagi parallel GROUP_2 sloti bo'sh bo'lishi va 2-guruh o'qituvchisi ham bo'sh bo'lishi shart!
+          if (matchingGroup2Req) {
+            const parallelSlot = slots.find(
+              (other) => other.day === s.day && other.period === s.period && other.groupType === "GROUP_2"
+            );
+            if (!parallelSlot || parallelSlot.teacherId !== null) return false;
+            if (this.isStrictMethodDay(s.day, matchingGroup2Req.teacherId, matchingGroup2Req.subjectId)) return false;
+          }
         }
 
         if (this.isStrictMethodDay(s.day, req.teacherId, req.subjectId)) return false;
@@ -439,7 +473,14 @@ export class CSPSolver {
       // O'qituvchi boshqa sinflarda mutlaqo bo'sh bo'lgan (0 to'qnashuvli) slotlarni birinchi o'ringa qo'yish
       const conflictFreeSlots = emptySlots.filter((s) => {
         const occKey = getOccKey(req.teacherId, s.day, s.period, req.classId);
-        return (teacherOccupancy.get(occKey) || 0) === 0;
+        const t1Free = (teacherOccupancy.get(occKey) || 0) === 0;
+        if (!t1Free) return false;
+
+        if (matchingGroup2Req) {
+          const occKey2 = getOccKey(matchingGroup2Req.teacherId, s.day, s.period, req.classId);
+          return (teacherOccupancy.get(occKey2) || 0) === 0;
+        }
+        return true;
       });
       const candidateSlots = conflictFreeSlots.length > 0 ? conflictFreeSlots : emptySlots;
 
@@ -452,6 +493,13 @@ export class CSPSolver {
         const currentOcc = teacherOccupancy.get(occKey) || 0;
 
         if (currentOcc > 0) score += currentOcc * 50000000;
+
+        // Agar 2-guruh o'qituvchisi band bo'lsa:
+        if (matchingGroup2Req) {
+          const occKey2 = getOccKey(matchingGroup2Req.teacherId, slot.day, slot.period, req.classId);
+          const currentOcc2 = teacherOccupancy.get(occKey2) || 0;
+          if (currentOcc2 > 0) score += currentOcc2 * 50000000;
+        }
 
         // O'qituvchining kunlik dars soati limiti (kuniga maks soat) nazorati:
         const teacherObj = this.teacherMap.get(req.teacherId);
@@ -482,7 +530,7 @@ export class CSPSolver {
         }
 
         const sameSubjectCount = slots.filter(
-          (s) => s.day === slot.day && s.subjectId === req.subjectId
+          (s) => s.day === slot.day && s.subjectId === req.subjectId && s.groupType === req.groupType
         ).length;
         if (sameSubjectCount > 0) {
           const subObj = this.subjectMap.get(req.subjectId);
@@ -569,6 +617,27 @@ export class CSPSolver {
 
       const dayKey = `${req.teacherId}_${bestSlot.day}`;
       teacherDailyHours.set(dayKey, (teacherDailyHours.get(dayKey) || 0) + 1);
+
+      // Agar bu 1-guruh bo'lsa va 2-guruh talabi mavjud bo'lsa, parallel slotga 2-guruhni ham tandem biriktiramiz
+      if (req.groupType === "GROUP_1" && matchingGroup2Req) {
+        const parallelSlot = slots.find(
+          (other) => other.day === bestSlot.day && other.period === bestSlot.period && other.groupType === "GROUP_2"
+        );
+        if (parallelSlot) {
+          parallelSlot.teacherId = matchingGroup2Req.teacherId;
+          parallelSlot.subjectId = matchingGroup2Req.subjectId;
+          parallelSlot.groupType = "GROUP_2";
+
+          const occKey2 = getOccKey(matchingGroup2Req.teacherId, parallelSlot.day, parallelSlot.period, req.classId);
+          teacherOccupancy.set(occKey2, (teacherOccupancy.get(occKey2) || 0) + 1);
+
+          const dayKey2 = `${matchingGroup2Req.teacherId}_${parallelSlot.day}`;
+          teacherDailyHours.set(dayKey2, (teacherDailyHours.get(dayKey2) || 0) + 1);
+
+          // remaining ro'yxatidan joylashtirilgan 2-guruhni olib tashlaymiz
+          remaining.splice(matchingGroup2Idx, 1);
+        }
+      }
     }
 
     // ── 5. TEZ VA KUCHLI MIN-CONFLICTS LOCAL SEARCH (Max 200 iteration) ─────────

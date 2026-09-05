@@ -192,7 +192,7 @@ export const TarifficationMatrixView: React.FC<TarifficationMatrixViewProps> = (
                 Fan Nomi
               </th>
               {filteredClasses.map((cls) => {
-                const totalH = (cls.subjects || []).reduce((sum, s) => sum + s.weeklyHours, 0);
+                const totalH = (cls.subjects || []).reduce((sum, s) => sum + (s.groupType === "GROUP_2" ? 0 : s.weeklyHours), 0);
                 return (
                   <th
                     key={cls.id}

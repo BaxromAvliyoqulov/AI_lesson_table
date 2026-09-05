@@ -295,7 +295,11 @@ export const TarifficationMatrixModal: React.FC<TarifficationMatrixModalProps> =
                   </th>
                   {filteredClasses.map((cls) => {
                     let totalClassHours = 0;
-                    cls.subjects.forEach((cs) => (totalClassHours += cs.weeklyHours));
+                    cls.subjects.forEach((cs) => {
+                      if (cs.groupType !== "GROUP_2") {
+                        totalClassHours += cs.weeklyHours;
+                      }
+                    });
                     return (
                       <th
                         key={cls.id}

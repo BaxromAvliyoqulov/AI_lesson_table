@@ -889,12 +889,39 @@ export const ClassesTab: React.FC<ClassesTabProps> = ({
             const branch = branchMap.get(cls.branchId);
             const shift = shiftMap.get(cls.shiftId);
             const homeroom = getClassHomeroomTeacher(cls);
+            // 2-guruh darsi 1-guruh bilan parallel o'tilgani uchun sinf umumiy soatiga qo'shilmaydi
             const totalHours = (cls.subjects || []).reduce(
-              (sum, s) => sum + (Number(s.weeklyHours) || 0),
+              (sum, s) => sum + (s.groupType === "GROUP_2" ? 0 : (Number(s.weeklyHours) || 0)),
               0
             );
-            const totalSubjectsCount = cls.subjects?.length || 0;
-            const assignedSubjectsCount = (cls.subjects || []).filter((s) => !!s.teacherId).length;
+
+            // Guruhlarga bo'lingan fanlarni (1-guruh va 2-guruh) yagona fan sifatida hisoblash
+            const uniqueSubjectMap = new Map<string, { hasT1: boolean; hasT2: boolean; isSplit: boolean }>();
+            (cls.subjects || []).forEach((s) => {
+              if (!uniqueSubjectMap.has(s.subjectId)) {
+                uniqueSubjectMap.set(s.subjectId, { hasT1: false, hasT2: false, isSplit: false });
+              }
+              const entry = uniqueSubjectMap.get(s.subjectId)!;
+              if (s.groupType === "GROUP_2") {
+                entry.isSplit = true;
+                entry.hasT2 = !!s.teacherId;
+              } else if (s.groupType === "GROUP_1") {
+                entry.isSplit = true;
+                entry.hasT1 = !!s.teacherId;
+              } else {
+                entry.hasT1 = !!s.teacherId;
+              }
+            });
+
+            const totalSubjectsCount = uniqueSubjectMap.size;
+            let assignedSubjectsCount = 0;
+            uniqueSubjectMap.forEach((entry) => {
+              if (entry.isSplit) {
+                if (entry.hasT1 && entry.hasT2) assignedSubjectsCount++;
+              } else {
+                if (entry.hasT1) assignedSubjectsCount++;
+              }
+            });
             const unassignedSubjectsCount = totalSubjectsCount - assignedSubjectsCount;
             const blockedDaysCount = (cls.blockedDays || (cls.grade <= 4 ? [6] : [])).length;
             const isShift2 = isClassShift2(cls);
