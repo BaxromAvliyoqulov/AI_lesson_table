@@ -22,6 +22,7 @@ import {
   CheckCircle2,
   RotateCcw,
   AlertCircle,
+  ArrowRight,
 } from "lucide-react";
 
 interface TeacherModalProps {
@@ -35,6 +36,7 @@ interface TeacherModalProps {
   shifts?: Shift[];
   classes?: SchoolClass[];
   allTeachers?: Teacher[];
+  onOpenWorkload?: (teacher: Teacher) => void;
 }
 
 const WEEKDAYS = [
@@ -57,6 +59,7 @@ export const TeacherModal: React.FC<TeacherModalProps> = ({
   shifts = [],
   classes = [],
   allTeachers = [],
+  onOpenWorkload,
 }) => {
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
@@ -650,28 +653,42 @@ export const TeacherModal: React.FC<TeacherModalProps> = ({
 
             {/* Aqlli Sinflar Qamrovi (Smart Class Scope Preview) */}
             {classes.length > 0 && (
-              <div className="mt-2.5 p-2.5 rounded-2xl bg-muted/40 border border-border/70 text-xs">
-                <div className="flex items-center justify-between mb-1.5">
-                  <span className="text-[11px] font-bold text-muted-foreground flex items-center gap-1">
-                    <Sparkles className="w-3 h-3 text-indigo-500" />
-                    Qamrab olinadigan sinflar (
-                    {
-                      classes.filter((c) => {
-                        if (teachingStages === "PRIMARY" && c.grade > 4) return false;
-                        if (teachingStages === "HIGH" && c.grade < 5) return false;
-                        if (selectedBranches.length > 0 && !selectedBranches.includes(c.branchId)) return false;
-                        return true;
-                      }).length
-                    }{" "}
-                    ta sinf):
+              <div className="mt-2.5 p-3 rounded-2xl bg-muted/40 border border-border/70 text-xs space-y-2">
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <span className="text-[11px] font-bold text-foreground flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-indigo-500" />
+                    <span>
+                      Toifaga mos sinflar doirasi (
+                      {
+                        classes.filter((c) => {
+                          if (teachingStages === "PRIMARY" && c.grade > 4) return false;
+                          if (teachingStages === "HIGH" && c.grade < 5) return false;
+                          if (selectedBranches.length > 0 && !selectedBranches.includes(c.branchId)) return false;
+                          return true;
+                        }).length
+                      }{" "}
+                      ta sinf)
+                    </span>
                   </span>
-                  <span className="text-[10px] text-muted-foreground">
-                    {selectedBranches.length === 1
-                      ? branches.find((b) => b.id === selectedBranches[0])?.name || "Tanlangan bino"
-                      : "Barcha binolar"}
-                  </span>
+
+                  {editingTeacher && onOpenWorkload && (
+                    <button
+                      type="button"
+                      onClick={() => onOpenWorkload(editingTeacher)}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[11px] font-extrabold bg-primary/15 hover:bg-primary/25 text-primary border border-primary/30 transition-all cursor-pointer shadow-2xs active:scale-95"
+                      title="Ushbu o'qituvchiga aniq sinflarni va dars soatlarini biriktirish"
+                    >
+                      <span>🎯 Sinflarga soat biriktirish (Dars taqsimoti)</span>
+                      <ArrowRight className="w-3 h-3" />
+                    </button>
+                  )}
                 </div>
-                <div className="flex flex-wrap gap-1 max-h-20 overflow-y-auto custom-scrollbar">
+
+                <p className="text-[11px] text-muted-foreground leading-relaxed">
+                  💡 Bu ro'yxat — tanlangan toifa (<strong>{teachingStages === "PRIMARY" ? "Boshlang'ich 1-4" : teachingStages === "HIGH" ? "Katta 5-11" : "Hammasi 1-11"}</strong>) va bino bo'yicha ustoz dars o'tishi mumkin bo'lgan sinflar qamrovidir (umumiy ko'rinish). Aniq qaysi sinfga necha soat dars o'tishini belgilash uchun yuqoridagi <strong>"Sinflarga soat biriktirish (Dars taqsimoti)"</strong> tugmasidan yoki sinf ustiga bosishdan foydalaniladi.
+                </p>
+
+                <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto custom-scrollbar pt-1">
                   {classes
                     .filter((c) => {
                       if (teachingStages === "PRIMARY" && c.grade > 4) return false;
@@ -680,12 +697,19 @@ export const TeacherModal: React.FC<TeacherModalProps> = ({
                       return true;
                     })
                     .map((c) => (
-                      <span
+                      <button
                         key={c.id}
-                        className="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-card border border-border text-foreground shadow-2xs"
+                        type="button"
+                        onClick={() => {
+                          if (editingTeacher && onOpenWorkload) {
+                            onOpenWorkload(editingTeacher);
+                          }
+                        }}
+                        className="px-2.5 py-1 rounded-xl text-xs font-bold bg-card border border-border hover:border-primary/50 hover:bg-primary/10 text-foreground shadow-2xs transition-all cursor-pointer flex items-center gap-1 active:scale-95"
+                        title={`${c.name} sinfiga dars soatlarini biriktirish uchun Dars taqsimotini ochish`}
                       >
-                        {c.name}
-                      </span>
+                        <span>{c.name}</span>
+                      </button>
                     ))}
                 </div>
               </div>

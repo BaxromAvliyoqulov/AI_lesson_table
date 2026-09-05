@@ -464,6 +464,11 @@ export default function SettingsPage() {
         shifts={schoolShifts}
         classes={schoolClasses}
         allTeachers={schoolTeachers}
+        onOpenWorkload={(teacher) => {
+          setIsTeacherModalOpen(false);
+          setWorkloadTeacher(teacher);
+          setIsWorkloadModalOpen(true);
+        }}
         onSave={(teacherData) => {
           if (editingTeacher) {
             store.updateTeacher(teacherData);
