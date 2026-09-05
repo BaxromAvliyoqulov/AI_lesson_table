@@ -126,6 +126,8 @@ model Teacher {
   methodDay           Int?    // 0-6 (Yakshanba-Shanba), "metod kuni" — bu kunda dars yo'q
   homeroomClassId     String? @unique
   teachingStages      String? @default("BOTH") // "PRIMARY" | "HIGH" | "BOTH"
+  shiftIds            String? // JSON string: '["s39_1", "s39_2"]'
+  travelPolicy        String? @default("BY_SHIFT")
 
   school         School               @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   subjects       TeacherSubject[]

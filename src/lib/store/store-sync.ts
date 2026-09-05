@@ -178,7 +178,9 @@ export function normalizeHomeroomSinfSoati({
       : undefined;
 
     let teachingStages = t.teachingStages;
-    if (!teachingStages || teachingStages === "BOTH") {
+    // Faqat agar toifa umuman belgilanmagan bo'lsa (undefined/null/""), avtomatik aniqlaymiz.
+    // Agar foydalanuvchi "BOTH" ("Hammasi 1-11"), "PRIMARY" yoki "HIGH" ni tanlagan bo'lsa, uni ASLO ezib tashlamaymiz!
+    if (!teachingStages) {
       if (hrClass) {
         if ((hrClass.grade && hrClass.grade <= 4) || hrClass.isPrimary) {
           teachingStages = "PRIMARY";
@@ -217,6 +219,12 @@ export function normalizeHomeroomSinfSoati({
       }
     }
 
+    // Filiallar: Agar o'qituvchi sinf rahbari bo'lsa, ushbu sinfning binosi o'qituvchi binolariga kafolatlangan holda kirishi shart
+    let branchIds = t.branchIds ? [...t.branchIds] : [];
+    if (hrClass?.branchId && !branchIds.includes(hrClass.branchId)) {
+      branchIds.push(hrClass.branchId);
+    }
+
     if (hrClass) {
       const currentSubIds = t.subjectIds || [];
       const newSubIds = currentSubIds.includes(finalSubId)
@@ -226,7 +234,10 @@ export function normalizeHomeroomSinfSoati({
         ...t,
         homeroomClassId: hrClass.id,
         subjectIds: newSubIds,
+        branchIds,
         teachingStages: teachingStages || "BOTH",
+        shiftIds: t.shiftIds,
+        travelPolicy: t.travelPolicy || "BY_SHIFT",
       };
     }
 
@@ -235,6 +246,9 @@ export function normalizeHomeroomSinfSoati({
       ...t,
       homeroomClassId: undefined,
       teachingStages: teachingStages || "BOTH",
+      branchIds,
+      shiftIds: t.shiftIds,
+      travelPolicy: t.travelPolicy || "BY_SHIFT",
     };
   });
 

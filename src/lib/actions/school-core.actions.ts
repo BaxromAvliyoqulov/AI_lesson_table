@@ -162,27 +162,45 @@ export async function getSchoolFullData(schoolId?: string) {
       capacity: r.capacity,
     }));
 
-    const teachers: Teacher[] = school.teachers.map((t) => ({
-      id: t.id,
-      schoolId: t.schoolId,
-      displayNumber: t.displayNumber,
-      fullName: t.fullName,
-      phone: t.phone || undefined,
-      subjectIds: t.subjects.map((s) => s.subjectId),
-      branchIds: t.branches.map((b) => b.branchId),
-      weeklyHourCapacity: t.weeklyHourCapacity,
-      maxConsecutiveHours: t.maxConsecutiveHours,
-      maxGapsPerDay: t.maxGapsPerDay || 1,
-      methodDayOfWeek: t.methodDay !== null ? t.methodDay : undefined,
-      homeroomClassId: t.homeroomClassId || undefined,
-      teachingStages: (t.teachingStages as any) || "BOTH",
-      availabilities: (t.availabilities || []).map((a) => ({
-        teacherId: a.teacherId,
-        dayOfWeek: a.dayOfWeek,
-        period: a.period,
-        isAvailable: a.isAvailable,
-      })),
-    }));
+    const teachers: Teacher[] = school.teachers.map((t) => {
+      const hrClass = t.homeroomClassId ? school.classes.find((c) => c.id === t.homeroomClassId) : undefined;
+      const bIds = t.branches.map((b) => b.branchId);
+      if (hrClass?.branchId && !bIds.includes(hrClass.branchId)) {
+        bIds.push(hrClass.branchId);
+      }
+      let parsedShiftIds: string[] | undefined = undefined;
+      if (t.shiftIds) {
+        try {
+          parsedShiftIds = typeof t.shiftIds === "string" ? JSON.parse(t.shiftIds) : t.shiftIds;
+        } catch {
+          parsedShiftIds = undefined;
+        }
+      }
+
+      return {
+        id: t.id,
+        schoolId: t.schoolId,
+        displayNumber: t.displayNumber,
+        fullName: t.fullName,
+        phone: t.phone || undefined,
+        subjectIds: t.subjects.map((s) => s.subjectId),
+        branchIds: bIds,
+        shiftIds: parsedShiftIds,
+        weeklyHourCapacity: t.weeklyHourCapacity,
+        maxConsecutiveHours: t.maxConsecutiveHours,
+        maxGapsPerDay: t.maxGapsPerDay || 1,
+        methodDayOfWeek: t.methodDay !== null ? t.methodDay : undefined,
+        homeroomClassId: t.homeroomClassId || undefined,
+        teachingStages: (t.teachingStages as any) || "BOTH",
+        travelPolicy: (t.travelPolicy as any) || "BY_SHIFT",
+        availabilities: (t.availabilities || []).map((a) => ({
+          teacherId: a.teacherId,
+          dayOfWeek: a.dayOfWeek,
+          period: a.period,
+          isAvailable: a.isAvailable,
+        })),
+      };
+    });
 
     const activeSchedule = school.schedules[0];
     const scheduleLessons = activeSchedule?.lessons || [];
@@ -567,6 +585,8 @@ export async function syncFullSchoolDataAction(
                   maxGapsPerDay: t.maxGapsPerDay || 1,
                   methodDay: t.methodDayOfWeek !== undefined ? t.methodDayOfWeek : null,
                   teachingStages: (t.teachingStages as any) || "BOTH",
+                  shiftIds: t.shiftIds && t.shiftIds.length > 0 ? JSON.stringify(t.shiftIds) : null,
+                  travelPolicy: t.travelPolicy || "BY_SHIFT",
                 },
               });
             } else {
@@ -580,6 +600,8 @@ export async function syncFullSchoolDataAction(
                   maxGapsPerDay: t.maxGapsPerDay || 1,
                   methodDay: t.methodDayOfWeek !== undefined ? t.methodDayOfWeek : null,
                   teachingStages: (t.teachingStages as any) || "BOTH",
+                  shiftIds: t.shiftIds && t.shiftIds.length > 0 ? JSON.stringify(t.shiftIds) : null,
+                  travelPolicy: t.travelPolicy || "BY_SHIFT",
                 },
               });
             }
@@ -610,6 +632,19 @@ export async function syncFullSchoolDataAction(
                     where: { teacherId_subjectId: { teacherId: existing.id, subjectId: mappedSubId } },
                     create: { schoolId: actualSchoolId, teacherId: existing.id, subjectId: mappedSubId },
                     update: {},
+                  });
+                }
+              }
+            }
+
+            // Filial bog'lamalari
+            if (t.branchIds && t.branchIds.length > 0) {
+              await tx.teacherBranch.deleteMany({ where: { teacherId: existing.id } });
+              for (const bId of t.branchIds) {
+                const mappedBranchId = branchMap.get(bId) || resolveDbBranchId(allDbBranches, bId);
+                if (mappedBranchId) {
+                  await tx.teacherBranch.create({
+                    data: { schoolId: actualSchoolId, teacherId: existing.id, branchId: mappedBranchId },
                   });
                 }
               }

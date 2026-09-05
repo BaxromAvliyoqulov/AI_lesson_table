@@ -53,6 +53,7 @@ export async function upsertTeacherAction(schoolId: string, teacher: Teacher) {
     const actualSchoolId = school.id;
 
     let savedTeacherRecord: any = null;
+    let savedBranchIds: string[] = [];
 
     await prisma.$transaction(
       async (tx) => {
@@ -103,6 +104,8 @@ export async function upsertTeacherAction(schoolId: string, teacher: Teacher) {
             methodDay: teacher.methodDayOfWeek !== undefined ? teacher.methodDayOfWeek : null,
             homeroomClassId: teacher.homeroomClassId || null,
             teachingStages: teacher.teachingStages || "BOTH",
+            shiftIds: teacher.shiftIds && teacher.shiftIds.length > 0 ? JSON.stringify(teacher.shiftIds) : null,
+            travelPolicy: teacher.travelPolicy || "BY_SHIFT",
           },
         });
       } else {
@@ -118,6 +121,8 @@ export async function upsertTeacherAction(schoolId: string, teacher: Teacher) {
             methodDay: teacher.methodDayOfWeek !== undefined ? teacher.methodDayOfWeek : null,
             homeroomClassId: teacher.homeroomClassId || null,
             teachingStages: teacher.teachingStages || "BOTH",
+            shiftIds: teacher.shiftIds && teacher.shiftIds.length > 0 ? JSON.stringify(teacher.shiftIds) : null,
+            travelPolicy: teacher.travelPolicy || "BY_SHIFT",
           },
         });
 
@@ -221,9 +226,22 @@ export async function upsertTeacherAction(schoolId: string, teacher: Teacher) {
         }
       }
 
-      // Filial bog'lamalari
-      if (teacher.branchIds && teacher.branchIds.length > 0) {
-        for (const bId of teacher.branchIds) {
+      // Filial bog'lamalari: agar sinf rahbari bo'lsa, ushbu sinf joylashgan bino ham albatta qo'shiladi
+      const resolvedBranchIds = new Set<string>(teacher.branchIds || []);
+      if (teacher.homeroomClassId) {
+        const hrClass = await tx.class.findUnique({
+          where: { id: teacher.homeroomClassId },
+          select: { branchId: true },
+        });
+        if (hrClass?.branchId) {
+          resolvedBranchIds.add(hrClass.branchId);
+        }
+      }
+
+      const branchIdsToSave = Array.from(resolvedBranchIds);
+      savedBranchIds = branchIdsToSave;
+      if (branchIdsToSave.length > 0) {
+        for (const bId of branchIdsToSave) {
           const branch = await tx.branch.findFirst({
             where: { OR: [{ id: bId }, { schoolId: actualSchoolId, name: bId }] },
           });
@@ -249,6 +267,9 @@ export async function upsertTeacherAction(schoolId: string, teacher: Teacher) {
             displayNumber: savedTeacherRecord.displayNumber,
             schoolId: savedTeacherRecord.schoolId,
             teachingStages: (savedTeacherRecord.teachingStages as any) || teacher.teachingStages || "BOTH",
+            shiftIds: teacher.shiftIds || [],
+            travelPolicy: teacher.travelPolicy || "BY_SHIFT",
+            branchIds: savedBranchIds,
           }
         : undefined,
     };

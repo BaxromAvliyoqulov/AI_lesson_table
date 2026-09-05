@@ -196,11 +196,15 @@ export const TeacherModal: React.FC<TeacherModalProps> = ({
           "";
         setHomeroomClassId(existingClassId);
         setSelectedSubjects(editingTeacher.subjectIds || []);
-        setSelectedBranches(
+        let initialBranchIds =
           editingTeacher.branchIds && editingTeacher.branchIds.length > 0
-            ? editingTeacher.branchIds
-            : branches.map((b) => b.id)
-        );
+            ? [...editingTeacher.branchIds]
+            : branches.map((b) => b.id);
+        const hrClass = classes.find((c) => c.id === existingClassId);
+        if (hrClass?.branchId && !initialBranchIds.includes(hrClass.branchId)) {
+          initialBranchIds.push(hrClass.branchId);
+        }
+        setSelectedBranches(initialBranchIds);
         setSelectedShifts(
           editingTeacher.shiftIds && editingTeacher.shiftIds.length > 0
             ? editingTeacher.shiftIds
@@ -360,7 +364,17 @@ export const TeacherModal: React.FC<TeacherModalProps> = ({
             </label>
             <ClassSelectCombobox
               value={homeroomClassId}
-              onChange={setHomeroomClassId}
+              onChange={(newClassId) => {
+                setHomeroomClassId(newClassId);
+                if (newClassId) {
+                  const targetCls = classes.find((c) => c.id === newClassId);
+                  if (targetCls?.branchId) {
+                    setSelectedBranches((prev) =>
+                      prev.includes(targetCls.branchId) ? prev : [...prev, targetCls.branchId]
+                    );
+                  }
+                }
+              }}
               classes={classes}
               teachers={allTeachers.length > 0 ? allTeachers : (editingTeacher ? [editingTeacher] : [])}
               placeholder="Sinf rahbari bo'lgan sinfni tanlang..."
@@ -661,6 +675,7 @@ export const TeacherModal: React.FC<TeacherModalProps> = ({
                       Toifaga mos sinflar doirasi (
                       {
                         classes.filter((c) => {
+                          if (c.id === homeroomClassId) return true;
                           if (teachingStages === "PRIMARY" && c.grade > 4) return false;
                           if (teachingStages === "HIGH" && c.grade < 5) return false;
                           if (selectedBranches.length > 0 && !selectedBranches.includes(c.branchId)) return false;
@@ -691,6 +706,7 @@ export const TeacherModal: React.FC<TeacherModalProps> = ({
                 <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto custom-scrollbar pt-1">
                   {classes
                     .filter((c) => {
+                      if (c.id === homeroomClassId) return true;
                       if (teachingStages === "PRIMARY" && c.grade > 4) return false;
                       if (teachingStages === "HIGH" && c.grade < 5) return false;
                       if (selectedBranches.length > 0 && !selectedBranches.includes(c.branchId)) return false;
