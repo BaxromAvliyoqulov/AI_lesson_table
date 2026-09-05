@@ -187,7 +187,11 @@ export const TeacherModal: React.FC<TeacherModalProps> = ({
         setMaxConsecutive(editingTeacher.maxConsecutiveHours);
         setMethodDay(editingTeacher.methodDayOfWeek || "");
         setIsManualMethodDayOverride(editingTeacher.methodDayOfWeek !== undefined && editingTeacher.methodDayOfWeek !== null);
-        setHomeroomClassId(editingTeacher.homeroomClassId || "");
+        const existingClassId =
+          editingTeacher.homeroomClassId ||
+          classes.find((c) => c.homeroomTeacherId === editingTeacher.id)?.id ||
+          "";
+        setHomeroomClassId(existingClassId);
         setSelectedSubjects(editingTeacher.subjectIds || []);
         setSelectedBranches(
           editingTeacher.branchIds && editingTeacher.branchIds.length > 0
@@ -643,6 +647,49 @@ export const TeacherModal: React.FC<TeacherModalProps> = ({
                 <span>🌟 Hammasi (1-11)</span>
               </button>
             </div>
+
+            {/* Aqlli Sinflar Qamrovi (Smart Class Scope Preview) */}
+            {classes.length > 0 && (
+              <div className="mt-2.5 p-2.5 rounded-2xl bg-muted/40 border border-border/70 text-xs">
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-[11px] font-bold text-muted-foreground flex items-center gap-1">
+                    <Sparkles className="w-3 h-3 text-indigo-500" />
+                    Qamrab olinadigan sinflar (
+                    {
+                      classes.filter((c) => {
+                        if (teachingStages === "PRIMARY" && c.grade > 4) return false;
+                        if (teachingStages === "HIGH" && c.grade < 5) return false;
+                        if (selectedBranches.length > 0 && !selectedBranches.includes(c.branchId)) return false;
+                        return true;
+                      }).length
+                    }{" "}
+                    ta sinf):
+                  </span>
+                  <span className="text-[10px] text-muted-foreground">
+                    {selectedBranches.length === 1
+                      ? branches.find((b) => b.id === selectedBranches[0])?.name || "Tanlangan bino"
+                      : "Barcha binolar"}
+                  </span>
+                </div>
+                <div className="flex flex-wrap gap-1 max-h-20 overflow-y-auto custom-scrollbar">
+                  {classes
+                    .filter((c) => {
+                      if (teachingStages === "PRIMARY" && c.grade > 4) return false;
+                      if (teachingStages === "HIGH" && c.grade < 5) return false;
+                      if (selectedBranches.length > 0 && !selectedBranches.includes(c.branchId)) return false;
+                      return true;
+                    })
+                    .map((c) => (
+                      <span
+                        key={c.id}
+                        className="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-card border border-border text-foreground shadow-2xs"
+                      >
+                        {c.name}
+                      </span>
+                    ))}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* ── 4. BINO VA SMENA LOGISTIKASI (Agar 2 ta binoda dars bersa) ───── */}

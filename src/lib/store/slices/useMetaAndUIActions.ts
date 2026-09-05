@@ -1,6 +1,6 @@
 import { useCallback } from "react";
 import { SchoolInfo, Room, BellPeriod, SubstitutionRecord } from "@/types";
-import { updateSchoolDetailsAction } from "@/lib/actions/school.actions";
+import { updateSchoolDetailsAction, saveBellPeriodsAction } from "@/lib/actions/school.actions";
 import { storeState, updateStore, addAuditLog } from "../store-core";
 
 export function useMetaAndUIActions() {
@@ -72,6 +72,7 @@ export function useMetaAndUIActions() {
   const updateBellPeriods = useCallback((bellPeriods: BellPeriod[]) => {
     updateStore((prev) => ({ ...prev, bellPeriods }));
     addAuditLog("Qo'ng'iroqlar yangilandi", "Dars va tanaffus vaqtlari o'zgartirildi");
+    saveBellPeriodsAction(storeState.currentSchoolId, bellPeriods).catch(console.error);
   }, []);
 
   const addSubstitution = useCallback((sub: SubstitutionRecord) => {

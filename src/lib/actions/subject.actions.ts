@@ -14,40 +14,48 @@ export async function upsertSubjectAction(schoolId: string, subject: Subject) {
     const actualSchoolId = school.id;
 
     const existing = await prisma.subject.findFirst({
-      where: { OR: [{ id: subject.id }, { schoolId: actualSchoolId, name: subject.name.trim() }] },
+      where: {
+        OR: [
+          { id: subject.id },
+          { schoolId: actualSchoolId, name: subject.name.trim() },
+          { schoolId: actualSchoolId, name: { equals: subject.name.trim(), mode: "insensitive" } },
+        ],
+      },
     });
 
+    let savedSubject;
     if (!existing) {
-      await prisma.subject.create({
+      savedSubject = await prisma.subject.create({
         data: {
+          id: subject.id,
           schoolId: actualSchoolId,
           name: subject.name.trim(),
           shortName: subject.shortName || null,
           colorTag: subject.colorTag || "#3B82F6",
-          difficultyScore: subject.difficultyScore || 5,
+          difficultyScore: Number(subject.difficultyScore) || 5,
           allowDoubleLesson: subject.allowDoubleLesson || false,
           requiresRoomType: subject.requiresRoomType || null,
-          methodDayOfWeek: subject.methodDayOfWeek !== undefined ? subject.methodDayOfWeek : null,
+          methodDayOfWeek: subject.methodDayOfWeek !== undefined && subject.methodDayOfWeek !== null ? Number(subject.methodDayOfWeek) : null,
           isActive: subject.isActive !== undefined ? subject.isActive : true,
         },
       });
     } else {
-      await prisma.subject.update({
+      savedSubject = await prisma.subject.update({
         where: { id: existing.id },
         data: {
           name: subject.name.trim(),
           shortName: subject.shortName || null,
           colorTag: subject.colorTag,
-          difficultyScore: subject.difficultyScore,
+          difficultyScore: Number(subject.difficultyScore) || 5,
           allowDoubleLesson: subject.allowDoubleLesson,
           requiresRoomType: subject.requiresRoomType || null,
-          methodDayOfWeek: subject.methodDayOfWeek !== undefined ? subject.methodDayOfWeek : null,
+          methodDayOfWeek: subject.methodDayOfWeek !== undefined && subject.methodDayOfWeek !== null ? Number(subject.methodDayOfWeek) : null,
           isActive: subject.isActive !== undefined ? subject.isActive : true,
         },
       });
     }
 
-    return { success: true };
+    return { success: true, subject: savedSubject };
   } catch (error: any) {
     console.error("upsertSubjectAction xatosi:", error);
     return { success: false, error: error?.message };

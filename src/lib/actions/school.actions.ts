@@ -16,7 +16,7 @@ import * as schedule from "./schedule.actions";
 import * as teacher from "./teacher.actions";
 import * as classMod from "./class.actions";
 import * as subject from "./subject.actions";
-import { SchoolInfo, Teacher, SchoolClass, Subject, Lesson } from "@/types";
+import { SchoolInfo, Teacher, SchoolClass, Subject, Lesson, BellPeriod } from "@/types";
 
 // ── 1. Core School & Full Sync Actions ─────────────────────────────────────────
 export async function resolveSchool(schoolIdOrSlug?: string) {
@@ -145,3 +145,9 @@ export async function upsertSubjectAction(schoolId: string, subjectData: Subject
 export async function deleteSubjectAction(schoolId: string, subjectId: string) {
   return subject.deleteSubjectAction(schoolId, subjectId);
 }
+
+// ── 6. Bell Schedule Actions ──────────────────────────────────────────────────
+export async function saveBellPeriodsAction(schoolId: string, bellPeriods: BellPeriod[]) {
+  return core.saveBellPeriodsAction(schoolId, bellPeriods);
+}
+

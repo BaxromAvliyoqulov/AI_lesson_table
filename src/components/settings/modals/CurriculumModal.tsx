@@ -348,20 +348,40 @@ export const CurriculumModal: React.FC<CurriculumModalProps> = ({
     return groupedSubjectsList;
   }, [groupedSubjectsList, curriculumFilter]);
 
-  // Max recommended load: 1-4th grades: 22-26 hours, 5-9th: 28-32, 10-11th: 32-35 hours
+  // O'zbekiston maktablari va SanPiN 0341-17 bo'yicha standart haftalik o'quv rejasi va me'yor:
+  // 1-4-sinflar (5 kunlik): 22-26 soat
+  // 5-11-sinflar (6 kunlik): 30-36 soat (6 kun x max 6 soat = 36 soat)
   const recommendedHours = useMemo(() => {
-    if (!targetClass) return 30;
-    if (targetClass.grade === 1) return 22;
-    if (targetClass.grade === 2) return 23;
-    if (targetClass.grade === 3) return 24;
-    if (targetClass.grade === 4) return 25;
-    if (targetClass.grade <= 6) return 30;
-    if (targetClass.grade <= 9) return 33;
-    return 34;
+    if (!targetClass) return 35;
+    const g = targetClass.grade;
+    if (g === 1) return 22; // 1-sinf: 22 soat
+    if (g === 2) return 24; // 2-sinf: 24 soat
+    if (g === 3) return 25; // 3-sinf: 25 soat
+    if (g === 4) return 25; // 4-sinf: 25 soat
+    if (g === 5) return 30; // 5-sinf: 30 soat
+    if (g === 6) return 31; // 6-sinf: 31 soat
+    if (g === 7) return 36; // 7-sinf: 35 st fanlar + 1 st Kelajak soati = 36 soat
+    if (g === 8) return 35; // 8-sinf: 34-35 soat
+    if (g === 9) return 35; // 9-sinf: 34-35 soat
+    if (g === 10) return 34; // 10-sinf: 34 soat
+    if (g === 11) return 34; // 11-sinf: 34 soat
+    return 35;
+  }, [targetClass]);
+
+  // SanPiN 0341-17 bo'yicha ruxsat etilgan maksimal me'yor:
+  // 1-sinfda: max 24 soat (kuniga max 4-5 soat)
+  // 2-4-sinflarda: max 26 soat (kuniga max 5 soat)
+  // 5-11-sinflarda (6 kunlik ta'lim): max 36 soat (6 kun x 6 soat)
+  const maxSanPiNHours = useMemo(() => {
+    if (!targetClass) return 36;
+    const g = targetClass.grade;
+    if (g === 1) return 24;
+    if (g <= 4) return 26;
+    return 36;
   }, [targetClass]);
 
   const loadPercent = Math.min(100, Math.round((totalWeeklyHours / recommendedHours) * 100));
-  const isOverloaded = totalWeeklyHours > recommendedHours + 2;
+  const isOverloaded = totalWeeklyHours > maxSanPiNHours;
 
   // Grade standard template default hours map
   const gradeTemplateDefaultHours = useMemo(() => {
@@ -713,7 +733,11 @@ export const CurriculumModal: React.FC<CurriculumModalProps> = ({
         teacherId = targetClass.homeroomTeacherId;
       } else {
         const suitableTeacher = allTeachers.find((t) => t.subjectIds?.includes(subId));
-        teacherId = suitableTeacher ? suitableTeacher.id : allTeachers[0]?.id || "";
+        teacherId = suitableTeacher
+          ? suitableTeacher.id
+          : targetClass.homeroomTeacherId
+          ? targetClass.homeroomTeacherId
+          : availableTeachers[0]?.id || allTeachers[0]?.id || "";
       }
 
       toAdd.push({
@@ -727,10 +751,39 @@ export const CurriculumModal: React.FC<CurriculumModalProps> = ({
 
     if (toAdd.length > 0) {
       setSubjectsList((prev) => [...prev, ...toAdd]);
+      showToast(`✅ ${toAdd.length} ta fan o'quv rejasiga qo'shildi`);
     }
 
     setSelectedCatalogSubjectIds({});
     setIsCatalogOpen(false);
+  };
+
+  // + Bitta yangi fan qatori qo'shish
+  const handleAddNewSubjectRow = () => {
+    if (!targetClass) return;
+    const existingIds = new Set(subjectsList.map((s) => s.subjectId));
+    const nextSub =
+      allSubjects.find((s) => !existingIds.has(s.id) && isSubjectSuitableForGrade(s, targetClass.grade)) ||
+      allSubjects.find((s) => !existingIds.has(s.id)) ||
+      allSubjects[0];
+    if (!nextSub) return;
+
+    const suitableTeacher =
+      allTeachers.find((t) => t.subjectIds?.includes(nextSub.id)) ||
+      (targetClass.homeroomTeacherId ? allTeachers.find((t) => t.id === targetClass.homeroomTeacherId) : null) ||
+      availableTeachers[0] ||
+      allTeachers[0];
+
+    const newItem: ClassSubject = {
+      classId: targetClass.id,
+      subjectId: nextSub.id,
+      teacherId: suitableTeacher ? suitableTeacher.id : (allTeachers[0]?.id || ""),
+      weeklyHours: 2,
+      groupType: "WHOLE",
+    };
+
+    setSubjectsList((prev) => [...prev, newItem]);
+    showToast(`✅ "${nextSub.name}" fani o'quv rejasiga qo'shildi`);
   };
 
   // ⚡ Bo'sh fanlarga mutaxassislarni 1-bosishda avtomatik tayinlash
@@ -835,51 +888,62 @@ export const CurriculumModal: React.FC<CurriculumModalProps> = ({
     let finalList = [...cleanSubjectsList];
     const unassigned = finalList.filter((s) => !s.teacherId && Number(s.weeklyHours) > 0);
 
-    if (unassigned.length > 0) {
-      const localTracker = new Map<string, number>();
-      finalList.forEach((s) => {
-        if (s.teacherId) {
-          localTracker.set(s.teacherId, (localTracker.get(s.teacherId) || 0) + (Number(s.weeklyHours) || 0));
-        }
-      });
+    const localTracker = new Map<string, number>();
+    finalList.forEach((s) => {
+      if (s.teacherId) {
+        localTracker.set(s.teacherId, (localTracker.get(s.teacherId) || 0) + (Number(s.weeklyHours) || 0));
+      }
+    });
 
-      finalList = finalList.map((item) => {
-        if (item.teacherId) return item;
+    finalList = finalList.map((item) => {
+      if (item.teacherId) return item;
 
-        const sub = subjectMap.get(item.subjectId) || allSubjects.find((s) => s.id === item.subjectId);
-        const isSinfSoati =
-          item.subjectId === "sub_sinf_soati" ||
-          item.subjectId === "sub_kelajak" ||
-          isKelajakOrSinfSoatiSubject(item.subjectId, sub?.name);
+      const sub = subjectMap.get(item.subjectId) || allSubjects.find((s) => s.id === item.subjectId);
+      const isSinfSoati =
+        item.subjectId === "sub_sinf_soati" ||
+        item.subjectId === "sub_kelajak" ||
+        isKelajakOrSinfSoatiSubject(item.subjectId, sub?.name);
 
-        if (
-          targetClass.homeroomTeacherId &&
-          (isSinfSoati || (targetClass.grade <= 4 && sub && isHomeroomPrimarySubject(sub, targetClass.grade)))
-        ) {
-          return { ...item, teacherId: targetClass.homeroomTeacherId };
-        }
+      if (
+        targetClass.homeroomTeacherId &&
+        (isSinfSoati || (targetClass.grade <= 4 && sub && isHomeroomPrimarySubject(sub, targetClass.grade)))
+      ) {
+        return { ...item, teacherId: targetClass.homeroomTeacherId };
+      }
 
-        const specialistCandidates = allTeachers.filter((t) => t.subjectIds?.includes(item.subjectId));
-        const pool = specialistCandidates.length > 0 ? specialistCandidates : allTeachers;
-        if (pool.length > 0) {
-          let bestTeacher = pool[0];
-          let minLoad = Infinity;
-          for (const t of pool) {
-            const load = localTracker.get(t.id) || 0;
-            const cap = t.weeklyHourCapacity || 20;
-            const score = load + (load >= cap ? 1000 : 0);
-            if (score < minLoad) {
-              minLoad = score;
-              bestTeacher = t;
-            }
+      const specialistCandidates = allTeachers.filter((t) => t.subjectIds?.includes(item.subjectId));
+      const pool =
+        specialistCandidates.length > 0
+          ? specialistCandidates
+          : availableTeachers.length > 0
+          ? availableTeachers
+          : allTeachers;
+
+      if (pool.length > 0) {
+        let bestTeacher = pool[0];
+        let minLoad = Infinity;
+        for (const t of pool) {
+          const load = localTracker.get(t.id) || 0;
+          const cap = t.weeklyHourCapacity || 20;
+          const score = load + (load >= cap ? 1000 : 0);
+          if (score < minLoad) {
+            minLoad = score;
+            bestTeacher = t;
           }
-          const current = localTracker.get(bestTeacher.id) || 0;
-          localTracker.set(bestTeacher.id, current + (Number(item.weeklyHours) || 0));
-          return { ...item, teacherId: bestTeacher.id };
         }
-        return item;
-      });
-    }
+        const current = localTracker.get(bestTeacher.id) || 0;
+        localTracker.set(bestTeacher.id, current + (Number(item.weeklyHours) || 0));
+        return { ...item, teacherId: bestTeacher.id };
+      }
+
+      // Ultimate fallback so teacherId is never empty
+      const fallbackTeacher =
+        (targetClass.homeroomTeacherId && allTeachers.find((t) => t.id === targetClass.homeroomTeacherId)) ||
+        availableTeachers[0] ||
+        allTeachers[0];
+
+      return { ...item, teacherId: fallbackTeacher?.id || "" };
+    });
 
     const dedupedList = deduplicateClassSubjects(
       finalList,
@@ -887,9 +951,23 @@ export const CurriculumModal: React.FC<CurriculumModalProps> = ({
       allSubjects,
       targetClass.homeroomTeacherId
     );
-    const validList = dedupedList.filter(
+
+    // Hech bir kiritilgan fan o'qituvchisi yo'qligi sababli bazadan tushib qolmasligi shart!
+    const defaultFallbackId =
+      (targetClass.homeroomTeacherId && allTeachers.find((t) => t.id === targetClass.homeroomTeacherId)?.id) ||
+      availableTeachers[0]?.id ||
+      allTeachers[0]?.id ||
+      "";
+
+    const fullyAssigned = dedupedList.map((s) => ({
+      ...s,
+      teacherId: s.teacherId || defaultFallbackId,
+    }));
+
+    const validList = fullyAssigned.filter(
       (s) => s.subjectId && s.teacherId && Number(s.weeklyHours) > 0
     );
+
     onSave(targetClass.id, validList);
     onClose();
   };
@@ -996,7 +1074,7 @@ export const CurriculumModal: React.FC<CurriculumModalProps> = ({
                     }`}
                   >
                     {isOverloaded
-                      ? "⚠️ SanPiN me'yoridan ortiq"
+                      ? `⚠️ SanPiN me'yoridan ortiq (max ${maxSanPiNHours} st)`
                       : loadPercent >= 80
                       ? "🟢 Yuklama me'yorda"
                       : "🟡 Yuklama to'liq emas"}
@@ -1032,6 +1110,17 @@ export const CurriculumModal: React.FC<CurriculumModalProps> = ({
             >
               <Plus className="w-4 h-4 stroke-[3]" />
               <span>+ Fan Qo'shish (Fanlar Katalogi)</span>
+            </button>
+
+            {/* Quick Add Row Button */}
+            <button
+              type="button"
+              onClick={handleAddNewSubjectRow}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-card border border-border hover:border-primary/40 hover:bg-muted text-foreground transition-all shadow-xs cursor-pointer"
+              title="Ro'yxat oxiriga bitta yangi fan qatori qo'shish"
+            >
+              <Plus className="w-3.5 h-3.5 text-primary" />
+              <span>+ Qator qo'shish</span>
             </button>
 
             {/* 1-Click Davlat Standarti Shablonini Yuklash */}

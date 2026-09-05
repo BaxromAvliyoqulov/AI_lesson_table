@@ -1,6 +1,6 @@
 import { useCallback } from "react";
 import { SchoolClass, ClassSubject } from "@/types";
-import { sortClassesByName } from "@/lib/utils";
+import { sortClassesByName, normalizeClassName } from "@/lib/utils";
 import {
   upsertClassAction,
   deleteClassAction,
@@ -21,7 +21,7 @@ export function useClassActions() {
   const addClass = useCallback((cls: SchoolClass) => {
     updateStore((prev) => {
       let updatedTeachers = prev.teachers;
-      const finalCls = { ...cls };
+      const finalCls = { ...cls, name: normalizeClassName(cls.name) };
 
       if (cls.homeroomTeacherId) {
         updatedTeachers = prev.teachers.map((t) => {
@@ -77,7 +77,7 @@ export function useClassActions() {
 
   const updateClass = useCallback((cls: SchoolClass) => {
     updateStore((prev) => {
-      const finalCls = { ...cls };
+      const finalCls = { ...cls, name: normalizeClassName(cls.name) };
       if (cls.homeroomTeacherId) {
         let hasClassHour = false;
         const hrId = cls.homeroomTeacherId || "";

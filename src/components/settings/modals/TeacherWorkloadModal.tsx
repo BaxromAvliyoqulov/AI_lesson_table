@@ -23,6 +23,7 @@ import {
   UserCheck,
   Check,
   Zap,
+  Building2,
 } from "lucide-react";
 
 export interface TeacherClassAssignment {
@@ -75,6 +76,11 @@ export const TeacherWorkloadModal: React.FC<TeacherWorkloadModalProps> = ({
   const [batchHours, setBatchHours] = useState<number>(4);
   const [isBatchOpen, setIsBatchOpen] = useState<boolean>(false);
 
+  // Aqlli Filtrlash: Bino, Bosqich va Parallel (Harf) filtrlari
+  const [branchFilter, setBranchFilter] = useState<string>("ALL");
+  const [parallelFilter, setParallelFilter] = useState<string>("ALL");
+  const [stageFilter, setStageFilter] = useState<"ALL" | "PRIMARY" | "HIGH">("ALL");
+
   // Collect all existing assignments for this teacher across all classes ONLY on open or teacher change
   useEffect(() => {
     if (!isOpen || !teacher) {
@@ -86,6 +92,22 @@ export const TeacherWorkloadModal: React.FC<TeacherWorkloadModalProps> = ({
     if (lastInitializedTeacherIdRef.current !== teacher.id) {
       lastInitializedTeacherIdRef.current = teacher.id;
       setBatchSubjectId(teacherSubjects[0]?.id || subjects[0]?.id || "");
+
+      // O'qituvchi profiliga qarab tezkor filtrlarni avtomatik moslash
+      if (teacher.teachingStages === "PRIMARY") {
+        setStageFilter("PRIMARY");
+      } else if (teacher.teachingStages === "HIGH") {
+        setStageFilter("HIGH");
+      } else {
+        setStageFilter("ALL");
+      }
+
+      if (teacher.branchIds && teacher.branchIds.length === 1) {
+        setBranchFilter(teacher.branchIds[0]);
+      } else {
+        setBranchFilter("ALL");
+      }
+      setParallelFilter("ALL");
 
       const currentList: TeacherClassAssignment[] = [];
       classes.forEach((cls) => {
@@ -406,6 +428,106 @@ export const TeacherWorkloadModal: React.FC<TeacherWorkloadModalProps> = ({
     return Array.from(set).sort((a, b) => a - b);
   }, [classes]);
 
+  // Maktabdagi mavjud barcha parallel harflari (A, B, D...)
+  const availableParallels = useMemo(() => {
+    const set = new Set<string>();
+    classes.forEach((c) => {
+      const match = c.name.match(/[A-Za-zА-Яа-яЎўҚқҒғҲҳ]/);
+      if (match) set.add(match[0].toUpperCase());
+    });
+    return Array.from(set).sort();
+  }, [classes]);
+
+  // Maktabdagi binolar ro'yxati (Asosiy / Filial)
+  const availableBranches = useMemo(() => {
+    const map = new Map<string, { id: string; name: string }>();
+    classes.forEach((c) => {
+      if (c.branchId && !map.has(c.branchId)) {
+        const isBranch =
+          c.branchId.toLowerCase().includes("filial") ||
+          c.branchId === "b39_2" ||
+          c.name.includes("-D");
+        map.set(c.branchId, {
+          id: c.branchId,
+          name: isBranch ? "🏫 1-Filial" : "🏢 Asosiy bino",
+        });
+      }
+    });
+    return Array.from(map.values());
+  }, [classes]);
+
+  // Har bir sinf joriy filtrlarga mos keladimi?
+  const isClassMatchingFilters = (c: SchoolClass) => {
+    if (branchFilter !== "ALL" && c.branchId !== branchFilter) return false;
+    if (parallelFilter !== "ALL") {
+      const match = c.name.match(/[A-Za-zА-Яа-яЎўҚқҒғҲҳ]/);
+      const letter = match ? match[0].toUpperCase() : "";
+      if (letter !== parallelFilter) return false;
+    }
+    return true;
+  };
+
+  const filteredPrimaryClasses = useMemo(() => {
+    if (stageFilter === "HIGH") return [];
+    return primaryClasses.filter(isClassMatchingFilters);
+  }, [primaryClasses, stageFilter, branchFilter, parallelFilter]);
+
+  const filteredMiddleClasses = useMemo(() => {
+    if (stageFilter === "PRIMARY") return [];
+    return middleClasses.filter(isClassMatchingFilters);
+  }, [middleClasses, stageFilter, branchFilter, parallelFilter]);
+
+  const filteredHighClasses = useMemo(() => {
+    if (stageFilter === "PRIMARY") return [];
+    return highClasses.filter(isClassMatchingFilters);
+  }, [highClasses, stageFilter, branchFilter, parallelFilter]);
+
+  const allFilteredClasses = useMemo(() => {
+    return [...filteredPrimaryClasses, ...filteredMiddleClasses, ...filteredHighClasses];
+  }, [filteredPrimaryClasses, filteredMiddleClasses, filteredHighClasses]);
+
+  // Filtrlangan barcha sinflarni 1-bosishda biriktirish yoki bekor qilish
+  const handleBulkSelectFilteredClasses = () => {
+    if (!teacher || allFilteredClasses.length === 0) return;
+    const targetSubjectId = batchSubjectId || defaultSubjectId;
+    const allSelected = allFilteredClasses.every((c) =>
+      assignments.some((a) => a.classId === c.id && a.subjectId === targetSubjectId)
+    );
+
+    if (allSelected) {
+      const ids = new Set(allFilteredClasses.map((c) => c.id));
+      setAssignments((prev) =>
+        prev.filter((a) => !(ids.has(a.classId) && a.subjectId === targetSubjectId))
+      );
+    } else {
+      const newItems: TeacherClassAssignment[] = [];
+      allFilteredClasses.forEach((c) => {
+        if (!assignments.some((a) => a.classId === c.id && a.subjectId === targetSubjectId)) {
+          const otherTeacherSub = (c.subjects || []).find(
+            (s) =>
+              s.subjectId === targetSubjectId &&
+              s.teacherId !== teacher.id &&
+              Number(s.weeklyHours) > 0
+          );
+          const isSplit = Boolean(otherTeacherSub);
+          const hours = otherTeacherSub
+            ? Number(otherTeacherSub.weeklyHours) || (batchHours || 3)
+            : (batchHours || (c.grade >= 5 ? 3 : 4));
+
+          newItems.push({
+            classId: c.id,
+            subjectId: targetSubjectId,
+            weeklyHours: hours,
+            isSplit,
+            groupType: isSplit ? "GROUP_2" : "WHOLE",
+            secondTeacherId: otherTeacherSub ? otherTeacherSub.teacherId : undefined,
+          });
+        }
+      });
+      setAssignments((prev) => [...prev, ...newItems]);
+    }
+  };
+
   if (!isOpen || !teacher) return null;
 
   return (
@@ -553,47 +675,194 @@ export const TeacherWorkloadModal: React.FC<TeacherWorkloadModalProps> = ({
                 </div>
               </div>
 
+              {/* Aqlli Filtrlash paneli: Bino, Bosqich va Harflar */}
+              <div className="flex flex-wrap items-center gap-2 pt-1 pb-1 border-t border-indigo-500/10">
+                {/* 1. Bino filtri (agar 2 va undan ko'p bino bo'lsa) */}
+                {availableBranches.length > 1 && (
+                  <div className="flex items-center gap-1 bg-background/80 p-0.5 rounded-lg border border-border">
+                    <span className="text-[10px] text-muted-foreground font-bold px-1.5 flex items-center gap-0.5">
+                      <Building2 className="w-2.5 h-2.5" /> Bino:
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setBranchFilter("ALL")}
+                      className={`px-2 py-0.5 rounded-md text-[10px] font-bold transition-all cursor-pointer ${
+                        branchFilter === "ALL"
+                          ? "bg-indigo-600 text-white shadow-xs"
+                          : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                      }`}
+                    >
+                      Barchasi
+                    </button>
+                    {availableBranches.map((b) => (
+                      <button
+                        key={`b_filter_${b.id}`}
+                        type="button"
+                        onClick={() => setBranchFilter(b.id)}
+                        className={`px-2 py-0.5 rounded-md text-[10px] font-bold transition-all cursor-pointer ${
+                          branchFilter === b.id
+                            ? "bg-indigo-600 text-white shadow-xs"
+                            : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                        }`}
+                      >
+                        {b.name}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {/* 2. Bosqich (Toifa) filtri */}
+                <div className="flex items-center gap-1 bg-background/80 p-0.5 rounded-lg border border-border">
+                  <span className="text-[10px] text-muted-foreground font-bold px-1.5 flex items-center gap-0.5">
+                    <GraduationCap className="w-2.5 h-2.5" /> Toifa:
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setStageFilter("ALL")}
+                    className={`px-2 py-0.5 rounded-md text-[10px] font-bold transition-all cursor-pointer ${
+                      stageFilter === "ALL"
+                        ? "bg-indigo-600 text-white shadow-xs"
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                    }`}
+                  >
+                    Barchasi
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setStageFilter("PRIMARY")}
+                    className={`px-2 py-0.5 rounded-md text-[10px] font-bold transition-all cursor-pointer ${
+                      stageFilter === "PRIMARY"
+                        ? "bg-teal-600 text-white shadow-xs"
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                    }`}
+                  >
+                    🧒 1-4
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setStageFilter("HIGH")}
+                    className={`px-2 py-0.5 rounded-md text-[10px] font-bold transition-all cursor-pointer ${
+                      stageFilter === "HIGH"
+                        ? "bg-purple-600 text-white shadow-xs"
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                    }`}
+                  >
+                    🧑‍🎓 5-11
+                  </button>
+                </div>
+
+                {/* 3. Parallel Harflar filtri (A, B, D...) */}
+                {availableParallels.length > 1 && (
+                  <div className="flex items-center gap-1 bg-background/80 p-0.5 rounded-lg border border-border">
+                    <span className="text-[10px] text-muted-foreground font-bold px-1.5">
+                      Harf:
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setParallelFilter("ALL")}
+                      className={`px-2 py-0.5 rounded-md text-[10px] font-bold transition-all cursor-pointer ${
+                        parallelFilter === "ALL"
+                          ? "bg-indigo-600 text-white shadow-xs"
+                          : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                      }`}
+                    >
+                      Barchasi
+                    </button>
+                    {availableParallels.map((letter) => (
+                      <button
+                        key={`p_filter_${letter}`}
+                        type="button"
+                        onClick={() => setParallelFilter(letter)}
+                        className={`px-2 py-0.5 rounded-md text-[10px] font-bold transition-all cursor-pointer ${
+                          parallelFilter === letter
+                            ? "bg-indigo-600 text-white shadow-xs"
+                            : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                        }`}
+                      >
+                        {letter}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {/* 4. ⚡ Filtrlangan barcha sinflarni 1-bosishda tanlash / bekor qilish */}
+                {allFilteredClasses.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={handleBulkSelectFilteredClasses}
+                    className={`px-2.5 py-1 rounded-lg text-[11px] font-extrabold transition-all cursor-pointer flex items-center gap-1 shadow-xs ${
+                      allFilteredClasses.every((c) =>
+                        assignments.some(
+                          (a) => a.classId === c.id && a.subjectId === (batchSubjectId || defaultSubjectId)
+                        )
+                      )
+                        ? "bg-rose-500 hover:bg-rose-600 text-white"
+                        : "bg-emerald-600 hover:bg-emerald-700 text-white"
+                    }`}
+                    title="Hozirgi filtrlarga mos barcha sinflarga dars biriktirish yoki bekor qilish"
+                  >
+                    <Zap className="w-3 h-3" />
+                    <span>
+                      {allFilteredClasses.every((c) =>
+                        assignments.some(
+                          (a) => a.classId === c.id && a.subjectId === (batchSubjectId || defaultSubjectId)
+                        )
+                      )
+                        ? `Filtrlanganlarni bekor qilish (${allFilteredClasses.length} sinf)`
+                        : `Filtrlangan barchasini biriktirish (${allFilteredClasses.length} sinf)`}
+                    </span>
+                  </button>
+                )}
+              </div>
+
               {/* Tezkor sinf bosqichlari */}
               <div className="flex flex-wrap items-center gap-1.5">
-                <span className="text-[11px] text-muted-foreground font-semibold mr-1">Ommaviy:</span>
-                {availableGrades.map((g) => {
-                  const gClasses = classes.filter((c) => c.grade === g);
-                  const isAll =
-                    gClasses.length > 0 &&
-                    gClasses.every((c) =>
-                      assignments.some(
-                        (a) => a.classId === c.id && a.subjectId === (batchSubjectId || defaultSubjectId)
-                      )
+                <span className="text-[11px] text-muted-foreground font-semibold mr-1">Sinflar bo&apos;yicha:</span>
+                {availableGrades
+                  .filter((g) => {
+                    if (stageFilter === "PRIMARY" && g > 4) return false;
+                    if (stageFilter === "HIGH" && g < 5) return false;
+                    return true;
+                  })
+                  .map((g) => {
+                    const gClasses = classes.filter((c) => c.grade === g && isClassMatchingFilters(c));
+                    if (gClasses.length === 0) return null;
+                    const isAll =
+                      gClasses.length > 0 &&
+                      gClasses.every((c) =>
+                        assignments.some(
+                          (a) => a.classId === c.id && a.subjectId === (batchSubjectId || defaultSubjectId)
+                        )
+                      );
+                    return (
+                      <button
+                        key={`bulk_grade_${g}`}
+                        type="button"
+                        onClick={() => handleBulkSelectGrade(g)}
+                        className={`px-2 py-0.5 rounded-lg text-[11px] font-extrabold transition-all cursor-pointer ${
+                          isAll
+                            ? "bg-indigo-600 text-white shadow-xs"
+                            : "bg-background border border-border text-foreground hover:bg-muted"
+                        }`}
+                        title={`${g}-sinflarning barchasini tanlash / bekor qilish`}
+                      >
+                        {g}-sinflar
+                      </button>
                     );
-                  return (
-                    <button
-                      key={`bulk_grade_${g}`}
-                      type="button"
-                      onClick={() => handleBulkSelectGrade(g)}
-                      className={`px-2 py-0.5 rounded-lg text-[11px] font-extrabold transition-all cursor-pointer ${
-                        isAll
-                          ? "bg-indigo-600 text-white shadow-xs"
-                          : "bg-background border border-border text-foreground hover:bg-muted"
-                      }`}
-                      title={`${g}-sinflarning barchasini tanlash / bekor qilish`}
-                    >
-                      {g}-sinflar
-                    </button>
-                  );
-                })}
+                  })}
               </div>
             </div>
 
             {/* Sinflar pill/kartochkalari (1-bosishda biriktirish) */}
             <div className="space-y-2">
               {/* 5-9 Sinflar */}
-              {middleClasses.length > 0 && (
+              {filteredMiddleClasses.length > 0 && (
                 <div>
                   <div className="text-[11px] font-bold text-muted-foreground mb-1 flex items-center gap-1.5">
                     <span>🧑 5-9 Sinflar:</span>
                   </div>
                   <div className="flex flex-wrap gap-1.5">
-                    {middleClasses.map((c) => {
+                    {filteredMiddleClasses.map((c) => {
                       const isAssigned = assignments.some(
                         (a) => a.classId === c.id && a.subjectId === (batchSubjectId || defaultSubjectId)
                       );
@@ -624,13 +893,13 @@ export const TeacherWorkloadModal: React.FC<TeacherWorkloadModalProps> = ({
               )}
 
               {/* 1-4 Sinflar */}
-              {primaryClasses.length > 0 && (
+              {filteredPrimaryClasses.length > 0 && (
                 <div>
                   <div className="text-[11px] font-bold text-muted-foreground mb-1 flex items-center gap-1.5">
                     <span>🧒 1-4 Sinflar:</span>
                   </div>
                   <div className="flex flex-wrap gap-1.5">
-                    {primaryClasses.map((c) => {
+                    {filteredPrimaryClasses.map((c) => {
                       const isAssigned = assignments.some(
                         (a) => a.classId === c.id && a.subjectId === (batchSubjectId || defaultSubjectId)
                       );
@@ -661,13 +930,13 @@ export const TeacherWorkloadModal: React.FC<TeacherWorkloadModalProps> = ({
               )}
 
               {/* 10-11 Sinflar */}
-              {highClasses.length > 0 && (
+              {filteredHighClasses.length > 0 && (
                 <div>
                   <div className="text-[11px] font-bold text-muted-foreground mb-1 flex items-center gap-1.5">
                     <span>🎓 10-11 Sinflar:</span>
                   </div>
                   <div className="flex flex-wrap gap-1.5">
-                    {highClasses.map((c) => {
+                    {filteredHighClasses.map((c) => {
                       const isAssigned = assignments.some(
                         (a) => a.classId === c.id && a.subjectId === (batchSubjectId || defaultSubjectId)
                       );
@@ -694,6 +963,12 @@ export const TeacherWorkloadModal: React.FC<TeacherWorkloadModalProps> = ({
                       );
                     })}
                   </div>
+                </div>
+              )}
+
+              {allFilteredClasses.length === 0 && (
+                <div className="p-4 rounded-xl bg-background/60 border border-dashed border-border text-center text-xs text-muted-foreground">
+                  Tanlangan parametrlar (bino/toifa/harf) bo&apos;yicha birorta ham sinf topilmadi. Filtrni o&apos;zgartirib ko&apos;ring.
                 </div>
               )}
             </div>

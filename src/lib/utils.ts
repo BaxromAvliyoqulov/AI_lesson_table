@@ -405,3 +405,65 @@ export function resolveDbShiftId(
   return shifts[0].id;
 }
 
+/**
+ * Kirill harflarini lotinga almashtirish xaritasi
+ */
+const CYRILLIC_TO_LATIN: Record<string, string> = {
+  А: "A",
+  Б: "B",
+  В: "V",
+  Г: "G",
+  Д: "D",
+  Е: "E",
+  Ж: "J",
+  З: "Z",
+  И: "I",
+  К: "K",
+  Л: "L",
+  М: "M",
+  Н: "N",
+  О: "O",
+  П: "P",
+  Р: "R",
+  С: "S",
+  Т: "T",
+  У: "U",
+  Ф: "F",
+  Х: "X",
+  Ц: "S",
+  Ч: "CH",
+  Ш: "SH",
+  Қ: "Q",
+  Ғ: "G",
+  Ҳ: "H",
+};
+
+/**
+ * Sinf nomini qat'iy standart formatga keltiradi:
+ * Masalan: "1a" -> "1-A", "1 A" -> "1-A", "1-a" -> "1-A", "5B" -> "5-B", "10b" -> "10-B"
+ * Har doim KATTA HARF va CHIZIQCHA bilan.
+ */
+export function normalizeClassName(name: string): string {
+  if (!name) return "";
+  const clean = name.trim();
+
+  // Grade (1..11) va Letter/suffix ajratish
+  // Masalan: "1a", "1-A", "5B", "8-D", "10A", "11-b", "9 А"
+  const match = clean.match(
+    /^([1-9]|1[0-1])\s*[-_/\s.]*\s*([A-Za-zА-Яа-яЎўҚқҒғҲҳ]+.*)$/i
+  );
+  if (match) {
+    const grade = match[1];
+    let letterPart = match[2].trim().toUpperCase();
+
+    // Harflarni lotinlashtirish
+    letterPart = letterPart
+      .split("")
+      .map((char) => CYRILLIC_TO_LATIN[char] || char)
+      .join("");
+
+    return `${grade}-${letterPart}`;
+  }
+
+  return clean.toUpperCase();
+}

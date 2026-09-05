@@ -3,7 +3,7 @@
 import { prisma } from "@/lib/prisma";
 import { SchoolClass } from "@/types";
 import { resolveSchool } from "./school.actions";
-import { resolveDbBranchId, resolveDbShiftId } from "@/lib/utils";
+import { resolveDbBranchId, resolveDbShiftId, normalizeClassName } from "@/lib/utils";
 
 /**
  * Sinfni yaratish yoki yangilash
@@ -13,6 +13,7 @@ export async function upsertClassAction(schoolId: string, cls: SchoolClass) {
     const school = await resolveSchool(schoolId);
     if (!school) return { success: false, error: "Maktab topilmadi" };
     const actualSchoolId = school.id;
+    const normalizedName = normalizeClassName(cls.name);
 
     await prisma.$transaction(async (tx) => {
       // Filial va smena mavjudligini aniq tekshirish
@@ -23,7 +24,10 @@ export async function upsertClassAction(schoolId: string, cls: SchoolClass) {
       const shiftId = resolveDbShiftId(allShifts, cls.shiftId);
 
       const existing = await tx.class.findFirst({
-        where: { schoolId: actualSchoolId, OR: [{ id: cls.id }, { name: cls.name.trim() }] },
+        where: {
+          schoolId: actualSchoolId,
+          OR: [{ id: cls.id }, { name: normalizedName }, { name: cls.name.trim() }],
+        },
       });
 
       let classId = cls.id;
@@ -33,7 +37,7 @@ export async function upsertClassAction(schoolId: string, cls: SchoolClass) {
             schoolId: actualSchoolId,
             branchId: branchId,
             shiftId: shiftId,
-            name: cls.name.trim(),
+            name: normalizedName,
             grade: cls.grade,
             isPrimary: cls.isPrimary || cls.grade <= 4,
             studentCount: cls.studentCount || 25,
@@ -47,7 +51,7 @@ export async function upsertClassAction(schoolId: string, cls: SchoolClass) {
           data: {
             branchId: branchId,
             shiftId: shiftId,
-            name: cls.name.trim(),
+            name: normalizedName,
             grade: cls.grade,
             isPrimary: cls.isPrimary || cls.grade <= 4,
             studentCount: cls.studentCount || 25,
@@ -188,38 +192,87 @@ export async function saveClassTarifficationAction(
     if (!school) return { success: false, error: "Maktab topilmadi" };
     const actualSchoolId = school.id;
 
-    await prisma.$transaction(async (tx) => {
-      const cls = await tx.class.findFirst({
-        where: { OR: [{ id: classId }, { schoolId: actualSchoolId, name: classId }] },
-      });
-      if (!cls) return;
-
-      await tx.classSubject.deleteMany({
-        where: { classId: cls.id, schoolId: actualSchoolId },
-      });
-
-      for (const s of subjects) {
-        const sub = await tx.subject.findFirst({
-          where: { OR: [{ id: s.subjectId }, { schoolId: actualSchoolId, name: s.subjectId }] },
+    await prisma.$transaction(
+      async (tx) => {
+        const cls = await tx.class.findFirst({
+          where: { OR: [{ id: classId }, { schoolId: actualSchoolId, name: classId }] },
         });
-        const teacher = await tx.teacher.findFirst({
-          where: { OR: [{ id: s.teacherId }, { schoolId: actualSchoolId, fullName: s.teacherId }] },
+        if (!cls) return;
+
+        // 1. Bir martalik so'rov bilan barcha fanlar va o'qituvchilarni olish (Neon DB da timeout bo'lmasligi uchun)
+        const dbSubjects = await tx.subject.findMany({ where: { schoolId: actualSchoolId } });
+        const dbTeachers = await tx.teacher.findMany({ where: { schoolId: actualSchoolId } });
+
+        const subMap = new Map<string, string>();
+        dbSubjects.forEach((s) => {
+          subMap.set(s.id, s.id);
+          subMap.set(s.name.trim(), s.id);
+          subMap.set(s.name.trim().toLowerCase(), s.id);
         });
 
-        if (sub && teacher) {
-          await tx.classSubject.create({
-            data: {
-              schoolId: actualSchoolId,
-              classId: cls.id,
-              subjectId: sub.id,
-              teacherId: teacher.id,
-              weeklyHours: s.weeklyHours,
-              groupType: s.groupType || "WHOLE",
-            },
+        const teacherMap = new Map<string, string>();
+        dbTeachers.forEach((t) => {
+          teacherMap.set(t.id, t.id);
+          teacherMap.set(t.fullName.trim(), t.id);
+          teacherMap.set(t.fullName.trim().toLowerCase(), t.id);
+        });
+
+        const hrTeacher = dbTeachers.find((t) => t.homeroomClassId === cls.id);
+        const fallbackTeacherId = hrTeacher?.id || dbTeachers[0]?.id || "";
+
+        // 2. Mavjud sinf fanlarini tozalash
+        await tx.classSubject.deleteMany({
+          where: { classId: cls.id, schoolId: actualSchoolId },
+        });
+
+        // 3. Yangi fanlar qatorlarini xotirada bir zumda shakllantirish
+        const rowsToCreate: any[] = [];
+        const seenKeys = new Set<string>();
+
+        for (const s of subjects) {
+          if (!s || !s.subjectId || (Number(s.weeklyHours) || 0) <= 0) continue;
+
+          const mappedSubId =
+            subMap.get(s.subjectId) ||
+            subMap.get(s.subjectId.trim()) ||
+            subMap.get(s.subjectId.trim().toLowerCase());
+
+          if (!mappedSubId) continue;
+
+          let mappedTeacherId =
+            (s.teacherId && teacherMap.get(s.teacherId)) ||
+            (s.teacherId && teacherMap.get(s.teacherId.trim())) ||
+            (s.teacherId && teacherMap.get(s.teacherId.trim().toLowerCase())) ||
+            s.teacherId;
+
+          if (!mappedTeacherId || !teacherMap.has(mappedTeacherId)) {
+            mappedTeacherId = fallbackTeacherId;
+          }
+
+          const gType = s.groupType || "WHOLE";
+          const uniqueKey = `${cls.id}_${mappedSubId}_${mappedTeacherId}_${gType}`;
+          if (seenKeys.has(uniqueKey)) continue;
+          seenKeys.add(uniqueKey);
+
+          rowsToCreate.push({
+            schoolId: actualSchoolId,
+            classId: cls.id,
+            subjectId: mappedSubId,
+            teacherId: mappedTeacherId,
+            weeklyHours: Number(s.weeklyHours) || 1,
+            groupType: gType,
           });
         }
-      }
-    });
+
+        // 4. Bitta chaqiriqda barcha fanlarni bazaga yozish (0ms kechikish)
+        if (rowsToCreate.length > 0) {
+          await tx.classSubject.createMany({
+            data: rowsToCreate,
+          });
+        }
+      },
+      { maxWait: 15000, timeout: 30000 }
+    );
 
     return { success: true };
   } catch (error: any) {
@@ -236,7 +289,7 @@ export async function saveAllClassesTarifficationAction(
   classesData: Array<{
     id: string;
     homeroomTeacherId?: string | null;
-    subjects: Array<{ subjectId: string; teacherId: string; weeklyHours: number }>;
+    subjects: Array<{ subjectId: string; teacherId: string; weeklyHours: number; groupType?: string }>;
   }>
 ) {
   try {
@@ -253,12 +306,14 @@ export async function saveAllClassesTarifficationAction(
       dbSubjects.forEach((s) => {
         subMap.set(s.id, s.id);
         subMap.set(s.name.trim(), s.id);
+        subMap.set(s.name.trim().toLowerCase(), s.id);
       });
 
       const teacherMap = new Map<string, string>();
       dbTeachers.forEach((t) => {
         teacherMap.set(t.id, t.id);
         teacherMap.set(t.fullName.trim(), t.id);
+        teacherMap.set(t.fullName.trim().toLowerCase(), t.id);
       });
 
       for (const clsData of classesData) {
@@ -269,7 +324,7 @@ export async function saveAllClassesTarifficationAction(
 
         // Sinf rahbari yangilanishi
         if (clsData.homeroomTeacherId) {
-          const tId = teacherMap.get(clsData.homeroomTeacherId);
+          const tId = teacherMap.get(clsData.homeroomTeacherId) || teacherMap.get(clsData.homeroomTeacherId.toLowerCase());
           if (tId) {
             await tx.teacher.updateMany({
               where: { schoolId: actualSchoolId, homeroomClassId: cls.id },
@@ -287,10 +342,26 @@ export async function saveAllClassesTarifficationAction(
           where: { classId: cls.id, schoolId: actualSchoolId },
         });
 
+        const hrTeacher = dbTeachers.find((t) => t.homeroomClassId === cls.id);
+        const fallbackTeacherId =
+          (clsData.homeroomTeacherId && teacherMap.get(clsData.homeroomTeacherId)) ||
+          hrTeacher?.id ||
+          dbTeachers[0]?.id;
+
         const rowsToCreate: any[] = [];
         for (const s of clsData.subjects || []) {
-          const mappedSubId = subMap.get(s.subjectId) || s.subjectId;
-          const mappedTeacherId = teacherMap.get(s.teacherId) || s.teacherId;
+          const mappedSubId =
+            subMap.get(s.subjectId) ||
+            subMap.get(s.subjectId?.toLowerCase()) ||
+            s.subjectId;
+          let mappedTeacherId =
+            (s.teacherId && teacherMap.get(s.teacherId)) ||
+            (s.teacherId && teacherMap.get(s.teacherId?.toLowerCase())) ||
+            s.teacherId;
+
+          if (!mappedTeacherId && fallbackTeacherId) {
+            mappedTeacherId = fallbackTeacherId;
+          }
 
           if (mappedSubId && mappedTeacherId && (s.weeklyHours || 0) > 0) {
             rowsToCreate.push({
@@ -299,6 +370,7 @@ export async function saveAllClassesTarifficationAction(
               subjectId: mappedSubId,
               teacherId: mappedTeacherId,
               weeklyHours: s.weeklyHours,
+              groupType: s.groupType || "WHOLE",
             });
           }
         }

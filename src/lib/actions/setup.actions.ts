@@ -2,6 +2,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth/auth.config";
+import { normalizeClassName } from "@/lib/utils";
 import type { SetupData } from "@/app/setup/page";
 
 export async function completeSetup(data: SetupData) {
@@ -101,7 +102,14 @@ export async function completeSetup(data: SetupData) {
       if (!branchId || !shiftId) continue;
 
       const cls = await tx.class.create({
-        data: { schoolId, branchId, shiftId, name: c.name, grade: c.grade, isPrimary: c.grade <= 4 },
+        data: {
+          schoolId,
+          branchId,
+          shiftId,
+          name: normalizeClassName(c.name),
+          grade: c.grade,
+          isPrimary: c.grade <= 4,
+        },
       });
 
       for (const cs of c.subjects) {

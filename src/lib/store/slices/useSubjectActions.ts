@@ -12,8 +12,21 @@ export function useSubjectActions() {
     }));
     addAuditLog("Fan qo'shildi", `${subject.name} fani qo'shildi`);
 
-    upsertSubjectAction(subject.schoolId || storeState.currentSchoolId, subject).then((res) => {
-      updateStore((prev) => ({ ...prev, syncStatus: res.success ? "synced" : "error" }));
+    upsertSubjectAction(subject.schoolId || storeState.currentSchoolId, subject).then((res: any) => {
+      if (res.success && res.subject && res.subject.id !== subject.id) {
+        const canonicalId = res.subject.id;
+        updateStore((prev) => ({
+          ...prev,
+          subjects: prev.subjects.map((s) => (s.id === subject.id ? { ...s, id: canonicalId } : s)),
+          classes: prev.classes.map((c) => ({
+            ...c,
+            subjects: (c.subjects || []).map((cs) => (cs.subjectId === subject.id ? { ...cs, subjectId: canonicalId } : cs)),
+          })),
+          syncStatus: "synced",
+        }));
+      } else {
+        updateStore((prev) => ({ ...prev, syncStatus: res.success ? "synced" : "error" }));
+      }
     });
   }, []);
 

@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import type { SetupData } from "@/app/setup/page";
 import { StepLayout } from "./StepLayout";
+import { normalizeClassName } from "@/lib/utils";
 import { GraduationCap, Plus, Trash2, Copy } from "lucide-react";
 
 type Props = {
@@ -25,8 +26,8 @@ export function Step5Classes({ data, updateData, onNext, onBack, onFinish, isSub
 
   const [grade, setGrade] = useState(1);
   const [name, setName] = useState("1-A");
-  const [branch, setBranch] = useState(branches[0] || "");
-  const [shift, setShift] = useState(shifts[0] || "");
+  const [branch, setBranch] = useState(branches[0] || "Asosiy bino");
+  const [shift, setShift] = useState(shifts[0] || "1-smena");
   const [classSubjects, setClassSubjects] = useState<ClassSubject[]>([]);
   const [selectedClass, setSelectedClass] = useState<number | null>(null);
 
@@ -47,8 +48,9 @@ export function Step5Classes({ data, updateData, onNext, onBack, onFinish, isSub
   };
 
   const addClass = () => {
-    if (!name.trim()) return;
-    set([...classes, { name: name.trim(), grade, branchName: branch, shiftName: shift, subjects: classSubjects }]);
+    const normalized = normalizeClassName(name);
+    if (!normalized) return;
+    set([...classes, { name: normalized, grade, branchName: branch, shiftName: shift, subjects: classSubjects }]);
     setClassSubjects([]);
     setName(`${grade}-${String.fromCharCode(65 + classes.filter((c) => c.grade === grade).length)}`);
   };
@@ -81,7 +83,15 @@ export function Step5Classes({ data, updateData, onNext, onBack, onFinish, isSub
         <div className="grid grid-cols-4 gap-3">
           <div>
             <label className="label-sm">Sinf *</label>
-            <input value={name} onChange={(e) => setName(e.target.value)} placeholder="1-A" className="input-field w-full" />
+            <input
+              value={name}
+              onChange={(e) => setName(e.target.value.toUpperCase())}
+              onBlur={() => {
+                if (name.trim()) setName(normalizeClassName(name));
+              }}
+              placeholder="1-A"
+              className="input-field w-full font-bold uppercase"
+            />
           </div>
           <div>
             <label className="label-sm">Bosqich</label>

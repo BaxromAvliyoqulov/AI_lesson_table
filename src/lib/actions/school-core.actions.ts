@@ -14,7 +14,7 @@ import {
   BellPeriod,
 } from "@/types";
 import { CSPSolver } from "@/lib/solver/csp-solver";
-import { resolveDbBranchId, resolveDbShiftId } from "@/lib/utils";
+import { resolveDbBranchId, resolveDbShiftId, normalizeClassName } from "@/lib/utils";
 
 /**
  * 0. Maktab ID yoki slug bo'yicha bazadagi haqiqiy School yozuvini aniqlash (Auto-Resolver)
@@ -184,14 +184,38 @@ export async function getSchoolFullData(schoolId?: string) {
       })),
     }));
 
+    const activeSchedule = school.schedules[0];
+    const scheduleLessons = activeSchedule?.lessons || [];
+
     const classes: SchoolClass[] = school.classes.map((c) => {
-      const homeroomTeacher = school.teachers.find((t) => t.homeroomClassId === c.id);
+      let homeroomTeacher = school.teachers.find((t) => t.homeroomClassId === c.id);
+
+      // Self-Healing: Agar homeroomClassId bo'yicha topilmasa, dars jadvali Dushanba 1-soat darsidan yoki Kelajak soatidan tiklash
+      if (!homeroomTeacher) {
+        const mondayLesson = scheduleLessons.find(
+          (l) => l.classId === c.id && l.dayOfWeek === 1 && l.periodNumber === 1 && l.teacherId
+        );
+        if (mondayLesson) {
+          homeroomTeacher = school.teachers.find((t) => t.id === mondayLesson.teacherId);
+        }
+      }
+      if (!homeroomTeacher) {
+        const kelajakCS = c.subjects.find((cs) => {
+          const sub = school.subjects.find((s) => s.id === cs.subjectId);
+          const name = (sub?.name || "").toLowerCase();
+          return name.includes("kelajak") || name.includes("sinf soati");
+        });
+        if (kelajakCS && kelajakCS.teacherId) {
+          homeroomTeacher = school.teachers.find((t) => t.id === kelajakCS.teacherId);
+        }
+      }
+
       return {
         id: c.id,
         schoolId: c.schoolId,
         branchId: c.branchId,
         shiftId: c.shiftId,
-        name: c.name,
+        name: normalizeClassName(c.name),
         grade: c.grade,
         isPrimary: c.isPrimary,
         studentCount: c.studentCount || 25,
@@ -209,7 +233,6 @@ export async function getSchoolFullData(schoolId?: string) {
       };
     });
 
-    const activeSchedule = school.schedules[0];
     let lessons: Lesson[] = [];
 
     if (activeSchedule && activeSchedule.lessons.length > 0) {
@@ -792,3 +815,32 @@ export async function syncFullSchoolDataAction(
     return { success: false, error: error?.message };
   }
 }
+
+/**
+ * Qo'ng'iroqlar jadvalini (Dars va tanaffus vaqtlari) Neon DB dagi Shift modeliga saqlash
+ */
+export async function saveBellPeriodsAction(schoolId: string, bellPeriods: BellPeriod[]) {
+  try {
+    const school = await resolveSchool(schoolId);
+    if (!school) return { success: false, error: "Maktab topilmadi" };
+
+    const firstPeriod = bellPeriods[0];
+    const lastPeriod = bellPeriods[bellPeriods.length - 1];
+
+    await prisma.shift.updateMany({
+      where: { schoolId: school.id },
+      data: {
+        bellPeriods: bellPeriods as any,
+        periodsCount: bellPeriods.length,
+        startTime: firstPeriod?.startTime || "08:00",
+        endTime: lastPeriod?.endTime || "13:00",
+      },
+    });
+
+    return { success: true };
+  } catch (error: any) {
+    console.error("saveBellPeriodsAction xatosi:", error);
+    return { success: false, error: error?.message };
+  }
+}
+

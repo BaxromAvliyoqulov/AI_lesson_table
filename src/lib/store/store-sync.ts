@@ -1,6 +1,6 @@
 import { useCallback, useEffect } from "react";
 import { getSchoolFullData, syncFullSchoolDataAction } from "@/lib/actions/school.actions";
-import { sortClassesByName } from "@/lib/utils";
+import { sortClassesByName, normalizeClassName } from "@/lib/utils";
 import { isKelajakOrSinfSoatiSubject } from "@/lib/curriculum-templates";
 import { SchoolClass, Teacher, Subject, Lesson, ClassSubject } from "@/types";
 import {
@@ -62,6 +62,38 @@ export function normalizeHomeroomSinfSoati({
     }
   }
 
+  // 3-bosqich: O'z-o'zini tiklash (Self-Healing Guardian):
+  // Agar sinfda hali ham rahbar topilmagan bo'lsa, dars jadvalidagi Dushanba 1-soat darsidan yoki Kelajak soatidan tiklash
+  for (const c of classes) {
+    if (!classToTeacherMap.has(c.id)) {
+      // a) Dars jadvalida Dushanba 1-soat (Kelajak soati) darsi
+      const mondayLesson = lessons.find(
+        (l) => l.classId === c.id && l.dayOfWeek === 1 && l.periodNumber === 1 && l.teacherId
+      );
+      if (mondayLesson && !assignedTeachers.has(mondayLesson.teacherId)) {
+        const teacherExists = teachers.some((t) => t.id === mondayLesson.teacherId);
+        if (teacherExists) {
+          classToTeacherMap.set(c.id, mondayLesson.teacherId);
+          assignedTeachers.add(mondayLesson.teacherId);
+          continue;
+        }
+      }
+
+      // b) Sinf o'quv rejasidagi Kelajak soati
+      const kelajakSubject = (c.subjects || []).find((s) => {
+        const sub = subjects.find((subItem) => subItem.id === s.subjectId);
+        return isKelajakOrSinfSoatiSubject(s.subjectId, sub?.name) && s.teacherId;
+      });
+      if (kelajakSubject && kelajakSubject.teacherId && !assignedTeachers.has(kelajakSubject.teacherId)) {
+        const teacherExists = teachers.some((t) => t.id === kelajakSubject.teacherId);
+        if (teacherExists) {
+          classToTeacherMap.set(c.id, kelajakSubject.teacherId);
+          assignedTeachers.add(kelajakSubject.teacherId);
+        }
+      }
+    }
+  }
+
   // Reverse map: teacherId -> classId
   const teacherToClassMap = new Map<string, string>();
   for (const [clsId, tId] of classToTeacherMap.entries()) {
@@ -96,6 +128,7 @@ export function normalizeHomeroomSinfSoati({
       }
       return {
         ...c,
+        name: normalizeClassName(c.name),
         homeroomTeacherId: undefined,
         subjects: dedupedClean,
       };
@@ -131,6 +164,7 @@ export function normalizeHomeroomSinfSoati({
 
     return {
       ...c,
+      name: normalizeClassName(c.name),
       homeroomTeacherId: hrTeacherId,
       subjects: [...dedupedOther, singleHomeroomHour],
     };

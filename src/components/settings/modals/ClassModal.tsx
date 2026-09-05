@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { SchoolClass, Branch, Shift, Teacher, ClassBlockedPeriod } from "@/types";
+import { normalizeClassName } from "@/lib/utils";
 import { TeacherSelectCombobox } from "../shared/TeacherSelectCombobox";
 import {
   X,
@@ -148,14 +149,15 @@ export const ClassModal: React.FC<ClassModalProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim()) return;
+    const formattedName = normalizeClassName(name);
+    if (!formattedName) return;
 
     const classData: SchoolClass = {
       id: editingClass ? editingClass.id : `c_${currentSchoolId}_${Date.now()}`,
       schoolId: currentSchoolId,
       branchId: branchId || branches[0]?.id || "",
       shiftId: shiftId || shifts[0]?.id || "",
-      name: name.trim().toUpperCase(),
+      name: formattedName,
       grade: Number(grade),
       isPrimary: Number(grade) <= 4 || isPrimary,
       isClosed,
@@ -210,7 +212,7 @@ export const ClassModal: React.FC<ClassModalProps> = ({
                 placeholder="Masalan: 5-A, 10-B"
                 value={name}
                 onChange={(e) => {
-                  setName(e.target.value);
+                  setName(e.target.value.toUpperCase());
                   const parsedGrade = parseInt(e.target.value);
                   if (!isNaN(parsedGrade) && parsedGrade >= 1 && parsedGrade <= 11) {
                     setGrade(parsedGrade);
@@ -220,8 +222,16 @@ export const ClassModal: React.FC<ClassModalProps> = ({
                     }
                   }
                 }}
+                onBlur={() => {
+                  if (name.trim()) {
+                    setName(normalizeClassName(name));
+                  }
+                }}
                 className="w-full px-3.5 py-2.5 rounded-xl border border-border bg-background focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm font-bold uppercase tracking-wider"
               />
+              <p className="text-[10px] text-muted-foreground mt-1">
+                Format: <span className="font-semibold text-primary">1-A, 5-B, 10-A</span>
+              </p>
             </div>
 
             <div>
