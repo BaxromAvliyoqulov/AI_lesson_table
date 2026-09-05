@@ -64,17 +64,20 @@ export const AvailabilityTab: React.FC<AvailabilityTabProps> = ({
     teachers[0]?.id || ""
   );
   const [availabilities, setAvailabilities] = useState<TeacherAvailability[]>([]);
-  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<"saved" | "saving">("saved");
   const [activeShiftTab, setActiveShiftTab] = useState<ShiftViewMode>("SHIFT_1");
 
   const selectedTeacher = teachers.find((t) => t.id === selectedTeacherId);
 
+  // Faqat o'qituvchi tanlovi o'zgargandagina ushbu o'qituvchining ma'lumotlarini yuklaymiz.
+  // Bu orqali fondagi 30 soniyalik refetch foydalanuvchi band qilgan holatni o'chirib yubormaydi!
   useEffect(() => {
-    if (selectedTeacher) {
-      setAvailabilities(selectedTeacher.availabilities || []);
-      setHasUnsavedChanges(false);
+    if (selectedTeacherId) {
+      const currentTeacher = teachers.find((t) => t.id === selectedTeacherId);
+      setAvailabilities(currentTeacher?.availabilities || []);
+      setSaveStatus("saved");
     }
-  }, [selectedTeacherId, selectedTeacher]);
+  }, [selectedTeacherId]);
 
   // O'qituvchining shaxsiy yoki uning fani standarti bo'yicha haqiqiy metod kuni
   const methodDayInfo = useMemo(() => {
@@ -85,6 +88,20 @@ export const AvailabilityTab: React.FC<AvailabilityTabProps> = ({
   const handleSelectMethodDay = (dayId: number | null) => {
     if (!selectedTeacherId) return;
     setTeacherMethodDay(selectedTeacherId, dayId);
+  };
+
+  /**
+   * Bir zumda avtomatik saqlash mexanizmi (Instant Auto-Save)
+   * Foydalanuvchi har qanday tugma yoki katakchani bosganida darhol DB va Store'ga yoziladi
+   */
+  const commitAvailabilities = (updated: TeacherAvailability[]) => {
+    if (!selectedTeacherId) return;
+    setAvailabilities(updated);
+    setSaveStatus("saving");
+    onSaveAvailability(selectedTeacherId, updated);
+    setTimeout(() => {
+      setSaveStatus("saved");
+    }, 400);
   };
 
   /**
@@ -101,7 +118,7 @@ export const AvailabilityTab: React.FC<AvailabilityTabProps> = ({
   };
 
   /**
-   * Smena bo'yicha katakni bosib bo'sh/band holatini almashtirish
+   * Smena bo'yicha katakni bosib bo'sh/band holatini almashtirish (bir zumda saqlanadi)
    */
   const toggleCell = (day: number, period: number, shift: "SHIFT_1" | "SHIFT_2") => {
     if (methodDayInfo.day === day) return; // Metod kunida o'zgarmaydi
@@ -129,12 +146,11 @@ export const AvailabilityTab: React.FC<AvailabilityTabProps> = ({
       ];
     }
 
-    setAvailabilities(updated);
-    setHasUnsavedChanges(true);
+    commitAvailabilities(updated);
   };
 
   /**
-   * Tanlangan smenani to'liq bo'sh yoki to'liq band qilish
+   * Tanlangan smenani to'liq bo'sh yoki to'liq band qilish (bir zumda saqlanadi)
    */
   const handleSetShiftAll = (shift: "SHIFT_1" | "SHIFT_2", available: boolean) => {
     if (!selectedTeacherId) return;
@@ -149,7 +165,7 @@ export const AvailabilityTab: React.FC<AvailabilityTabProps> = ({
 
     const newShiftAvails: TeacherAvailability[] = [];
     DAYS.forEach((d) => {
-      if (selectedTeacher?.methodDayOfWeek !== d.id) {
+      if (methodDayInfo.day !== d.id) {
         periodsToUpdate.forEach((p) => {
           newShiftAvails.push({
             teacherId: selectedTeacherId,
@@ -161,22 +177,16 @@ export const AvailabilityTab: React.FC<AvailabilityTabProps> = ({
       }
     });
 
-    setAvailabilities([...otherShiftAvails, ...newShiftAvails]);
-    setHasUnsavedChanges(true);
+    const updated = [...otherShiftAvails, ...newShiftAvails];
+    commitAvailabilities(updated);
   };
 
   /**
-   * Butun haftani (har ikkala smenani) to'liq bo'sh qilish
+   * Butun haftani (har ikkala smenani) to'liq bo'sh qilish (bir zumda saqlanadi)
    */
   const handleResetAll = () => {
-    setAvailabilities([]);
-    setHasUnsavedChanges(true);
-  };
-
-  const handleSave = () => {
     if (!selectedTeacherId) return;
-    onSaveAvailability(selectedTeacherId, availabilities);
-    setHasUnsavedChanges(false);
+    commitAvailabilities([]);
   };
 
   // Smenalar bo'yicha band soatlar statistikasi
@@ -356,26 +366,44 @@ export const AvailabilityTab: React.FC<AvailabilityTabProps> = ({
         </div>
 
         {selectedTeacher && (
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-2.5 flex-wrap">
             <button
               type="button"
               onClick={handleResetAll}
-              className="px-3 py-2 rounded-xl text-xs font-semibold border border-border hover:bg-muted transition-colors cursor-pointer"
+              className="px-3.5 py-2 rounded-xl text-xs font-semibold border border-border hover:bg-muted transition-colors cursor-pointer flex items-center gap-1.5"
               title="Barcha smenalardagi bandliklarni tozalab, bo'sh qilish"
             >
-              Barcha vaqtlarni bo&apos;sh qilish
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span>Barcha vaqtlarni bo&apos;sh qilish</span>
             </button>
-            <button
-              type="button"
-              onClick={handleSave}
-              disabled={!hasUnsavedChanges}
-              className={`px-5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                hasUnsavedChanges
-                  ? "bg-primary text-primary-foreground shadow-md shadow-primary/20 hover:bg-primary/90 ring-2 ring-primary/20"
-                  : "bg-muted text-muted-foreground cursor-not-allowed"
+
+            <div
+              className={`px-3.5 py-2 rounded-xl text-xs font-extrabold flex items-center gap-2 border transition-all ${
+                saveStatus === "saving"
+                  ? "bg-amber-500/15 border-amber-500/30 text-amber-700 dark:text-amber-300 animate-pulse"
+                  : "bg-emerald-500/15 border-emerald-500/30 text-emerald-700 dark:text-emerald-400"
               }`}
             >
-              {hasUnsavedChanges ? "O'zgarishlarni saqlash" : "Saqlangan"}
+              {saveStatus === "saving" ? (
+                <>
+                  <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping" />
+                  <span>Avtomatik saqlanmoqda...</span>
+                </>
+              ) : (
+                <>
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                  <span>Avtomatik saqlangan</span>
+                </>
+              )}
+            </div>
+
+            <button
+              type="button"
+              onClick={() => commitAvailabilities([...availabilities])}
+              className="px-3 py-2 rounded-xl text-xs font-semibold border border-border hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+              title="Zarur bo'lsa ma'lumotlarni qayta saqlash"
+            >
+              Qayta saqlash
             </button>
           </div>
         )}
