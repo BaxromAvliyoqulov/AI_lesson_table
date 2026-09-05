@@ -9,7 +9,11 @@ import {
   saveTeacherWorkloadAction,
   syncFullSchoolDataAction,
 } from "@/lib/actions/school.actions";
-import { isHomeroomPrimarySubject, isKelajakOrSinfSoatiSubject } from "@/lib/curriculum-templates";
+import {
+  isHomeroomPrimarySubject,
+  isKelajakOrSinfSoatiSubject,
+  generateStandardCurriculumForClass,
+} from "@/lib/curriculum-templates";
 import { storeState, updateStore, addAuditLog } from "../store-core";
 import { triggerBackgroundAutoScheduler } from "./useLessonActions";
 
@@ -453,6 +457,75 @@ export function useClassActions() {
     triggerBackgroundAutoScheduler();
   }, []);
 
+  /**
+   * ⚡ Barcha sinflarga O'zbekiston Respublikasi Davlat Standart O'quv Rejasini 1-bosishda tatbiq etish
+   * (1-sinf: 22s, 2-4: 25s, 5: 30s, 6: 31s, 7: 36s, 8: 34s, 9: 35s, 10-11: 32s)
+   */
+  const applyStandardCurriculumToAllClasses = useCallback(() => {
+    let affectedCount = 0;
+    updateStore((prev) => {
+      const workloadTracker = new Map<string, number>();
+
+      const updatedClasses = prev.classes.map((cls) => {
+        const grade = cls.grade || 5;
+        const standardList = generateStandardCurriculumForClass(
+          grade,
+          cls.id,
+          cls.homeroomTeacherId,
+          prev.subjects,
+          prev.teachers,
+          workloadTracker
+        );
+
+        // Agar foydalanuvchi allaqachon biriktirgan o'qituvchilar bo'lsa, ularni saqlab qolamiz!
+        const existingSubjectMap = new Map<string, ClassSubject>();
+        (cls.subjects || []).forEach((cs) => {
+          if (cs.teacherId) {
+            existingSubjectMap.set(cs.subjectId, cs);
+          }
+        });
+
+        const mergedSubjects: ClassSubject[] = standardList.map((stItem) => {
+          const existing = existingSubjectMap.get(stItem.subjectId);
+          if (existing && existing.teacherId) {
+            return {
+              ...stItem,
+              teacherId: existing.teacherId,
+              groupType: existing.groupType || stItem.groupType || "WHOLE",
+            };
+          }
+          return stItem;
+        });
+
+        affectedCount++;
+        return {
+          ...cls,
+          subjects: mergedSubjects,
+        };
+      });
+
+      const sorted = sortClassesByName(updatedClasses);
+      return {
+        ...prev,
+        classes: sorted,
+        syncStatus: "syncing",
+      };
+    });
+
+    addAuditLog(
+      "Davlat Standart Rejasi Tatbiq Etildi",
+      `Barcha ${affectedCount} ta sinfga 2026-2027-o'quv yili uchun Rasmiy Davlat O'quv Rejasi to'liq tatbiq etildi`
+    );
+
+    syncFullSchoolDataAction(storeState.currentSchoolId, {
+      classes: storeState.classes,
+    }).then((res) => {
+      updateStore((prev) => ({ ...prev, syncStatus: res.success ? "synced" : "error" }));
+    });
+
+    triggerBackgroundAutoScheduler();
+  }, []);
+
   return {
     addClass,
     updateClass,
@@ -462,5 +535,6 @@ export function useClassActions() {
     saveCurriculum,
     saveTeacherWorkload,
     updateClasses,
+    applyStandardCurriculumToAllClasses,
   };
 }

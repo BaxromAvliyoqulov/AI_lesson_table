@@ -64,6 +64,7 @@ export const CurriculumModal: React.FC<CurriculumModalProps> = ({
   const [subjectsList, setSubjectsList] = useState<ClassSubject[]>([]);
   const [selectedCopyClassId, setSelectedCopyClassId] = useState<string>("");
   const [viewMode, setViewMode] = useState<"LIST" | "WEEKLY_GRID">("LIST");
+  const [curriculumFilter, setCurriculumFilter] = useState<"ALL" | "UNASSIGNED" | "ASSIGNED">("ALL");
 
   // Interactive Catalog / Drawer State
   const [isCatalogOpen, setIsCatalogOpen] = useState(false);
@@ -187,6 +188,24 @@ export const CurriculumModal: React.FC<CurriculumModalProps> = ({
       unassignedTeachersCount: unassigned,
     };
   }, [subjectsList, subjectMap]);
+
+  const assignedTeachersCount = subjectsList.length - unassignedTeachersCount;
+  const fulfillmentPercent = subjectsList.length > 0 ? Math.round((assignedTeachersCount / subjectsList.length) * 100) : 100;
+
+  // Indexed list and filter
+  const indexedSubjectsList = useMemo(() => {
+    return subjectsList.map((item, originalIndex) => ({ item, originalIndex }));
+  }, [subjectsList]);
+
+  const visibleSubjectsList = useMemo(() => {
+    if (curriculumFilter === "UNASSIGNED") {
+      return indexedSubjectsList.filter(({ item }) => !item.teacherId);
+    }
+    if (curriculumFilter === "ASSIGNED") {
+      return indexedSubjectsList.filter(({ item }) => !!item.teacherId);
+    }
+    return indexedSubjectsList;
+  }, [indexedSubjectsList, curriculumFilter]);
 
   // Max recommended load: 1-4th grades: 22-26 hours, 5-9th: 28-32, 10-11th: 32-35 hours
   const recommendedHours = useMemo(() => {
@@ -479,9 +498,130 @@ export const CurriculumModal: React.FC<CurriculumModalProps> = ({
     setIsCatalogOpen(false);
   };
 
+  // ⚡ Bo'sh fanlarga mutaxassislarni 1-bosishda avtomatik tayinlash
+  const handleAutoAssignSpecialists = useCallback(() => {
+    if (!targetClass || subjectsList.length === 0) return;
+
+    const localTracker = new Map<string, number>();
+    subjectsList.forEach((s) => {
+      if (s.teacherId) {
+        localTracker.set(
+          s.teacherId,
+          (localTracker.get(s.teacherId) || 0) + (Number(s.weeklyHours) || 0)
+        );
+      }
+    });
+
+    let assignedCountNow = 0;
+    const updated = subjectsList.map((item) => {
+      if (item.teacherId) return item;
+
+      const sub = subjectMap.get(item.subjectId);
+      const isSinfSoati =
+        item.subjectId === "sub_sinf_soati" ||
+        item.subjectId === "sub_kelajak" ||
+        sub?.name.toLowerCase().includes("sinf soati") ||
+        sub?.name.toLowerCase().includes("kelajak");
+
+      // 1. Sinf soati yoki boshlang'ich sinf asosiy fanlari -> Sinf rahbariga
+      if (
+        targetClass.homeroomTeacherId &&
+        (isSinfSoati || (targetClass.grade <= 4 && sub && isHomeroomPrimarySubject(sub, targetClass.grade)))
+      ) {
+        assignedCountNow++;
+        return { ...item, teacherId: targetClass.homeroomTeacherId };
+      }
+
+      // 2. Fanni o'tadigan mutaxassis o'qituvchilar
+      const specialistCandidates = allTeachers.filter((t) =>
+        t.subjectIds?.includes(item.subjectId)
+      );
+      const pool = specialistCandidates.length > 0 ? specialistCandidates : allTeachers;
+      if (pool.length === 0) return item;
+
+      let bestTeacher = pool[0];
+      let minLoad = Infinity;
+      for (const t of pool) {
+        const load = localTracker.get(t.id) || 0;
+        const cap = t.weeklyHourCapacity || 20;
+        const score = load + (load >= cap ? 1000 : 0);
+        if (score < minLoad) {
+          minLoad = score;
+          bestTeacher = t;
+        }
+      }
+
+      if (bestTeacher) {
+        assignedCountNow++;
+        const cur = localTracker.get(bestTeacher.id) || 0;
+        localTracker.set(bestTeacher.id, cur + (Number(item.weeklyHours) || 0));
+        return { ...item, teacherId: bestTeacher.id };
+      }
+
+      return item;
+    });
+
+    setSubjectsList(updated);
+    if (assignedCountNow > 0) {
+      showToast(`🎉 ${assignedCountNow} ta fanga mutaxassis o'qituvchilar avtomatik biriktirildi!`);
+    } else {
+      showToast("Barcha fanlarga allaqachon o'qituvchilar biriktirilgan");
+    }
+  }, [targetClass, subjectsList, subjectMap, allTeachers]);
+
   // Save full curriculum
   const handleSave = () => {
-    const validList = subjectsList.filter(
+    let finalList = [...subjectsList];
+    const unassigned = finalList.filter((s) => !s.teacherId && Number(s.weeklyHours) > 0);
+
+    if (unassigned.length > 0) {
+      const localTracker = new Map<string, number>();
+      finalList.forEach((s) => {
+        if (s.teacherId) {
+          localTracker.set(s.teacherId, (localTracker.get(s.teacherId) || 0) + (Number(s.weeklyHours) || 0));
+        }
+      });
+
+      finalList = finalList.map((item) => {
+        if (item.teacherId) return item;
+
+        const sub = subjectMap.get(item.subjectId);
+        const isSinfSoati =
+          item.subjectId === "sub_sinf_soati" ||
+          item.subjectId === "sub_kelajak" ||
+          sub?.name.toLowerCase().includes("sinf soati") ||
+          sub?.name.toLowerCase().includes("kelajak");
+
+        if (
+          targetClass.homeroomTeacherId &&
+          (isSinfSoati || (targetClass.grade <= 4 && sub && isHomeroomPrimarySubject(sub, targetClass.grade)))
+        ) {
+          return { ...item, teacherId: targetClass.homeroomTeacherId };
+        }
+
+        const specialistCandidates = allTeachers.filter((t) => t.subjectIds?.includes(item.subjectId));
+        const pool = specialistCandidates.length > 0 ? specialistCandidates : allTeachers;
+        if (pool.length > 0) {
+          let bestTeacher = pool[0];
+          let minLoad = Infinity;
+          for (const t of pool) {
+            const load = localTracker.get(t.id) || 0;
+            const cap = t.weeklyHourCapacity || 20;
+            const score = load + (load >= cap ? 1000 : 0);
+            if (score < minLoad) {
+              minLoad = score;
+              bestTeacher = t;
+            }
+          }
+          const current = localTracker.get(bestTeacher.id) || 0;
+          localTracker.set(bestTeacher.id, current + (Number(item.weeklyHours) || 0));
+          return { ...item, teacherId: bestTeacher.id };
+        }
+        return item;
+      });
+    }
+
+    const validList = finalList.filter(
       (s) => s.subjectId && s.teacherId && Number(s.weeklyHours) > 0
     );
     onSave(targetClass.id, validList);
@@ -637,6 +777,17 @@ export const CurriculumModal: React.FC<CurriculumModalProps> = ({
               <span>⚡ Standart Rejani Yuklash</span>
             </button>
 
+            {/* ⚡ Bo'sh fanlarga mutaxassislarni avtomatik tayinlash */}
+            <button
+              type="button"
+              onClick={handleAutoAssignSpecialists}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border border-emerald-500/35 hover:bg-emerald-500/25 transition-all shadow-xs cursor-pointer"
+              title="Bo'sh turgan barcha fanlarga mos mutaxassis o'qituvchilarni avtomatik biriktirish"
+            >
+              <Sparkles className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+              <span>⚡ Bo'sh fanlarga mutaxassislarni tayinlash</span>
+            </button>
+
             {/* Boshlang'ich sinf qoidasi (1-4-sinflar): Ona tili, O'qish, Matematika -> Sinf rahbariga */}
             {targetClass.grade <= 4 && (
               <button
@@ -728,6 +879,54 @@ export const CurriculumModal: React.FC<CurriculumModalProps> = ({
           ) : viewMode === "LIST" ? (
             /* 📋 LIST VIEW: DYNAMIC TABLE / CARDS WITH INSTANT STEPPERS & PRESETS */
             <div className="space-y-2.5">
+              {/* Filter pills: Barcha fanlar / Ustoz tayinlanmagan / Tayinlangan */}
+              <div className="flex items-center justify-between gap-2 pb-1 border-b border-border/60 flex-wrap">
+                <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+                  <button
+                    type="button"
+                    onClick={() => setCurriculumFilter("ALL")}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+                      curriculumFilter === "ALL"
+                        ? "bg-foreground text-background shadow-xs"
+                        : "bg-muted/40 hover:bg-muted text-muted-foreground"
+                    }`}
+                  >
+                    Barcha fanlar ({subjectsList.length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCurriculumFilter("UNASSIGNED")}
+                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+                      curriculumFilter === "UNASSIGNED"
+                        ? "bg-amber-600 text-white shadow-xs"
+                        : "bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-900/60 hover:bg-amber-100"
+                    }`}
+                  >
+                    <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                    <span>⚠️ Ustoz tayinlanmagan ({unassignedTeachersCount})</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCurriculumFilter("ASSIGNED")}
+                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+                      curriculumFilter === "ASSIGNED"
+                        ? "bg-emerald-600 text-white shadow-xs"
+                        : "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-900/60 hover:bg-emerald-100"
+                    }`}
+                  >
+                    <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                    <span>🟢 Ustoz tayinlangan ({assignedTeachersCount})</span>
+                  </button>
+                </div>
+
+                <div className="text-xs font-bold text-muted-foreground shrink-0 hidden sm:block">
+                  Ustoz bilan ta'minlanganlik:{" "}
+                  <span className={unassignedTeachersCount === 0 ? "text-emerald-600 font-extrabold" : "text-amber-600 font-extrabold"}>
+                    {fulfillmentPercent}%
+                  </span>
+                </div>
+              </div>
+
               <div className="hidden md:grid grid-cols-12 gap-3 px-4 py-1.5 text-[11px] font-extrabold text-muted-foreground uppercase tracking-wider">
                 <div className="col-span-4">Fan nomi va turi</div>
                 <div className="col-span-4">Dars beruvchi o'qituvchi</div>
@@ -735,74 +934,63 @@ export const CurriculumModal: React.FC<CurriculumModalProps> = ({
                 <div className="col-span-1 text-center">O'chirish</div>
               </div>
 
-              {subjectsList.map((item, index) => {
-                const sub = subjectMap.get(item.subjectId);
-                const teacherCandidates = allTeachers.filter((t) =>
-                  t.subjectIds?.includes(item.subjectId)
-                );
-                const isSinfSoati =
-                  item.subjectId === "sub_sinf_soati" ||
-                  item.subjectId === "sub_kelajak" ||
-                  sub?.name.toLowerCase().includes("sinf soati") ||
-                  sub?.name.toLowerCase().includes("kelajak");
+              {visibleSubjectsList.length === 0 ? (
+                <div className="py-8 text-center text-xs text-muted-foreground bg-muted/20 rounded-2xl border border-dashed border-border">
+                  {curriculumFilter === "UNASSIGNED"
+                    ? "🎉 Barcha fanlarga o'qituvchi tayinlangan!"
+                    : "Fan topilmadi"}
+                </div>
+              ) : (
+                visibleSubjectsList.map(({ item, originalIndex }) => {
+                  const sub = subjectMap.get(item.subjectId);
+                  const teacherCandidates = allTeachers.filter((t) =>
+                    t.subjectIds?.includes(item.subjectId)
+                  );
+                  const isSinfSoati =
+                    item.subjectId === "sub_sinf_soati" ||
+                    item.subjectId === "sub_kelajak" ||
+                    sub?.name.toLowerCase().includes("sinf soati") ||
+                    sub?.name.toLowerCase().includes("kelajak");
 
-                const currentTeacher = teacherMap.get(item.teacherId);
-                const hasTeacher = !!item.teacherId;
+                  const currentTeacher = teacherMap.get(item.teacherId);
+                  const hasTeacher = !!item.teacherId;
 
-                return (
-                  <div
-                    key={`${item.subjectId}_${index}`}
-                    className={`flex flex-col md:grid md:grid-cols-12 gap-3 p-3.5 rounded-2xl border transition-all items-center ${
-                      isSinfSoati
-                        ? "border-indigo-500/40 bg-indigo-50/50 dark:bg-indigo-950/20 shadow-xs"
-                        : hasTeacher
-                        ? "border-border/80 bg-card/90 hover:bg-card hover:border-primary/40 hover:shadow-xs"
-                        : "border-amber-500/40 bg-amber-500/5 hover:border-amber-500/60"
-                    }`}
-                  >
-                    {/* 1. FAN NOMI & COLOR PILL (Col-4) */}
-                    <div className="w-full md:col-span-4 flex items-center gap-2.5 min-w-0">
-                      <div
-                        className="w-3 h-10 rounded-full shrink-0 shadow-xs"
-                        style={{ backgroundColor: isSinfSoati ? "#8B5CF6" : sub?.colorTag || "#3B82F6" }}
-                      />
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-1.5">
-                          <select
-                            value={item.subjectId}
-                            onChange={(e) => handleUpdateItem(index, "subjectId", e.target.value)}
-                            className="w-full px-3 py-2 text-xs font-bold rounded-xl border border-border bg-background focus:ring-2 focus:ring-primary/20 focus:border-primary cursor-pointer truncate"
-                          >
-                            <optgroup
-                              label={
-                                targetClass.grade <= 4
-                                  ? "🧒 Boshlang'ich sinfga mos fanlar (1-4):"
-                                  : "🧑‍🎓 Yuqori sinfga mos fanlar (5-11):"
-                              }
+                  return (
+                    <div
+                      key={`${item.subjectId}_${originalIndex}`}
+                      className={`flex flex-col md:grid md:grid-cols-12 gap-3 p-3.5 rounded-2xl border transition-all items-center ${
+                        isSinfSoati
+                          ? "border-indigo-500/40 bg-indigo-50/50 dark:bg-indigo-950/20 shadow-xs"
+                          : hasTeacher
+                          ? "border-border/80 bg-card/90 hover:bg-card hover:border-primary/40 hover:shadow-xs"
+                          : "border-amber-500/40 bg-amber-500/5 hover:border-amber-500/60"
+                      }`}
+                    >
+                      {/* 1. FAN NOMI & COLOR PILL (Col-4) */}
+                      <div className="w-full md:col-span-4 flex items-center gap-2.5 min-w-0">
+                        <div
+                          className="w-3 h-10 rounded-full shrink-0 shadow-xs"
+                          style={{ backgroundColor: isSinfSoati ? "#8B5CF6" : sub?.colorTag || "#3B82F6" }}
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <select
+                              value={item.subjectId}
+                              onChange={(e) => handleUpdateItem(originalIndex, "subjectId", e.target.value)}
+                              className="w-full px-3 py-2 text-xs font-bold rounded-xl border border-border bg-background focus:ring-2 focus:ring-primary/20 focus:border-primary cursor-pointer truncate"
                             >
-                              {allSubjects
-                                .filter(
-                                  (s) =>
-                                    isSubjectSuitableForGrade(s, targetClass.grade) ||
-                                    s.id === item.subjectId
-                                )
-                                .map((s) => (
-                                  <option key={s.id} value={s.id}>
-                                    {s.name} ({s.difficultyScore || 5} ball)
-                                  </option>
-                                ))}
-                            </optgroup>
-                            {allSubjects.some(
-                              (s) =>
-                                !isSubjectSuitableForGrade(s, targetClass.grade) &&
-                                s.id !== item.subjectId
-                            ) && (
-                              <optgroup label="📚 Boshqa barcha fanlar:">
+                              <optgroup
+                                label={
+                                  targetClass.grade <= 4
+                                    ? "🧒 Boshlang'ich sinfga mos fanlar (1-4):"
+                                    : "🧑‍🎓 Yuqori sinfga mos fanlar (5-11):"
+                                }
+                              >
                                 {allSubjects
                                   .filter(
                                     (s) =>
-                                      !isSubjectSuitableForGrade(s, targetClass.grade) &&
-                                      s.id !== item.subjectId
+                                      isSubjectSuitableForGrade(s, targetClass.grade) ||
+                                      s.id === item.subjectId
                                   )
                                   .map((s) => (
                                     <option key={s.id} value={s.id}>
@@ -810,125 +998,185 @@ export const CurriculumModal: React.FC<CurriculumModalProps> = ({
                                     </option>
                                   ))}
                               </optgroup>
+                              {allSubjects.some(
+                                (s) =>
+                                  !isSubjectSuitableForGrade(s, targetClass.grade) &&
+                                  s.id !== item.subjectId
+                              ) && (
+                                <optgroup label="📚 Boshqa barcha fanlar:">
+                                  {allSubjects
+                                    .filter(
+                                      (s) =>
+                                        !isSubjectSuitableForGrade(s, targetClass.grade) &&
+                                        s.id !== item.subjectId
+                                    )
+                                    .map((s) => (
+                                      <option key={s.id} value={s.id}>
+                                        {s.name} ({s.difficultyScore || 5} ball)
+                                      </option>
+                                    ))}
+                                </optgroup>
+                              )}
+                            </select>
+                          </div>
+                          <div className="flex items-center gap-2 mt-1">
+                            {isSinfSoati ? (
+                              <span className="text-[10px] text-indigo-600 dark:text-indigo-400 font-extrabold flex items-center gap-1">
+                                🎓 Sinf rahbari soati (Dushanba 1-dars)
+                              </span>
+                            ) : (
+                              <span className="text-[10px] text-muted-foreground font-semibold">
+                                SanPiN: {sub?.difficultyScore || 5} ball
+                              </span>
                             )}
-                          </select>
-                        </div>
-                        <div className="flex items-center gap-2 mt-1">
-                          {isSinfSoati ? (
-                            <span className="text-[10px] text-indigo-600 dark:text-indigo-400 font-extrabold flex items-center gap-1">
-                              🎓 Sinf rahbari soati (Dushanba 1-dars)
-                            </span>
-                          ) : (
-                            <span className="text-[10px] text-muted-foreground font-semibold">
-                              SanPiN: {sub?.difficultyScore || 5} ball
-                            </span>
-                          )}
+                          </div>
                         </div>
                       </div>
-                    </div>
 
-                    {/* 2. O'QITUVCHI TANLASH (Col-4) */}
-                    <div className="w-full md:col-span-4 min-w-0">
-                      <select
-                        value={item.teacherId}
-                        onChange={(e) => handleUpdateItem(index, "teacherId", e.target.value)}
-                        className={`w-full px-3 py-2 text-xs font-semibold rounded-xl border bg-background focus:ring-2 focus:ring-primary/20 focus:border-primary cursor-pointer truncate ${
-                          !item.teacherId
-                            ? "border-amber-400 text-amber-700 dark:text-amber-400 font-bold bg-amber-500/10"
-                            : isSinfSoati
-                            ? "border-indigo-300 font-bold text-indigo-950 dark:text-indigo-200"
-                            : "border-border text-foreground"
-                        }`}
-                      >
-                        <option value="">⚠️ O'qituvchi tanlanmagan</option>
-                        {isSinfSoati && targetClass.homeroomTeacherId && (
-                          <option value={targetClass.homeroomTeacherId}>
-                            ⭐ Sinf rahbari ({teacherMap.get(targetClass.homeroomTeacherId)?.fullName})
-                          </option>
-                        )}
-                        {teacherCandidates.length > 0 && (
-                          <optgroup label="⭐️ Mutaxassis o'qituvchilar:">
-                            {teacherCandidates.map((t) => (
+                      {/* 2. O'QITUVCHI TANLASH (Col-4) */}
+                      <div className="w-full md:col-span-4 min-w-0">
+                        <select
+                          value={item.teacherId}
+                          onChange={(e) => handleUpdateItem(originalIndex, "teacherId", e.target.value)}
+                          className={`w-full px-3 py-2 text-xs font-semibold rounded-xl border bg-background focus:ring-2 focus:ring-primary/20 focus:border-primary cursor-pointer truncate ${
+                            !item.teacherId
+                              ? "border-amber-400 text-amber-700 dark:text-amber-400 font-bold bg-amber-500/10"
+                              : isSinfSoati
+                              ? "border-indigo-300 font-bold text-indigo-950 dark:text-indigo-200"
+                              : "border-border text-foreground"
+                          }`}
+                        >
+                          <option value="">⚠️ O'qituvchi tanlanmagan</option>
+                          {isSinfSoati && targetClass.homeroomTeacherId && (
+                            <option value={targetClass.homeroomTeacherId}>
+                              ⭐ Sinf rahbari ({teacherMap.get(targetClass.homeroomTeacherId)?.fullName})
+                            </option>
+                          )}
+                          {teacherCandidates.length > 0 && (
+                            <optgroup label="⭐️ Mutaxassis o'qituvchilar:">
+                              {teacherCandidates.map((t) => (
+                                <option key={t.id} value={t.id}>
+                                  ⭐️ {t.fullName} ({t.weeklyHourCapacity} st)
+                                </option>
+                              ))}
+                            </optgroup>
+                          )}
+                          <optgroup label="Barcha o'qituvchilar:">
+                            {allTeachers.map((t) => (
                               <option key={t.id} value={t.id}>
-                                ⭐️ {t.fullName} ({t.weeklyHourCapacity} st)
+                                {t.fullName} ({t.weeklyHourCapacity} st)
                               </option>
                             ))}
                           </optgroup>
-                        )}
-                        <optgroup label="Barcha o'qituvchilar:">
-                          {allTeachers.map((t) => (
-                            <option key={t.id} value={t.id}>
-                              {t.fullName} ({t.weeklyHourCapacity} st)
-                            </option>
-                          ))}
-                        </optgroup>
-                      </select>
-                    </div>
+                        </select>
 
-                    {/* 3. DARS SOATI STEPPER & PRESET CHIPS (Col-3) */}
-                    <div className="w-full md:col-span-3 flex flex-col items-center justify-center gap-1.5 bg-muted/40 md:bg-transparent p-2 md:p-0 rounded-xl">
-                      <div className="flex items-center justify-center gap-1.5 w-full">
-                        <button
-                          type="button"
-                          onClick={() => handleStepHours(index, -1)}
-                          disabled={item.weeklyHours <= 1}
-                          className="w-8 h-8 rounded-xl border border-border bg-card flex items-center justify-center hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed transition-all cursor-pointer shadow-xs active:scale-95"
-                          title="1 soat kamaytirish"
-                        >
-                          <Minus className="w-3.5 h-3.5" />
-                        </button>
+                        {/* 1-bosishda tezkor ustoz tavsiya chiplari */}
+                        <div className="flex items-center gap-1 flex-wrap mt-1.5">
+                          <span className="text-[10px] text-muted-foreground font-semibold">Tavsiya:</span>
+                          {isSinfSoati && targetClass.homeroomTeacherId && (
+                            <button
+                              type="button"
+                              onClick={() => handleUpdateItem(originalIndex, "teacherId", targetClass.homeroomTeacherId!)}
+                              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-extrabold transition-all cursor-pointer ${
+                                item.teacherId === targetClass.homeroomTeacherId
+                                  ? "bg-indigo-600 text-white shadow-xs"
+                                  : "bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 hover:bg-indigo-100"
+                              }`}
+                              title="Sinf rahbarini biriktirish"
+                            >
+                              <UserCheck className="w-3 h-3 shrink-0" />
+                              <span>Sinf rahbari</span>
+                            </button>
+                          )}
+                          {teacherCandidates.slice(0, 3).map((candidate) => {
+                            const isSelected = item.teacherId === candidate.id;
+                            return (
+                              <button
+                                key={candidate.id}
+                                type="button"
+                                onClick={() => handleUpdateItem(originalIndex, "teacherId", candidate.id)}
+                                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-bold transition-all cursor-pointer ${
+                                  isSelected
+                                    ? "bg-emerald-600 text-white shadow-xs"
+                                    : "bg-muted/70 hover:bg-emerald-500/15 text-foreground hover:text-emerald-700 dark:hover:text-emerald-300 border border-border/80"
+                                }`}
+                                title={`${candidate.fullName} (${candidate.weeklyHourCapacity} st)`}
+                              >
+                                {isSelected ? <Check className="w-2.5 h-2.5 shrink-0" /> : <Plus className="w-2.5 h-2.5 shrink-0" />}
+                                <span className="truncate max-w-[110px]">
+                                  {candidate.fullName.split(" ")[0]} {candidate.fullName.split(" ")[1]?.[0] || ""}.
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
 
-                        <div className="flex items-center justify-center min-w-[54px] px-2 py-1 rounded-xl bg-background border border-border/80 shadow-inner">
-                          <span className="text-sm font-black text-foreground">
-                            {item.weeklyHours}
-                          </span>
-                          <span className="text-[11px] text-muted-foreground font-bold ml-1">st</span>
+                      {/* 3. DARS SOATI STEPPER & PRESET CHIPS (Col-3) */}
+                      <div className="w-full md:col-span-3 flex flex-col items-center justify-center gap-1.5 bg-muted/40 md:bg-transparent p-2 md:p-0 rounded-xl">
+                        <div className="flex items-center justify-center gap-1.5 w-full">
+                          <button
+                            type="button"
+                            onClick={() => handleStepHours(originalIndex, -1)}
+                            disabled={item.weeklyHours <= 1}
+                            className="w-8 h-8 rounded-xl border border-border bg-card flex items-center justify-center hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed transition-all cursor-pointer shadow-xs active:scale-95"
+                            title="1 soat kamaytirish"
+                          >
+                            <Minus className="w-3.5 h-3.5" />
+                          </button>
+
+                          <div className="flex items-center justify-center min-w-[54px] px-2 py-1 rounded-xl bg-background border border-border/80 shadow-inner">
+                            <span className="text-sm font-black text-foreground">
+                              {item.weeklyHours}
+                            </span>
+                            <span className="text-[11px] text-muted-foreground font-bold ml-1">st</span>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => handleStepHours(originalIndex, 1)}
+                            disabled={item.weeklyHours >= 12}
+                            className="w-8 h-8 rounded-xl border border-border bg-card flex items-center justify-center hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed transition-all cursor-pointer shadow-xs active:scale-95"
+                            title="1 soat oshirish"
+                          >
+                            <Plus className="w-3.5 h-3.5" />
+                          </button>
                         </div>
 
+                        {/* Tezkor soat preset pillari */}
+                        <div className="flex items-center gap-1">
+                          {[1, 2, 4, 6].map((p) => (
+                            <button
+                              key={p}
+                              type="button"
+                              onClick={() => handleSetPresetHours(originalIndex, p)}
+                              className={`px-2 py-0.5 rounded-lg text-[10px] font-bold transition-all cursor-pointer ${
+                                item.weeklyHours === p
+                                  ? "bg-primary text-primary-foreground shadow-xs"
+                                  : "bg-muted hover:bg-muted/80 text-muted-foreground"
+                              }`}
+                            >
+                              {p}st
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* 4. O'CHIRISH TUGMASI (Col-1) */}
+                      <div className="w-full md:col-span-1 flex justify-end md:justify-center">
                         <button
                           type="button"
-                          onClick={() => handleStepHours(index, 1)}
-                          disabled={item.weeklyHours >= 12}
-                          className="w-8 h-8 rounded-xl border border-border bg-card flex items-center justify-center hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed transition-all cursor-pointer shadow-xs active:scale-95"
-                          title="1 soat oshirish"
+                          onClick={() => handleRemoveSubject(originalIndex)}
+                          className="p-2 rounded-xl text-rose-500 hover:bg-rose-500/15 transition-colors cursor-pointer"
+                          title="Fanni o'chirish"
                         >
-                          <Plus className="w-3.5 h-3.5" />
+                          <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
-
-                      {/* Tezkor soat preset pillari */}
-                      <div className="flex items-center gap-1">
-                        {[1, 2, 4, 6].map((p) => (
-                          <button
-                            key={p}
-                            type="button"
-                            onClick={() => handleSetPresetHours(index, p)}
-                            className={`px-2 py-0.5 rounded-lg text-[10px] font-bold transition-all cursor-pointer ${
-                              item.weeklyHours === p
-                                ? "bg-primary text-primary-foreground shadow-xs"
-                                : "bg-muted hover:bg-muted/80 text-muted-foreground"
-                            }`}
-                          >
-                            {p}st
-                          </button>
-                        ))}
-                      </div>
                     </div>
-
-                    {/* 4. O'CHIRISH TUGMASI (Col-1) */}
-                    <div className="w-full md:col-span-1 flex justify-end md:justify-center">
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveSubject(index)}
-                        className="p-2 rounded-xl text-rose-500 hover:bg-rose-500/15 transition-colors cursor-pointer"
-                        title="Fanni o'chirish"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
+                  );
+                })
+              )}
             </div>
           ) : (
             /* 📅 WEEKLY TIMETABLE SIMULATION GRID */

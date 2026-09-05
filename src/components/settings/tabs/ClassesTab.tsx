@@ -5,6 +5,7 @@ import { SchoolClass, Branch, Shift, Teacher, Subject } from "@/types";
 import { sortClassesByName, isClassSecondShift } from "@/lib/utils";
 import { TeacherSelectCombobox } from "../shared/TeacherSelectCombobox";
 import { useSchoolStore } from "@/lib/store/useSchoolStore";
+import { ConfirmActionModal } from "@/components/modals/ConfirmActionModal";
 import {
   GraduationCap,
   Plus,
@@ -66,11 +67,40 @@ export const ClassesTab: React.FC<ClassesTabProps> = ({
   onOpenEMaktabImport,
   onBulkAddClasses,
 }) => {
-  const { lockedClassIds = [], toggleLockClass, updateClass } = useSchoolStore();
+  const {
+    lockedClassIds = [],
+    toggleLockClass,
+    updateClass,
+    applyStandardCurriculumToAllClasses,
+  } = useSchoolStore();
   const [search, setSearch] = useState("");
   const [filterType, setFilterType] = useState<ClassFilterType>("ALL");
   const [shiftFilter, setShiftFilter] = useState<"ALL" | "SHIFT_1" | "SHIFT_2">("ALL");
   const [selectedGrade, setSelectedGrade] = useState<number | null>(null);
+
+  // Standart o'quv rejasini tatbiq qilish holati
+  const [isApplyStandardModalOpen, setIsApplyStandardModalOpen] = useState(false);
+  const [isApplyingStandard, setIsApplyingStandard] = useState(false);
+  const [statusToast, setStatusToast] = useState<string | null>(null);
+
+  const showStatusToast = (msg: string) => {
+    setStatusToast(msg);
+    setTimeout(() => setStatusToast(null), 4000);
+  };
+
+  const handleConfirmApplyStandard = async () => {
+    setIsApplyingStandard(true);
+    try {
+      applyStandardCurriculumToAllClasses();
+      showStatusToast("🎉 Barcha sinflarga 2026-2027 Davlat Standart O'quv Rejasi muvaffaqiyatli tatbiq etildi!");
+    } catch (err: any) {
+      console.error(err);
+      showStatusToast("Xatolik yuz berdi: " + (err?.message || "Noma'lum xatolik"));
+    } finally {
+      setIsApplyingStandard(false);
+      setIsApplyStandardModalOpen(false);
+    }
+  };
 
   // Ommaviy generator holati
   const [selectedGrades, setSelectedGrades] = useState<number[]>([]);
@@ -338,6 +368,37 @@ export const ClassesTab: React.FC<ClassesTabProps> = ({
             </button>
           )}
         </div>
+      </div>
+
+      {/* 1.1. Davlat Standart O'quv Rejasini Ommaviy Tatbiq Qilish Bar (MMTV 2026-2027) */}
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 p-4 sm:p-5 rounded-3xl bg-linear-to-r from-amber-500/10 via-primary/5 to-transparent border border-amber-500/30 shadow-xs">
+        <div className="flex items-start gap-3.5">
+          <div className="w-11 h-11 rounded-2xl bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center font-bold shrink-0 shadow-inner">
+            <Sparkles className="w-6 h-6 animate-pulse" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <h4 className="text-sm font-extrabold text-foreground">
+                2026-2027 Davlat Standart O'quv Rejasini barcha sinflarga tatbiq qilish
+              </h4>
+              <span className="text-[10px] px-2 py-0.5 rounded-full font-black bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30 uppercase">
+                MMTV Rasmiy Standarti
+              </span>
+            </div>
+            <p className="text-xs text-muted-foreground mt-1 max-w-2xl leading-relaxed">
+              1-11 barcha sinflarga rasmiy fanlar va haftalik dars soatlari (1-sinf: 22st, 2-4: 25st, 5: 30st, 6: 31st, 7: 36st, 8: 34st, 9: 35st, 10-11: 32st) bir bosishda avtomatik to'ldiriladi. Avval belgilangan ustozlaringiz saqlanadi, siz faqat yetishmayotgan fanlarga ustoz tayinlaysiz.
+            </p>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => setIsApplyStandardModalOpen(true)}
+          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-2xl text-xs font-extrabold bg-amber-500 hover:bg-amber-600 text-amber-950 hover:text-white shadow-lg shadow-amber-500/25 transition-all cursor-pointer shrink-0 whitespace-nowrap active:scale-98"
+        >
+          <Sparkles className="w-4 h-4 shrink-0" />
+          <span>⚡ Barcha sinflarga tatbiq qilish</span>
+        </button>
       </div>
 
       {/* 2. Kombinatorik Ommaviy Sinf Yaratish Paneli (Bulk Creator) */}
@@ -832,6 +893,9 @@ export const ClassesTab: React.FC<ClassesTabProps> = ({
               (sum, s) => sum + (Number(s.weeklyHours) || 0),
               0
             );
+            const totalSubjectsCount = cls.subjects?.length || 0;
+            const assignedSubjectsCount = (cls.subjects || []).filter((s) => !!s.teacherId).length;
+            const unassignedSubjectsCount = totalSubjectsCount - assignedSubjectsCount;
             const blockedDaysCount = (cls.blockedDays || (cls.grade <= 4 ? [6] : [])).length;
             const isShift2 = isClassShift2(cls);
 
@@ -843,6 +907,8 @@ export const ClassesTab: React.FC<ClassesTabProps> = ({
                     ? "opacity-60 border-slate-200 dark:border-slate-800"
                     : !homeroom
                     ? "border-amber-300/80 dark:border-amber-800/60 hover:border-amber-400"
+                    : unassignedSubjectsCount > 0
+                    ? "border-amber-500/30 hover:border-amber-500/60"
                     : "border-border/80 hover:border-primary/40"
                 }`}
               >
@@ -948,6 +1014,32 @@ export const ClassesTab: React.FC<ClassesTabProps> = ({
                       </span>
                     </div>
 
+                    {/* O'quv rejasi va ustozlar ta'minlanganligi statusi */}
+                    <div>
+                      {totalSubjectsCount === 0 ? (
+                        <div className="flex items-center gap-1.5 p-1.5 px-2 rounded-xl bg-muted/60 text-muted-foreground text-[10px] font-semibold">
+                          <AlertTriangle className="w-3 h-3 text-amber-500 shrink-0" />
+                          <span>O'quv rejasi belgilanmagan</span>
+                        </div>
+                      ) : unassignedSubjectsCount > 0 ? (
+                        <div className="flex items-center justify-between p-1.5 px-2 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-400 text-[10px] font-bold">
+                          <div className="flex items-center gap-1">
+                            <AlertTriangle className="w-3 h-3 text-amber-500 shrink-0" />
+                            <span>{unassignedSubjectsCount} ta fan ustozsiz</span>
+                          </div>
+                          <span className="opacity-80">({assignedSubjectsCount}/{totalSubjectsCount})</span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-between p-1.5 px-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 dark:text-emerald-400 text-[10px] font-bold">
+                          <div className="flex items-center gap-1">
+                            <Check className="w-3 h-3 text-emerald-500 shrink-0" />
+                            <span>Barcha fanlar ustozli</span>
+                          </div>
+                          <span>({totalSubjectsCount}/{totalSubjectsCount})</span>
+                        </div>
+                      )}
+                    </div>
+
                     {/* Homeroom teacher badge */}
                     <div className="pt-1">
                       {homeroom ? (
@@ -990,14 +1082,26 @@ export const ClassesTab: React.FC<ClassesTabProps> = ({
                   </div>
                 </div>
 
-                {/* Bottom button: Curriculum */}
+                {/* Bottom button: Curriculum & Teacher Assignment */}
                 <div className="mt-3 pt-3 border-t border-border/60">
                   <button
                     onClick={() => onOpenCurriculum(cls)}
-                    className="w-full flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-xl text-xs font-semibold bg-muted/50 hover:bg-primary/10 text-foreground hover:text-primary transition-colors cursor-pointer"
+                    className={`w-full flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-xs ${
+                      unassignedSubjectsCount > 0
+                        ? "bg-amber-500/15 hover:bg-amber-500/25 text-amber-800 dark:text-amber-300 border border-amber-500/30"
+                        : totalSubjectsCount === 0
+                        ? "bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20"
+                        : "bg-muted/50 hover:bg-primary/10 text-foreground hover:text-primary border border-border/50"
+                    }`}
                   >
-                    <BookOpen className="w-3.5 h-3.5 text-primary shrink-0" />
-                    <span>O'quv rejasi ({cls.subjects?.length || 0} fan)</span>
+                    <BookOpen className="w-3.5 h-3.5 shrink-0" />
+                    <span>
+                      {totalSubjectsCount === 0
+                        ? "⚡ O'quv rejasini yuklash"
+                        : unassignedSubjectsCount > 0
+                        ? `📚 Ustozlarni tayinlash (${assignedSubjectsCount}/${totalSubjectsCount})`
+                        : `📚 O'quv rejasi (${totalSubjectsCount} fan)`}
+                    </span>
                   </button>
                 </div>
               </div>
@@ -1055,6 +1159,26 @@ export const ClassesTab: React.FC<ClassesTabProps> = ({
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Tasdiqlash modali: Davlat Standart Rejasini Tatbiq Qilish */}
+      <ConfirmActionModal
+        isOpen={isApplyStandardModalOpen}
+        onClose={() => setIsApplyStandardModalOpen(false)}
+        onConfirm={handleConfirmApplyStandard}
+        title="Davlat Standart O'quv Rejasini barcha sinflarga tatbiq qilish"
+        description="2026-2027-o'quv yili uchun rasmiy MMTV standarti bo'yicha barcha sinflarga fanlar va me'yoriy dars soatlari yuklanadi. Avval belgilangan o'qituvchilaringiz saqlanadi, boshlang'ich sinflarda sinf rahbari avtomatik biriktiriladi. Tasdiqlaysizmi?"
+        confirmText="Ha, tatbiq etilsin"
+        cancelText="Bekor qilish"
+        variant="info"
+        isLoading={isApplyingStandard}
+      />
+
+      {/* Status Toast */}
+      {statusToast && (
+        <div className="fixed bottom-6 right-6 z-1000 px-4 py-3 rounded-2xl shadow-xl bg-slate-900 text-white text-xs font-bold transition-all animate-in slide-in-from-bottom-2">
+          {statusToast}
         </div>
       )}
     </div>
