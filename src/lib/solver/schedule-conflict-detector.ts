@@ -142,11 +142,12 @@ export function detectScheduleConflicts({
       const teacher = teacherMap.get(first.teacherId);
       const periods = matchedLessons.map((m) => `${m.periodNumber}-dars`).join(", ");
 
+      const isPrimary = (cls?.grade ?? 5) <= 4;
       const isTripleOrMore = matchedLessons.length >= 3;
       const isConsecutivePair =
         matchedLessons.length === 2 &&
         matchedLessons[1].periodNumber - matchedLessons[0].periodNumber === 1;
-      const allowsDouble = subject?.allowDoubleLesson ?? false;
+      const allowsDouble = !isPrimary && (subject?.allowDoubleLesson ?? false);
 
       // Agar 3+ soat bo'lsa YOKI juft dars taqiqlangan fanda 2 soat bo'lsa YOKI juft dars orasi uzilgan bo'lsa
       const isViolation = isTripleOrMore || !allowsDouble || !isConsecutivePair;
@@ -155,7 +156,9 @@ export function detectScheduleConflicts({
         matchedLessons.forEach((l) => conflictLessonIds.add(l.id));
 
         let reasonText = "";
-        if (isTripleOrMore) {
+        if (isPrimary && matchedLessons.length > 1) {
+          reasonText = `boshlang'ich sinfda (${cls?.name || "1-4 sinf"}) kuniga ${matchedLessons.length} soat (${periods}) qo'yilgan. SanPiN 0341-17 qoidasi bo'yicha boshlang'ich sinflarda bitta fandan kuniga faqat 1 soat dars o'tilishi shart!`;
+        } else if (isTripleOrMore) {
           reasonText = `kuniga ${matchedLessons.length} soat (${periods}) ketma-ket qo'yilgan. Maktab me'yori bo'yicha bu fanga kuniga ko'pi bilan 1-2 soat ruxsat beriladi.`;
         } else if (!allowsDouble) {
           reasonText = `kuniga 2 marta (${periods}) qo'yilgan. Bu fanga juft dars o'tish taqiqlangan.`;

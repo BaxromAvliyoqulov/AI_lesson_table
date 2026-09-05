@@ -149,7 +149,7 @@ export function useTeacherActions() {
         if (
           cId &&
           l.classId === cId &&
-          (isKelajakOrSinfSoatiSubject(l.subjectId) ||
+          (isKelajakOrSinfSoatiSubject(l.subjectId, prev.subjects.find((s) => s.id === l.subjectId)?.name) ||
             (l.dayOfWeek === 1 && l.periodNumber === 1))
         ) {
           return { ...l, teacherId: teacher.id };

@@ -9,7 +9,10 @@ import {
   ClassSubject,
 } from "@/types";
 import { generateStandardCurriculumForClass } from "@/lib/curriculum-templates";
-import { getOfficialMethodDayForSubject } from "@/lib/constants/method-days";
+import {
+  getOfficialMethodDayForSubject,
+  getEffectiveTeacherMethodDay,
+} from "@/lib/constants/method-days";
 import { isClassSecondShift } from "@/lib/utils";
 
 export class CSPSolver {
@@ -32,29 +35,38 @@ export class CSPSolver {
   /**
    * Qat'iy Metod Kuni tekshiruvi (Strict Method Day Constraint)
    * O'zbekiston Qonunchiligi & SanPiN: O'qituvchining shaxsiy metod kuni yoki
-   * fanning rasmiy metod kunida dars qo'yish QAT'IYAN TAQIQLANADI!
+   * kafedraning rasmiy metod kunida dars qo'yish QAT'IYAN TAQIQLANADI!
+   * Muhim: Boshlang'ich ta'lim (1-4 sinf) o'qituvchilari dushanba-juma kunlari o'z sinfiga
+   * dars o'tadi, ularning qonuniy metod kuni — SHANBA (6) kuni hisoblanadi.
    */
   public isStrictMethodDay(day: number, teacherId?: string | null, subjectId?: string | null): boolean {
+    if (!teacherId) return false;
+    const t = this.teacherMap.get(teacherId);
+    if (!t) return false;
+
     // 1. O'qituvchining shaxsiy belgilangan metod kuni
-    if (teacherId) {
-      const t = this.teacherMap.get(teacherId);
-      if (t?.methodDayOfWeek !== undefined && t.methodDayOfWeek !== null) {
-        if (t.methodDayOfWeek === day) return true;
-      }
+    if (t.methodDayOfWeek !== undefined && t.methodDayOfWeek !== null && t.methodDayOfWeek >= 1 && t.methodDayOfWeek <= 6) {
+      return t.methodDayOfWeek === day;
     }
 
-    // 2. Ushbu dars fanning rasmiy metod kuni
-    if (subjectId) {
-      const s = this.subjectMap.get(subjectId);
-      if (s?.methodDayOfWeek !== undefined && s.methodDayOfWeek !== null) {
-        if (s.methodDayOfWeek === day) return true;
-      }
-      // Agar subject ob'ektida methodDayOfWeek ko'rsatilmagan bo'lsa, O'zR qonuniy standart katalogidan olinadi
-      const officialDay = getOfficialMethodDayForSubject(s?.name || subjectId);
-      if (officialDay !== null && officialDay === day) {
-        return true;
-      }
+    // 2. Boshlang'ich sinf (1-4) o'qituvchilari:
+    // Dushanba-Juma (1-5) kunlari bolalarga har kuni dars o'tadi, ularning metod kuni SHANBA (6)!
+    const isPrimaryTeacher =
+      t.teachingStages === "PRIMARY" ||
+      (t.homeroomClassId &&
+        this.classMap.get(t.homeroomClassId)?.grade !== undefined &&
+        (this.classMap.get(t.homeroomClassId)?.grade ?? 5) <= 4);
+
+    if (isPrimaryTeacher) {
+      return day === 6;
     }
+
+    // 3. Yuqori sinf (5-11) o'qituvchilari uchun mutaxassislik fani bo'yicha kafedra metod kuni:
+    const effective = getEffectiveTeacherMethodDay(t, Array.from(this.subjectMap.values()));
+    if (effective.day !== null) {
+      return effective.day === day;
+    }
+
     return false;
   }
 
@@ -294,6 +306,8 @@ export class CSPSolver {
       teacherId: string;
       groupType: "WHOLE" | "GROUP_1" | "GROUP_2";
       difficulty: number;
+      weeklyHours: number;
+      grade: number;
     }
 
     const remaining: ReqLesson[] = [];
@@ -333,6 +347,8 @@ export class CSPSolver {
             teacherId: cs.teacherId,
             groupType: cs.groupType || "WHOLE",
             difficulty: sub?.difficultyScore || 5,
+            weeklyHours: cs.weeklyHours,
+            grade: cls.grade ?? 5,
           });
         }
       }
@@ -365,7 +381,22 @@ export class CSPSolver {
     for (const req of remaining) {
       const slots = classSlots.get(req.classId) || [];
       const subObj = this.subjectMap.get(req.subjectId);
-      const allowDouble = subObj?.allowDoubleLesson || false;
+      const isPrimary = req.grade <= 4;
+      const is5DayWeek = isPrimary || Boolean(this.classMap.get(req.classId)?.isPrimary);
+      const daysCount = is5DayWeek ? 5 : 6;
+
+      // QAT'IY SANPIN VA PEDAGOGIKA QOIDASI:
+      // 1. Boshlang'ich sinflarda (1-4) JUFT DARS QAT'IYAN TAQIQLANADI! (SanPiN 0341-17)
+      // Bolalarning aqliy toliqishini oldini olish uchun Matematika, Ona tili, O'qish kabi fanlar
+      // kuniga FAQAT VA FAQAT 1 SOATDAN o'tiladi!
+      // 2. Yuqori sinflarda ham (5-11): agar fanning haftalik soati haftadagi kunlar sonidan oshmasa (<= daysCount):
+      // Har bir kunga faqat 1 soatdan to'g'ri keladi (masalan 5 kunlik haftada 5 soat Matematika -> har kuni aynan 1 soatdan)!
+      // Juft dars faqat yuqori sinfda laboratoriya/amaliyot (Fizika lab, Kimyo lab, Texnologiya) kabi fanlarda
+      // va agar haftalik soati kunlar sonidan ko'p bo'lsa ruxsat beriladi.
+      const allowDouble =
+        !isPrimary &&
+        Boolean(subObj?.allowDoubleLesson) &&
+        req.weeklyHours > daysCount;
 
       // QAT'IY METOD KUNI VA BIR KUNDA 1 FAN PROTOKOLI:
       const emptySlots = slots.filter((s) => {
@@ -387,13 +418,14 @@ export class CSPSolver {
             other.groupType === req.groupType
         );
 
-        // Hech qaysi fan 1 kunda 3 yoki undan ortiq soat bo'lishi mumkin emas!
-        if (sameSubjectSlotsInDay.length >= 2) return false;
-
-        // Agar fanga juft dars taqiqlangan bo'lsa, 1 kunda 1 martadan oshmasligi kerak
+        // 1. Agar juft darsga ruxsat bo'lmasa (boshlang'ich sinflar va haftalik soati <= kunlar soni bo'lgan fanlar):
+        // 1 kunda 1 martadan oshishi qat'iyan taqiqlanadi!
         if (!allowDouble && sameSubjectSlotsInDay.length >= 1) return false;
 
-        // Agar juft darsga ruxsat bo'lsa va 1-dars allaqachon bo'lsa, 2-dars faqat ketma-ket (juft) bo'lishi shart!
+        // 2. Hech qaysi fan 1 kunda 3 yoki undan ortiq soat bo'lishi mumkin emas!
+        if (sameSubjectSlotsInDay.length >= 2) return false;
+
+        // 3. Agar juft darsga ruxsat bo'lsa va 1-dars allaqachon bo'lsa, 2-dars faqat ketma-ket (juft) bo'lishi shart!
         if (allowDouble && sameSubjectSlotsInDay.length === 1) {
           const existingPeriod = sameSubjectSlotsInDay[0].period;
           if (Math.abs(existingPeriod - s.period) !== 1) return false;
@@ -581,8 +613,10 @@ export class CSPSolver {
           if (tB && sB && this.isStrictMethodDay(slotA.day, tB, sB)) continue;
 
           // QAT'IY PROTOKOL: Bir kunda bir xil fanning takrorlanishi taqiqlanadi!
+          const isPrimaryClsA = (this.classMap.get(slotA.classId)?.grade ?? 5) <= 4;
           const subObjA = this.subjectMap.get(sA);
-          if (!subObjA?.allowDoubleLesson) {
+          const allowDoubleA = !isPrimaryClsA && Boolean(subObjA?.allowDoubleLesson);
+          if (!allowDoubleA) {
             const duplicateInDayB = clsSlots.some(
               (s) => s !== slotA && s !== slotB && s.day === slotB.day && s.subjectId === sA
             );
@@ -590,8 +624,10 @@ export class CSPSolver {
           }
 
           if (tB && sB) {
+            const isPrimaryClsB = (this.classMap.get(slotB.classId)?.grade ?? 5) <= 4;
             const subObjB = this.subjectMap.get(sB);
-            if (!subObjB?.allowDoubleLesson) {
+            const allowDoubleB = !isPrimaryClsB && Boolean(subObjB?.allowDoubleLesson);
+            if (!allowDoubleB) {
               const duplicateInDayA = clsSlots.some(
                 (s) => s !== slotA && s !== slotB && s.day === slotA.day && s.subjectId === sB
               );
@@ -755,8 +791,10 @@ export class CSPSolver {
                 if (this.isStrictMethodDay(day, tId, sId)) continue;
 
                 // 2. Bir kunda takroriy fan bo'lmasligi
+                const isPrimaryCls = (this.classMap.get(candidate.classId)?.grade ?? 5) <= 4;
                 const subObj = this.subjectMap.get(sId);
-                if (!subObj?.allowDoubleLesson) {
+                const allowDouble = !isPrimaryCls && Boolean(subObj?.allowDoubleLesson);
+                if (!allowDouble) {
                   const dup = daySlots.some((s) => s.subjectId === sId);
                   if (dup) continue;
                 }

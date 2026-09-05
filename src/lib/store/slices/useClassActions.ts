@@ -373,9 +373,10 @@ export function useClassActions() {
           });
 
           // KAFOLAT: Agar bu o'qituvchi shu sinfda sinf rahbari bo'lsa, 1 soatlik Sinf soati har doim saqlanadi!
+          const subMap = new Map(prev.subjects.map((s) => [s.id, s]));
           if (c.homeroomTeacherId === teacherId) {
             const hasSinfSoatiInAssignments = addedSubjects.some((as) =>
-              isKelajakOrSinfSoatiSubject(as.subjectId)
+              isKelajakOrSinfSoatiSubject(as.subjectId, subMap.get(as.subjectId)?.name)
             );
             if (!hasSinfSoatiInAssignments) {
               const sinfSoatiSub =
@@ -403,16 +404,25 @@ export function useClassActions() {
           ];
 
           // KAFOLAT: Har bir sinfda Sinf soati FAQAT VA FAQAT 1 DONA bo'lishi shart!
+          // Va hech bir fandan ayni bir sinfda 2 xil satr (dublikat) bo'lmasligi kafolatlanadi
           let seenSinfSoatiInClass = false;
-          const strictlyUniqueSubjects = deduped.filter((s) => {
-            if (isKelajakOrSinfSoatiSubject(s.subjectId)) {
-              if (seenSinfSoatiInClass) return false;
+          const seenSubIdsInClass = new Set<string>();
+          const strictlyUniqueSubjects: ClassSubject[] = [];
+
+          for (const s of deduped) {
+            const isSinf = isKelajakOrSinfSoatiSubject(s.subjectId, subMap.get(s.subjectId)?.name);
+            if (isSinf) {
+              if (seenSinfSoatiInClass) continue;
               seenSinfSoatiInClass = true;
               s.weeklyHours = 1;
-              return true;
+              strictlyUniqueSubjects.push(s);
+              continue;
             }
-            return true;
-          });
+
+            if (seenSubIdsInClass.has(s.subjectId)) continue;
+            seenSubIdsInClass.add(s.subjectId);
+            strictlyUniqueSubjects.push(s);
+          }
 
           return { ...c, subjects: strictlyUniqueSubjects };
         });

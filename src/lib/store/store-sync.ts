@@ -68,26 +68,52 @@ export function normalizeHomeroomSinfSoati({
     teacherToClassMap.set(tId, clsId);
   }
 
+  const subjectMap = new Map(subjects.map((s) => [s.id, s]));
+  const isSinfSoatiCheck = (sId: string) => {
+    const sub = subjectMap.get(sId);
+    return isKelajakOrSinfSoatiSubject(sId, sub?.name);
+  };
+
   // 2. Sinflarni tekshirish: har bir sinfda FAQAT VA FAQAT 1 DONA Sinf soati (1 soat) bo'lishini kafolatlash
+  // va barcha fanlar dublikatlarini (ayni bir xil subjectId) butunlay tozalash
   const normalizedClasses = classes.map((c) => {
     const hrTeacherId = classToTeacherMap.get(c.id);
     const existingSubjects = c.subjects || [];
 
     if (!hrTeacherId) {
       const cleanSubjects = existingSubjects.filter(
-        (s) => !isKelajakOrSinfSoatiSubject(s.subjectId)
+        (s) => !isSinfSoatiCheck(s.subjectId)
       );
+      // Fanlar dublikatini tozalash (Deduplication)
+      const dedupedClean: ClassSubject[] = [];
+      const seenIds = new Set<string>();
+      for (const s of cleanSubjects) {
+        if (!seenIds.has(s.subjectId)) {
+          seenIds.add(s.subjectId);
+          dedupedClean.push(s);
+        }
+      }
       return {
         ...c,
         homeroomTeacherId: undefined,
-        subjects: cleanSubjects,
+        subjects: dedupedClean,
       };
     }
 
     // Barcha eski va dublikat Sinf soatlarini butunlay tozalaymiz
     const otherSubjects = existingSubjects.filter(
-      (s) => !isKelajakOrSinfSoatiSubject(s.subjectId)
+      (s) => !isSinfSoatiCheck(s.subjectId)
     );
+
+    // Boshqa fanlar dublikatini ham tozalash
+    const dedupedOther: ClassSubject[] = [];
+    const seenOtherIds = new Set<string>();
+    for (const s of otherSubjects) {
+      if (!seenOtherIds.has(s.subjectId)) {
+        seenOtherIds.add(s.subjectId);
+        dedupedOther.push(s);
+      }
+    }
 
     // QAT'IY 1 DONA (1 soatlik) SINF SOATI
     const singleHomeroomHour: ClassSubject = {
@@ -104,7 +130,7 @@ export function normalizeHomeroomSinfSoati({
     return {
       ...c,
       homeroomTeacherId: hrTeacherId,
-      subjects: [...otherSubjects, singleHomeroomHour],
+      subjects: [...dedupedOther, singleHomeroomHour],
     };
   });
 
@@ -185,7 +211,7 @@ export function normalizeHomeroomSinfSoati({
         (l) =>
           !(
             l.classId === c.id &&
-            isKelajakOrSinfSoatiSubject(l.subjectId) &&
+            isSinfSoatiCheck(l.subjectId) &&
             !(l.dayOfWeek === 1 && l.periodNumber === 1)
           )
       );

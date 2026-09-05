@@ -6,6 +6,7 @@ import {
   generateStandardCurriculumForClass,
   isSubjectSuitableForGrade,
   isHomeroomPrimarySubject,
+  isKelajakOrSinfSoatiSubject,
   UZBEKISTAN_STANDARD_CURRICULUM,
 } from "@/lib/curriculum-templates";
 import { ConfirmActionModal } from "@/components/modals/ConfirmActionModal";
@@ -52,6 +53,53 @@ type SubjectCategory =
   | "ARTS_SPORTS"
   | "SOCIAL";
 
+/**
+ * Har qanday dublikat fanlarni (ayniqsa 2 ta Kelajak soati yoki ayni bir xil fanni)
+ * 100% tozalab yagona qatorga keltiruvchi dvigatel
+ */
+function deduplicateClassSubjects(
+  list: ClassSubject[],
+  subjectMap: Map<string, Subject>,
+  homeroomTeacherId?: string | null
+): ClassSubject[] {
+  const result: ClassSubject[] = [];
+  let seenSinfSoati = false;
+  const seenSubjectIds = new Set<string>();
+
+  for (const item of list) {
+    if (!item || !item.subjectId) continue;
+    const sub = subjectMap.get(item.subjectId);
+    const isSinfSoati =
+      item.subjectId === "sub_sinf_soati" ||
+      item.subjectId === "sub_kelajak" ||
+      isKelajakOrSinfSoatiSubject(item.subjectId, sub?.name);
+
+    if (isSinfSoati) {
+      if (seenSinfSoati) continue;
+      seenSinfSoati = true;
+      result.push({
+        ...item,
+        weeklyHours: 1,
+        teacherId: item.teacherId || homeroomTeacherId || "",
+      });
+      continue;
+    }
+
+    if (seenSubjectIds.has(item.subjectId)) {
+      const existingIdx = result.findIndex((r) => r.subjectId === item.subjectId);
+      if (existingIdx >= 0 && !result[existingIdx].teacherId && item.teacherId) {
+        result[existingIdx].teacherId = item.teacherId;
+      }
+      continue;
+    }
+
+    seenSubjectIds.add(item.subjectId);
+    result.push({ ...item });
+  }
+
+  return result;
+}
+
 export const CurriculumModal: React.FC<CurriculumModalProps> = ({
   isOpen,
   onClose,
@@ -81,6 +129,9 @@ export const CurriculumModal: React.FC<CurriculumModalProps> = ({
     setTimeout(() => setToastMessage(null), 3500);
   };
 
+  const subjectMap = useMemo(() => new Map(allSubjects.map((s) => [s.id, s])), [allSubjects]);
+  const teacherMap = useMemo(() => new Map(allTeachers.map((t) => [t.id, t])), [allTeachers]);
+
   useEffect(() => {
     if (!isOpen || !targetClass) {
       lastInitializedClassIdRef.current = null;
@@ -90,16 +141,18 @@ export const CurriculumModal: React.FC<CurriculumModalProps> = ({
 
     if (lastInitializedClassIdRef.current !== targetClass.id) {
       lastInitializedClassIdRef.current = targetClass.id;
-      setSubjectsList(targetClass.subjects || []);
+      const cleanList = deduplicateClassSubjects(
+        targetClass.subjects || [],
+        subjectMap,
+        targetClass.homeroomTeacherId
+      );
+      setSubjectsList(cleanList);
       setSelectedCopyClassId("");
       setIsCatalogOpen(false);
       setCatalogSearch("");
       setSelectedCatalogSubjectIds({});
     }
-  }, [isOpen, targetClass?.id, targetClass]);
-
-  const subjectMap = useMemo(() => new Map(allSubjects.map((s) => [s.id, s])), [allSubjects]);
-  const teacherMap = useMemo(() => new Map(allTeachers.map((t) => [t.id, t])), [allTeachers]);
+  }, [isOpen, targetClass?.id, targetClass, subjectMap]);
 
   // Subject categorization helper
   const getSubjectCategory = useCallback((sub: Subject): SubjectCategory => {
@@ -329,7 +382,7 @@ export const CurriculumModal: React.FC<CurriculumModalProps> = ({
       return;
     }
 
-    setSubjectsList(generated);
+    setSubjectsList(deduplicateClassSubjects(generated, subjectMap, targetClass.homeroomTeacherId));
     if (targetClass.grade <= 4) {
       showToast(`✅ ${targetClass.grade}-sinf standart rejasi yuklandi! Ona tili, O'qish va Matematika sinf rahbariga biriktirildi.`);
     } else {
@@ -622,7 +675,12 @@ export const CurriculumModal: React.FC<CurriculumModalProps> = ({
       });
     }
 
-    const validList = finalList.filter(
+    const dedupedList = deduplicateClassSubjects(
+      finalList,
+      subjectMap,
+      targetClass.homeroomTeacherId
+    );
+    const validList = dedupedList.filter(
       (s) => s.subjectId && s.teacherId && Number(s.weeklyHours) > 0
     );
     onSave(targetClass.id, validList);
