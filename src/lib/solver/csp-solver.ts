@@ -70,6 +70,32 @@ export class CSPSolver {
     return false;
   }
 
+  /**
+   * O'qituvchining dars qo'yish uchun bo'sh ekanligini qat'iy tekshirish:
+   * 1. Metod kuni (shaxsiy yoki kafedra standarti)
+   * 2. Shaxsiy bandlik matrisasi (TeacherAvailability: agar isAvailable === false bo'lsa, dars qo'yish QAT'IYAN TAQIQLANADI)
+   */
+  public isTeacherSlotAvailable(day: number, period: number, teacherId?: string | null, subjectId?: string | null): boolean {
+    if (!teacherId) return true;
+    const t = this.teacherMap.get(teacherId);
+    if (!t) return true;
+
+    // 1. Metod kuni tekshiruvi:
+    if (this.isStrictMethodDay(day, teacherId, subjectId)) {
+      return false;
+    }
+
+    // 2. Shaxsiy bandlik matrisasi (Qo'lda belgilangan Band / Bo'sh soatlar):
+    if (t.availabilities && t.availabilities.length > 0) {
+      const av = t.availabilities.find((a) => a.dayOfWeek === day && a.period === period);
+      if (av && av.isAvailable === false) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
   public solve(): SolverResult {
     let bestResult: SolverResult | null = null;
     let minConflicts = Infinity;
@@ -455,11 +481,11 @@ export class CSPSolver {
               (other) => other.day === s.day && other.period === s.period && other.groupType === "GROUP_2"
             );
             if (!parallelSlot || parallelSlot.teacherId !== null) return false;
-            if (this.isStrictMethodDay(s.day, matchingGroup2Req.teacherId, matchingGroup2Req.subjectId)) return false;
+            if (!this.isTeacherSlotAvailable(s.day, s.period, matchingGroup2Req.teacherId, matchingGroup2Req.subjectId)) return false;
           }
         }
 
-        if (this.isStrictMethodDay(s.day, req.teacherId, req.subjectId)) return false;
+        if (!this.isTeacherSlotAvailable(s.day, s.period, req.teacherId, req.subjectId)) return false;
 
         const sameSubjectSlotsInDay = slots.filter(
           (other) =>
@@ -522,7 +548,23 @@ export class CSPSolver {
 
         // O'qituvchining kunlik dars soati limiti (kuniga maks soat) nazorati:
         const teacherObj = this.teacherMap.get(req.teacherId);
-        const maxDaily = teacherObj?.maxConsecutiveHours || 5;
+        let maxDaily = teacherObj?.maxConsecutiveHours || 5;
+        const totalReqHours = teacherHourCount.get(req.teacherId) || 0;
+        if (totalReqHours > 0) {
+          let openDays = 0;
+          for (let d = 1; d <= 6; d++) {
+            for (let p = 1; p <= 7; p++) {
+              if (this.isTeacherSlotAvailable(d, p, req.teacherId, req.subjectId)) {
+                openDays++;
+                break;
+              }
+            }
+          }
+          if (openDays > 0) {
+            const minDailyNeeded = Math.ceil(totalReqHours / openDays);
+            maxDaily = Math.max(maxDaily, minDailyNeeded);
+          }
+        }
         const dayKey = `${req.teacherId}_${slot.day}`;
         const currentDayCount = teacherDailyHours.get(dayKey) || 0;
 
@@ -674,7 +716,7 @@ export class CSPSolver {
         if (targetSlot.isLocked || !targetSlot.teacherId || !targetSlot.subjectId) continue;
         if (targetSlot.groupType === "GROUP_2") continue;
         if (isPrimary && targetSlot.period >= 6) continue;
-        if (this.isStrictMethodDay(targetSlot.day, req.teacherId, req.subjectId)) continue;
+        if (!this.isTeacherSlotAvailable(targetSlot.day, targetSlot.period, req.teacherId, req.subjectId)) continue;
 
         // req o'qituvchisi ayni shu vaqtda bo'sh bo'lishi shart
         const occKeyReq = getOccKey(req.teacherId, targetSlot.day, targetSlot.period, req.classId);
@@ -697,7 +739,7 @@ export class CSPSolver {
           if (alt.teacherId !== null || alt.isLocked) return false;
           if (alt.groupType === "GROUP_2") return false;
           if (isPrimary && alt.period >= 6) return false;
-          if (this.isStrictMethodDay(alt.day, victimTeacherId, victimSubjectId)) return false;
+          if (!this.isTeacherSlotAvailable(alt.day, alt.period, victimTeacherId, victimSubjectId)) return false;
 
           const occAlt = teacherOccupancy.get(getOccKey(victimTeacherId, alt.day, alt.period, req.classId)) || 0;
           if (occAlt > 0) return false;
@@ -739,7 +781,7 @@ export class CSPSolver {
           if (s.teacherId !== null || s.isLocked) return false;
           if (s.groupType === "GROUP_2") return false;
           if (isPrimary && s.period >= 6) return false;
-          if (this.isStrictMethodDay(s.day, req.teacherId, req.subjectId)) return false;
+          if (!this.isTeacherSlotAvailable(s.day, s.period, req.teacherId, req.subjectId)) return false;
           const dup = clsSlots.some(
             (other) => other.day === s.day && other.subjectId === req.subjectId && other.groupType === req.groupType
           );
@@ -795,9 +837,9 @@ export class CSPSolver {
           const tB = slotB.teacherId;
           const sB = slotB.subjectId;
 
-          // QAT'IY METOD KUNI TAQIQI: slotB kuni tA/sA uchun yoki slotA kuni tB/sB uchun metod kuni bo'lsa o'tish taqiqlanadi!
-          if (this.isStrictMethodDay(slotB.day, tA, sA)) continue;
-          if (tB && sB && this.isStrictMethodDay(slotA.day, tB, sB)) continue;
+          // QAT'IY METOD KUNI & BAND VAQT TAQIQI: slotB vaqti tA/sA uchun yoki slotA vaqti tB/sB uchun taqiqlangan bo'lsa o'tish mumkin emas!
+          if (!this.isTeacherSlotAvailable(slotB.day, slotB.period, tA, sA)) continue;
+          if (tB && sB && !this.isTeacherSlotAvailable(slotA.day, slotA.period, tB, sB)) continue;
 
           // QAT'IY PROTOKOL: Bir kunda bir xil fanning takrorlanishi taqiqlanadi!
           const clsA = this.classMap.get(slotA.classId);
@@ -982,10 +1024,10 @@ export class CSPSolver {
                 const tId = candidate.teacherId!;
                 const sId = candidate.subjectId!;
 
-                // 1. O'qituvchi bo'sh va metod kuni emas
+                // 1. O'qituvchi bo'sh va metod kuni yoki band vaqt emas
                 const occGap = teacherOccupancy.get(`${tId}_${day}_${gapSlot.period}`) || 0;
                 if (occGap > 0) continue;
-                if (this.isStrictMethodDay(day, tId, sId)) continue;
+                if (!this.isTeacherSlotAvailable(day, gapSlot.period, tId, sId)) continue;
 
                 // 2. Bir kunda takroriy fan bo'lmasligi
                 const isPrimaryCls = (this.classMap.get(candidate.classId)?.grade ?? 5) <= 4;
@@ -1028,7 +1070,7 @@ export class CSPSolver {
       if (!slot.teacherId || !slot.subjectId) continue;
       const cls = this.classMap.get(slot.classId)!;
 
-      if (this.isStrictMethodDay(slot.day, slot.teacherId, slot.subjectId)) {
+      if (!this.isTeacherSlotAvailable(slot.day, slot.period, slot.teacherId, slot.subjectId)) {
         methodDayViolations++;
       }
 

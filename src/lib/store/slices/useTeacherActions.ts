@@ -1,6 +1,6 @@
 import { useCallback } from "react";
 import { Teacher, TeacherAvailability } from "@/types";
-import { upsertTeacherAction, deleteTeacherAction } from "@/lib/actions/school.actions";
+import { upsertTeacherAction, deleteTeacherAction, saveTeacherAvailabilitiesAction } from "@/lib/actions/school.actions";
 import { isKelajakOrSinfSoatiSubject, isHomeroomPrimarySubject } from "@/lib/curriculum-templates";
 import { storeState, updateStore, addAuditLog } from "../store-core";
 
@@ -211,8 +211,12 @@ export function useTeacherActions() {
     updateStore((prev) => ({
       ...prev,
       teachers: prev.teachers.map((t) => (t.id === teacherId ? { ...t, availabilities } : t)),
+      syncStatus: "syncing",
     }));
     addAuditLog("O'qituvchi bo'sh vaqti yangilandi", `O'qituvchi ID: ${teacherId} matrisasi saqlandi`);
+    saveTeacherAvailabilitiesAction(storeState.currentSchoolId, teacherId, availabilities).then((res) => {
+      updateStore((prev) => ({ ...prev, syncStatus: res.success ? "synced" : "error" }));
+    });
   }, []);
 
   const setTeacherMethodDay = useCallback((teacherId: string, methodDayOfWeek: number | null) => {

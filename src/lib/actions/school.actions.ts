@@ -85,6 +85,14 @@ export async function upsertTeacherAction(schoolId: string, teacherData: Teacher
   return teacher.upsertTeacherAction(schoolId, teacherData);
 }
 
+export async function saveTeacherAvailabilitiesAction(
+  schoolId: string,
+  teacherId: string,
+  availabilities: Parameters<typeof teacher.saveTeacherAvailabilitiesAction>[2]
+) {
+  return teacher.saveTeacherAvailabilitiesAction(schoolId, teacherId, availabilities);
+}
+
 export async function deleteTeacherAction(schoolId: string, teacherId: string) {
   return teacher.deleteTeacherAction(schoolId, teacherId);
 }

@@ -1,8 +1,47 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
-import { Teacher } from "@/types";
+import { Teacher, TeacherAvailability } from "@/types";
 import { resolveSchool } from "./school.actions";
+
+/**
+ * O'qituvchining bo'sh va band vaqtlari matrisasini (availabilities) bazaga saqlash
+ */
+export async function saveTeacherAvailabilitiesAction(
+  schoolId: string,
+  teacherId: string,
+  availabilities: TeacherAvailability[]
+) {
+  try {
+    const school = await resolveSchool(schoolId);
+    if (!school) return { success: false, error: "Maktab topilmadi" };
+    const actualSchoolId = school.id;
+
+    await prisma.$transaction(async (tx) => {
+      await tx.teacherAvailability.deleteMany({
+        where: { teacherId },
+      });
+
+      if (availabilities && availabilities.length > 0) {
+        await tx.teacherAvailability.createMany({
+          data: availabilities.map((a) => ({
+            schoolId: actualSchoolId,
+            teacherId,
+            dayOfWeek: a.dayOfWeek,
+            period: a.period,
+            isAvailable: a.isAvailable !== undefined ? a.isAvailable : true,
+          })),
+          skipDuplicates: true,
+        });
+      }
+    });
+
+    return { success: true };
+  } catch (error: any) {
+    console.error("saveTeacherAvailabilitiesAction error:", error);
+    return { success: false, error: error.message };
+  }
+}
 
 /**
  * O'qituvchini yaratish yoki yangilash
