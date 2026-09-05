@@ -376,13 +376,28 @@ export function generateStandardCurriculumForClass(
       matchedSubject = allSubjects.find((s) => s.id === item.prioritySubjectId && s.isActive !== false);
     }
 
-    // B) Ism va qisqartmalar bo'yicha
+    // B) Ism va qisqartmalar bo'yicha (avval exact match, keyin includes)
     if (!matchedSubject) {
+      // 1-navbatda: Aniq tenglik (Exact Match)
       matchedSubject = allSubjects.find((s) => {
         if (s.isActive === false) return false;
-        const sName = s.name.toLowerCase();
-        return item.searchAliases.some((alias) => sName.includes(alias.toLowerCase()));
+        const sName = s.name.toLowerCase().trim();
+        return (
+          sName === item.subjectName.toLowerCase().trim() ||
+          item.searchAliases.some((alias) => sName === alias.toLowerCase().trim())
+        );
       });
+
+      // 2-navbatda: Qidiruv o'xshashligi (Includes Match)
+      if (!matchedSubject) {
+        matchedSubject = allSubjects.find((s) => {
+          if (s.isActive === false) return false;
+          const sName = s.name.toLowerCase().trim();
+          // "Tarbiya" fani "Jismoniy tarbiya" bilan adashib ketmasligi kerak
+          if (item.prioritySubjectId === "sub_tarbiya" && sName.includes("jismoniy")) return false;
+          return item.searchAliases.some((alias) => sName.includes(alias.toLowerCase().trim()));
+        });
+      }
     }
 
     if (!matchedSubject) continue;
