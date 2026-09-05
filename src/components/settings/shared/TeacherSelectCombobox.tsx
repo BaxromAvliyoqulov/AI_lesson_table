@@ -84,7 +84,7 @@ export const TeacherSelectCombobox: React.FC<TeacherSelectComboboxProps> = ({
     const spaceBelow = window.innerHeight - rect.bottom;
     const placeAbove = spaceBelow < dropdownHeight && rect.top > dropdownHeight;
 
-    const minWidth = Math.max(rect.width, 320);
+    const minWidth = Math.max(rect.width, 460);
     let left = rect.left;
     if (left + minWidth > window.innerWidth - 16) {
       left = Math.max(16, window.innerWidth - minWidth - 16);
@@ -209,15 +209,19 @@ export const TeacherSelectCombobox: React.FC<TeacherSelectComboboxProps> = ({
         type="button"
         disabled={disabled}
         onClick={handleOpen}
-        className={`w-full flex items-center justify-between rounded-xl border text-left transition-all ${
-          isSmall ? "px-2.5 py-1.5 text-xs font-semibold" : "px-3 py-2 text-xs font-semibold"
+        className={`w-full flex items-center justify-between border text-left transition-all cursor-pointer ${
+          isSmall
+            ? "px-2.5 py-1.5 text-xs font-semibold rounded-xl"
+            : "px-3.5 py-2.5 text-sm font-bold rounded-2xl shadow-xs"
         } ${getButtonBorderStyles()}`}
       >
-        <div className="flex items-center gap-2 truncate min-w-0">
+        <div className="flex items-center gap-2.5 truncate min-w-0">
           {selectedTeacher ? (
             <>
               <div
-                className={`w-5 h-5 rounded-md flex items-center justify-center text-[10px] font-black shrink-0 ${
+                className={`${
+                  isSmall ? "w-5 h-5 text-[10px] rounded-md" : "w-6 h-6 text-xs rounded-lg"
+                } flex items-center justify-center font-black shrink-0 ${
                   candidateIdSet.has(selectedTeacher.id)
                     ? "bg-amber-500 text-white shadow-xs"
                     : isCurrentTeacherNonSpecialist
@@ -231,29 +235,31 @@ export const TeacherSelectCombobox: React.FC<TeacherSelectComboboxProps> = ({
               >
                 {candidateIdSet.has(selectedTeacher.id) ? "★" : selectedTeacher.fullName.charAt(0)}
               </div>
-              <span className="truncate font-bold text-foreground">
+              <span className={`truncate font-bold text-foreground ${isSmall ? "text-xs" : "text-[13.5px]"}`}>
                 {selectedTeacher.fullName}
               </span>
               {isCurrentTeacherNonSpecialist && (
-                <span className="text-[9px] font-black text-amber-700 dark:text-amber-300 bg-amber-500/20 px-1.5 py-0.5 rounded border border-amber-400/40 shrink-0">
+                <span className="text-[10px] font-black text-amber-700 dark:text-amber-300 bg-amber-500/20 px-2 py-0.5 rounded-md border border-amber-400/40 shrink-0">
                   Mutaxassis emas
                 </span>
               )}
               {selectedTeacher.weeklyHourCapacity !== undefined && !isCurrentTeacherNonSpecialist && (
-                <span className="text-[10px] font-medium text-muted-foreground shrink-0 bg-muted px-1.5 py-0.5 rounded-md">
+                <span className={`font-bold text-muted-foreground shrink-0 bg-muted px-2 py-0.5 rounded-md ${
+                  isSmall ? "text-[10px]" : "text-xs"
+                }`}>
                   {selectedTeacher.weeklyHourCapacity} st
                 </span>
               )}
             </>
           ) : (
-            <div className="flex items-center gap-1.5 text-amber-700 dark:text-amber-400 font-bold truncate">
-              <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
-              <span className="truncate">{placeholder}</span>
+            <div className="flex items-center gap-2 text-amber-700 dark:text-amber-400 font-bold truncate">
+              <AlertTriangle className={isSmall ? "w-3.5 h-3.5 shrink-0" : "w-4 h-4 shrink-0"} />
+              <span className={`truncate ${isSmall ? "text-xs" : "text-sm"}`}>{placeholder}</span>
             </div>
           )}
         </div>
 
-        <div className="flex items-center gap-1 shrink-0 ml-1 text-muted-foreground">
+        <div className="flex items-center gap-1.5 shrink-0 ml-1.5 text-muted-foreground">
           {selectedTeacher && !disabled && (
             <span
               role="button"
@@ -262,14 +268,14 @@ export const TeacherSelectCombobox: React.FC<TeacherSelectComboboxProps> = ({
                 e.stopPropagation();
                 onChange("");
               }}
-              className="p-0.5 rounded-md hover:bg-destructive/10 hover:text-destructive text-muted-foreground transition-colors"
+              className="p-1 rounded-lg hover:bg-destructive/10 hover:text-destructive text-muted-foreground transition-colors cursor-pointer"
               title="O'qituvchini olib tashlash"
             >
-              <X className="w-3.5 h-3.5" />
+              <X className={isSmall ? "w-3.5 h-3.5" : "w-4 h-4"} />
             </span>
           )}
           <ChevronDown
-            className={`w-3.5 h-3.5 transition-transform duration-200 ${
+            className={`${isSmall ? "w-3.5 h-3.5" : "w-4 h-4"} transition-transform duration-200 ${
               isOpen ? "rotate-180 text-primary" : ""
             }`}
           />
@@ -293,34 +299,34 @@ export const TeacherSelectCombobox: React.FC<TeacherSelectComboboxProps> = ({
               maxWidth: "calc(100vw - 32px)",
               zIndex: 99999,
             }}
-            className="bg-popover/98 backdrop-blur-xl border border-border/80 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150 flex flex-col max-h-[380px]"
+            className="bg-popover/98 backdrop-blur-xl border border-border/80 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150 flex flex-col max-h-[440px]"
           >
             {/* Search Bar Header */}
-            <div className="p-2 border-b border-border/60 bg-muted/40 shrink-0">
+            <div className="p-2.5 border-b border-border/60 bg-muted/40 shrink-0">
               <div className="relative">
-                <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
                 <input
                   ref={searchInputRef}
                   type="text"
                   placeholder="Mutaxassis o'qituvchini qidiring..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="w-full pl-8 pr-7 py-1.5 text-xs rounded-xl bg-background border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary placeholder:text-muted-foreground/60 text-foreground font-medium"
+                  className="w-full pl-9 pr-8 py-2 text-sm rounded-xl bg-background border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary placeholder:text-muted-foreground/60 text-foreground font-medium"
                 />
                 {search && (
                   <button
                     type="button"
                     onClick={() => setSearch("")}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-0.5 rounded-md cursor-pointer"
                   >
-                    <X className="w-3.5 h-3.5" />
+                    <X className="w-4 h-4" />
                   </button>
                 )}
               </div>
             </div>
 
             {/* Scrollable Teacher List */}
-            <div className="overflow-y-auto p-1.5 space-y-1 custom-scrollbar flex-1">
+            <div className="overflow-y-auto p-2 space-y-1 custom-scrollbar flex-1">
               {/* If current teacher is non-specialist, show clear warning banner */}
               {isCurrentTeacherNonSpecialist && (
                 <div className="p-2 bg-amber-500/10 border border-amber-500/25 rounded-xl text-xs text-amber-900 dark:text-amber-200 space-y-1">
@@ -341,24 +347,24 @@ export const TeacherSelectCombobox: React.FC<TeacherSelectComboboxProps> = ({
                   onChange("");
                   setIsOpen(false);
                 }}
-                className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs transition-colors text-left font-medium ${
+                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm transition-colors text-left font-medium cursor-pointer ${
                   !value
                     ? "bg-amber-500/15 text-amber-800 dark:text-amber-300 font-bold"
                     : "hover:bg-muted text-muted-foreground"
                 }`}
               >
                 <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-amber-400"></span>
-                  <span>⚠️ Biriktirilmagan (Bo'sh qoldirish)</span>
+                  <span className="w-2.5 h-2.5 rounded-full bg-amber-400 shrink-0"></span>
+                  <span className="font-semibold">⚠️ Biriktirilmagan (Bo'sh qoldirish)</span>
                 </div>
-                {!value && <Check className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 font-bold" />}
+                {!value && <Check className="w-4 h-4 text-amber-600 dark:text-amber-400 font-bold" />}
               </button>
 
               {/* Homeroom teacher option if applicable */}
               {homeroomTeacher && (!q || homeroomTeacher.fullName.toLowerCase().includes(q)) && (
-                <div className="pt-1 pb-0.5">
-                  <div className="px-2 py-0.5 text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-wider flex items-center gap-1">
-                    <UserCheck className="w-3 h-3" />
+                <div className="pt-2 pb-1">
+                  <div className="px-3 py-1 text-xs font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-wider flex items-center gap-1.5">
+                    <UserCheck className="w-3.5 h-3.5" />
                     <span>Sinf rahbari</span>
                   </div>
                   <button
@@ -367,17 +373,17 @@ export const TeacherSelectCombobox: React.FC<TeacherSelectComboboxProps> = ({
                       onChange(homeroomTeacher.id);
                       setIsOpen(false);
                     }}
-                    className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs transition-colors text-left mt-0.5 ${
+                    className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm transition-colors text-left mt-1 cursor-pointer ${
                       value === homeroomTeacher.id
                         ? "bg-indigo-600 text-white font-bold"
                         : "hover:bg-indigo-50 dark:hover:bg-indigo-950/40 text-foreground"
                     }`}
                   >
-                    <div className="flex items-center gap-2 truncate">
-                      <span className="text-amber-400 text-xs">⭐</span>
-                      <span className="truncate font-semibold">{homeroomTeacher.fullName}</span>
+                    <div className="flex items-center gap-2.5 truncate">
+                      <span className="text-amber-400 text-sm">⭐</span>
+                      <span className="truncate font-bold">{homeroomTeacher.fullName}</span>
                       <span
-                        className={`text-[10px] px-1.5 py-0.2 rounded font-medium ${
+                        className={`text-xs px-2 py-0.5 rounded-md font-bold ${
                           value === homeroomTeacher.id
                             ? "bg-white/20 text-white"
                             : "bg-muted text-muted-foreground"
@@ -386,16 +392,16 @@ export const TeacherSelectCombobox: React.FC<TeacherSelectComboboxProps> = ({
                         {homeroomTeacher.weeklyHourCapacity} st
                       </span>
                     </div>
-                    {value === homeroomTeacher.id && <Check className="w-3.5 h-3.5 shrink-0 ml-2" />}
+                    {value === homeroomTeacher.id && <Check className="w-4 h-4 shrink-0 ml-2" />}
                   </button>
                 </div>
               )}
 
               {/* Recommended Specialists (Always shown if available) */}
               {filteredCandidates.length > 0 && (
-                <div className="pt-1 pb-0.5">
-                  <div className="px-2 py-0.5 text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-wider flex items-center gap-1">
-                    <Sparkles className="w-3 h-3" />
+                <div className="pt-2 pb-1">
+                  <div className="px-3 py-1.5 text-xs font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5" />
                     <span>⭐️ Mutaxassis o'qituvchilar ({filteredCandidates.length})</span>
                   </div>
                   {filteredCandidates.map((t) => {
@@ -408,24 +414,24 @@ export const TeacherSelectCombobox: React.FC<TeacherSelectComboboxProps> = ({
                           onChange(t.id);
                           setIsOpen(false);
                         }}
-                        className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs transition-colors text-left mt-0.5 ${
+                        className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm transition-colors text-left mt-1 cursor-pointer ${
                           isSelected
                             ? "bg-emerald-600 text-white font-bold shadow-xs"
                             : "hover:bg-emerald-50 dark:hover:bg-emerald-950/40 text-foreground"
                         }`}
                       >
-                        <div className="flex items-center gap-2 truncate">
-                          <span className="text-amber-400 text-xs">★</span>
-                          <span className="truncate font-semibold">{t.fullName}</span>
+                        <div className="flex items-center gap-2.5 truncate">
+                          <span className="text-amber-400 text-sm">★</span>
+                          <span className="truncate font-bold">{t.fullName}</span>
                           <span
-                            className={`text-[10px] px-1.5 py-0.2 rounded font-medium ${
+                            className={`text-xs px-2 py-0.5 rounded-md font-bold ${
                               isSelected ? "bg-white/20 text-white" : "bg-muted text-muted-foreground"
                             }`}
                           >
                             {t.weeklyHourCapacity} st
                           </span>
                         </div>
-                        {isSelected && <Check className="w-3.5 h-3.5 shrink-0 ml-2" />}
+                        {isSelected && <Check className="w-4 h-4 shrink-0 ml-2" />}
                       </button>
                     );
                   })}
@@ -434,7 +440,7 @@ export const TeacherSelectCombobox: React.FC<TeacherSelectComboboxProps> = ({
 
               {/* If no candidates exist for this subject in the whole school */}
               {candidates.length === 0 && (
-                <div className="py-2 px-3 text-center text-xs text-amber-700 dark:text-amber-300 bg-amber-500/10 rounded-xl">
+                <div className="py-2.5 px-3.5 text-center text-xs text-amber-700 dark:text-amber-300 bg-amber-500/10 rounded-xl font-semibold">
                   ⚠️ Ushbu fanga maktabda biriktirilgan mutaxassis yo'q
                 </div>
               )}
@@ -444,9 +450,9 @@ export const TeacherSelectCombobox: React.FC<TeacherSelectComboboxProps> = ({
                 <button
                   type="button"
                   onClick={() => setShowOtherTeachers(!showOtherTeachers)}
-                  className="w-full py-1.5 px-2 text-[11px] font-semibold text-muted-foreground hover:text-foreground bg-muted/40 hover:bg-muted/70 rounded-xl transition-all text-center flex items-center justify-center gap-1 border border-dashed border-border mt-1.5"
+                  className="w-full py-2 px-3 text-xs font-bold text-muted-foreground hover:text-foreground bg-muted/50 hover:bg-muted rounded-xl transition-all text-center flex items-center justify-center gap-1.5 border border-dashed border-border mt-2 cursor-pointer"
                 >
-                  <GraduationCap className="w-3 h-3" />
+                  <GraduationCap className="w-3.5 h-3.5" />
                   <span>
                     {showOtherTeachers
                       ? "▲ Faqat mutaxassislarni ko'rsatish"
@@ -458,9 +464,9 @@ export const TeacherSelectCombobox: React.FC<TeacherSelectComboboxProps> = ({
               {/* Non-specialist other teachers (ONLY shown when expanded or explicitly searched) */}
               {(showOtherTeachers || !!q || candidates.length === 0) &&
                 filteredOtherTeachers.length > 0 && (
-                  <div className="pt-1 pb-0.5">
-                    <div className="px-2 py-0.5 text-[10px] font-black text-muted-foreground uppercase tracking-wider flex items-center gap-1">
-                      <GraduationCap className="w-3 h-3" />
+                  <div className="pt-2 pb-1">
+                    <div className="px-3 py-1.5 text-xs font-black text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+                      <GraduationCap className="w-3.5 h-3.5" />
                       <span>Boshqa o'qituvchilar ({filteredOtherTeachers.length})</span>
                     </div>
                     {filteredOtherTeachers.map((t) => {
@@ -473,30 +479,30 @@ export const TeacherSelectCombobox: React.FC<TeacherSelectComboboxProps> = ({
                             onChange(t.id);
                             setIsOpen(false);
                           }}
-                          className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs transition-colors text-left mt-0.5 ${
+                          className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm transition-colors text-left mt-1 cursor-pointer ${
                             isSelected
-                              ? "bg-primary text-white font-bold"
+                              ? "bg-primary text-primary-foreground font-bold"
                               : "hover:bg-muted text-foreground"
                           }`}
                         >
-                          <div className="flex items-center gap-2 truncate">
+                          <div className="flex items-center gap-2.5 truncate">
                             <div
-                              className={`w-4 h-4 rounded flex items-center justify-center text-[9px] font-bold shrink-0 ${
+                              className={`w-6 h-6 rounded-md flex items-center justify-center text-xs font-black shrink-0 ${
                                 isSelected ? "bg-white/20 text-white" : "bg-muted text-muted-foreground"
                               }`}
                             >
                               {t.fullName.charAt(0)}
                             </div>
-                            <span className="truncate font-medium">{t.fullName}</span>
+                            <span className="truncate font-semibold">{t.fullName}</span>
                             <span
-                              className={`text-[10px] px-1.5 py-0.2 rounded font-medium ${
+                              className={`text-xs px-2 py-0.5 rounded-md font-bold ${
                                 isSelected ? "bg-white/20 text-white" : "bg-muted text-muted-foreground"
                               }`}
                             >
                               {t.weeklyHourCapacity} st
                             </span>
                           </div>
-                          {isSelected && <Check className="w-3.5 h-3.5 shrink-0 ml-2" />}
+                          {isSelected && <Check className="w-4 h-4 shrink-0 ml-2" />}
                         </button>
                       );
                     })}

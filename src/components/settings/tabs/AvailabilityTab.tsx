@@ -262,7 +262,7 @@ export const AvailabilityTab: React.FC<AvailabilityTabProps> = ({
           <table className="w-full border-collapse">
             <thead>
               <tr>
-                <th className="p-2.5 text-xs font-bold text-muted-foreground text-left w-28 border-b border-border">
+                <th className="p-3 text-sm font-bold text-muted-foreground text-left w-36 border-b border-border">
                   Dars & Vaqt
                 </th>
                 {DAYS.map((d) => {
@@ -270,14 +270,14 @@ export const AvailabilityTab: React.FC<AvailabilityTabProps> = ({
                   return (
                     <th
                       key={d.id}
-                      className={`p-2.5 text-xs font-bold text-center border-b border-border transition-colors ${
+                      className={`p-3 text-sm font-bold text-center border-b border-border transition-colors ${
                         isMethodDay
                           ? "bg-amber-500/20 text-amber-800 dark:text-amber-200 font-black"
                           : "text-foreground"
                       }`}
                     >
                       <div className="flex flex-col items-center gap-1">
-                        <span className="font-extrabold">{d.name}</span>
+                        <span className="font-black text-sm tracking-wide">{d.name}</span>
                       </div>
                     </th>
                   );
@@ -287,16 +287,16 @@ export const AvailabilityTab: React.FC<AvailabilityTabProps> = ({
             <tbody>
               {periodList.map(({ period, time }) => (
                 <tr key={period} className="border-b border-border/40 hover:bg-muted/10">
-                  <td className="p-2 text-xs font-bold text-muted-foreground">
-                    <div className="flex items-center gap-1.5">
-                      <span className={`w-5 h-5 rounded-md flex items-center justify-center text-[11px] font-black ${
+                  <td className="p-2.5 text-sm font-bold text-foreground">
+                    <div className="flex items-center gap-2">
+                      <span className={`w-6 h-6 rounded-lg flex items-center justify-center text-xs font-black shrink-0 ${
                         isAmber ? "bg-amber-500/20 text-amber-700 dark:text-amber-300" : "bg-primary/10 text-primary"
                       }`}>
                         {period}
                       </span>
                       <div>
-                        <div>{period}-soat</div>
-                        <div className="text-[10px] text-muted-foreground/80 font-medium tracking-tight">
+                        <div className="text-sm font-bold leading-snug">{period}-soat</div>
+                        <div className="text-xs text-muted-foreground font-semibold tracking-tight">
                           {time}
                         </div>
                       </div>
@@ -307,20 +307,20 @@ export const AvailabilityTab: React.FC<AvailabilityTabProps> = ({
                     const available = isCellAvailable(day.id, period, shift);
 
                     return (
-                      <td key={day.id} className="p-1.5 text-center">
+                      <td key={day.id} className="p-2 text-center">
                         {isMethodDay ? (
-                          <div className="py-2.5 px-2 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-700 dark:text-amber-300 text-xs font-bold select-none cursor-not-allowed flex items-center justify-center gap-1">
-                            <Star className="w-3 h-3 fill-amber-500 text-amber-500" />
+                          <div className="py-3 px-2.5 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-700 dark:text-amber-300 text-sm font-bold select-none cursor-not-allowed flex items-center justify-center gap-1.5 shadow-2xs">
+                            <Star className="w-4 h-4 fill-amber-500 text-amber-500 shrink-0" />
                             <span>Metod kuni</span>
                           </div>
                         ) : (
                           <button
                             type="button"
                             onClick={() => toggleCell(day.id, period, shift)}
-                            className={`w-full py-2.5 px-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+                            className={`w-full py-3 px-2.5 rounded-xl text-sm font-bold border transition-all cursor-pointer shadow-2xs ${
                               available
-                                ? "bg-emerald-500/15 border-emerald-500/40 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500/25 shadow-2xs"
-                                : "bg-rose-500/15 border-rose-500/40 text-rose-700 dark:text-rose-400 hover:bg-rose-500/25 shadow-2xs"
+                                ? "bg-emerald-500/15 border-emerald-500/40 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500/25 font-extrabold"
+                                : "bg-rose-500/15 border-rose-500/40 text-rose-700 dark:text-rose-400 hover:bg-rose-500/25 font-extrabold"
                             }`}
                             title={`Bosib ${available ? "Band qilish (dars qo'yilmasin)" : "Bo'sh qilish (dars qo'yilishi mumkin)"}`}
                           >
@@ -343,8 +343,8 @@ export const AvailabilityTab: React.FC<AvailabilityTabProps> = ({
     <div className="space-y-4">
       {/* Top toolbar */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-3xl bg-card border border-border shadow-xs">
-        <div className="w-full sm:w-80">
-          <label className="block text-xs font-semibold text-muted-foreground mb-1.5">
+        <div className="w-full sm:w-[480px]">
+          <label className="block text-sm font-bold text-foreground mb-1.5">
             O&apos;qituvchini tanlang
           </label>
           <TeacherSelectCombobox
@@ -407,20 +407,20 @@ export const AvailabilityTab: React.FC<AvailabilityTabProps> = ({
             </div>
 
             {/* Smena ko'rinish rejimi tablari */}
-            <div className="flex items-center gap-1.5 p-1 bg-muted/60 rounded-2xl border border-border">
+            <div className="flex items-center gap-2 p-1.5 bg-muted/60 rounded-2xl border border-border">
               <button
                 type="button"
                 onClick={() => setActiveShiftTab("SHIFT_1")}
-                className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all cursor-pointer ${
                   activeShiftTab === "SHIFT_1"
                     ? "bg-primary text-primary-foreground shadow-sm"
                     : "text-muted-foreground hover:text-foreground hover:bg-card/50"
                 }`}
               >
-                <Sun className="w-3.5 h-3.5" />
+                <Sun className="w-4 h-4" />
                 <span>☀️ 1-Smena (Ertalab)</span>
                 {shiftStats.s1Blocked > 0 && (
-                  <span className="ml-1 text-[10px] px-1.5 py-0.2 rounded-md bg-rose-500 text-white font-extrabold">
+                  <span className="ml-1 text-xs px-2 py-0.5 rounded-md bg-rose-500 text-white font-extrabold">
                     {shiftStats.s1Blocked} band
                   </span>
                 )}
@@ -429,16 +429,16 @@ export const AvailabilityTab: React.FC<AvailabilityTabProps> = ({
               <button
                 type="button"
                 onClick={() => setActiveShiftTab("SHIFT_2")}
-                className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all cursor-pointer ${
                   activeShiftTab === "SHIFT_2"
                     ? "bg-amber-500 text-slate-950 shadow-sm"
                     : "text-muted-foreground hover:text-foreground hover:bg-card/50"
                 }`}
               >
-                <Moon className="w-3.5 h-3.5" />
+                <Moon className="w-4 h-4" />
                 <span>🌤️ 2-Smena (Abetdan keyin)</span>
                 {shiftStats.s2Blocked > 0 && (
-                  <span className="ml-1 text-[10px] px-1.5 py-0.2 rounded-md bg-rose-500 text-white font-extrabold">
+                  <span className="ml-1 text-xs px-2 py-0.5 rounded-md bg-rose-500 text-white font-extrabold">
                     {shiftStats.s2Blocked} band
                   </span>
                 )}
@@ -447,13 +447,13 @@ export const AvailabilityTab: React.FC<AvailabilityTabProps> = ({
               <button
                 type="button"
                 onClick={() => setActiveShiftTab("BOTH")}
-                className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all cursor-pointer ${
                   activeShiftTab === "BOTH"
                     ? "bg-slate-900 text-white dark:bg-white dark:text-slate-950 shadow-sm"
                     : "text-muted-foreground hover:text-foreground hover:bg-card/50"
                 }`}
               >
-                <Layers className="w-3.5 h-3.5" />
+                <Layers className="w-4 h-4" />
                 <span>Ikkala smena</span>
               </button>
             </div>
