@@ -54,6 +54,7 @@ export async function saveTimetableLessons(
         branchId: l.branchId,
         dayOfWeek: l.dayOfWeek,
         periodNumber: l.periodNumber,
+        groupType: l.groupType || "WHOLE",
         isLocked: l.isLocked || false,
       }));
 
@@ -233,6 +234,7 @@ export async function createScheduleVersionAction(
         branchId: l.branchId,
         dayOfWeek: l.dayOfWeek,
         periodNumber: l.periodNumber,
+        groupType: l.groupType || "WHOLE",
         isLocked: l.isLocked || false,
       }));
 

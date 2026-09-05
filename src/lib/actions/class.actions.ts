@@ -3,6 +3,7 @@
 import { prisma } from "@/lib/prisma";
 import { SchoolClass } from "@/types";
 import { resolveSchool } from "./school.actions";
+import { resolveDbBranchId, resolveDbShiftId } from "@/lib/utils";
 
 /**
  * Sinfni yaratish yoki yangilash
@@ -14,46 +15,12 @@ export async function upsertClassAction(schoolId: string, cls: SchoolClass) {
     const actualSchoolId = school.id;
 
     await prisma.$transaction(async (tx) => {
-      // Filial va smena mavjudligini tekshirish
-      let branch = cls.branchId
-        ? await tx.branch.findFirst({
-            where: { schoolId: actualSchoolId, id: cls.branchId },
-          })
-        : null;
-      if (!branch) {
-        branch = await tx.branch.findFirst({
-          where: { schoolId: actualSchoolId },
-          orderBy: { isMain: "desc" },
-        });
-      }
-      if (!branch) {
-        branch = await tx.branch.create({
-          data: { schoolId: actualSchoolId, name: "Asosiy bino", isMain: true },
-        });
-      }
+      // Filial va smena mavjudligini aniq tekshirish
+      const allBranches = await tx.branch.findMany({ where: { schoolId: actualSchoolId } });
+      const branchId = resolveDbBranchId(allBranches, cls.branchId);
 
-      let shift = cls.shiftId
-        ? await tx.shift.findFirst({
-            where: { schoolId: actualSchoolId, id: cls.shiftId },
-          })
-        : null;
-      if (!shift) {
-        shift = await tx.shift.findFirst({
-          where: { schoolId: actualSchoolId },
-          orderBy: { order: "asc" },
-        });
-      }
-      if (!shift) {
-        shift = await tx.shift.create({
-          data: {
-            schoolId: actualSchoolId,
-            name: "1-smena",
-            startTime: "08:00",
-            endTime: "13:10",
-            periodsCount: 6,
-          },
-        });
-      }
+      const allShifts = await tx.shift.findMany({ where: { schoolId: actualSchoolId } });
+      const shiftId = resolveDbShiftId(allShifts, cls.shiftId);
 
       const existing = await tx.class.findFirst({
         where: { schoolId: actualSchoolId, OR: [{ id: cls.id }, { name: cls.name.trim() }] },
@@ -64,11 +31,13 @@ export async function upsertClassAction(schoolId: string, cls: SchoolClass) {
         const created = await tx.class.create({
           data: {
             schoolId: actualSchoolId,
-            branchId: branch.id,
-            shiftId: shift.id,
+            branchId: branchId,
+            shiftId: shiftId,
             name: cls.name.trim(),
             grade: cls.grade,
             isPrimary: cls.isPrimary || cls.grade <= 4,
+            studentCount: cls.studentCount || 25,
+            isClosed: cls.isClosed || false,
           },
         });
         classId = created.id;
@@ -76,11 +45,13 @@ export async function upsertClassAction(schoolId: string, cls: SchoolClass) {
         await tx.class.update({
           where: { id: existing.id },
           data: {
-            branchId: branch.id,
-            shiftId: shift.id,
+            branchId: branchId,
+            shiftId: shiftId,
             name: cls.name.trim(),
             grade: cls.grade,
             isPrimary: cls.isPrimary || cls.grade <= 4,
+            studentCount: cls.studentCount || 25,
+            isClosed: cls.isClosed || false,
           },
         });
         classId = existing.id;

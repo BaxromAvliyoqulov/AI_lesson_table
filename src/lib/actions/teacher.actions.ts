@@ -60,6 +60,7 @@ export async function upsertTeacherAction(schoolId: string, teacher: Teacher) {
             phone: teacher.phone || null,
             weeklyHourCapacity: teacher.weeklyHourCapacity || 20,
             maxConsecutiveHours: teacher.maxConsecutiveHours || 4,
+            maxGapsPerDay: teacher.maxGapsPerDay || 1,
             methodDay: teacher.methodDayOfWeek !== undefined ? teacher.methodDayOfWeek : null,
             homeroomClassId: teacher.homeroomClassId || null,
             teachingStages: teacher.teachingStages || "BOTH",
@@ -74,6 +75,7 @@ export async function upsertTeacherAction(schoolId: string, teacher: Teacher) {
             phone: teacher.phone || null,
             weeklyHourCapacity: teacher.weeklyHourCapacity,
             maxConsecutiveHours: teacher.maxConsecutiveHours,
+            maxGapsPerDay: teacher.maxGapsPerDay || 1,
             methodDay: teacher.methodDayOfWeek !== undefined ? teacher.methodDayOfWeek : null,
             homeroomClassId: teacher.homeroomClassId || null,
             teachingStages: teacher.teachingStages || "BOTH",
@@ -83,6 +85,21 @@ export async function upsertTeacherAction(schoolId: string, teacher: Teacher) {
         // Eskilarini tozalab yangilarini bog'lash
         await tx.teacherSubject.deleteMany({ where: { teacherId: teacherRecord.id } });
         await tx.teacherBranch.deleteMany({ where: { teacherId: teacherRecord.id } });
+      }
+
+      // Bo'sh vaqtlar (Availabilities)
+      if (teacher.availabilities && teacher.availabilities.length > 0) {
+        await tx.teacherAvailability.deleteMany({ where: { teacherId: teacherRecord.id } });
+        await tx.teacherAvailability.createMany({
+          data: teacher.availabilities.map((a) => ({
+            schoolId: actualSchoolId,
+            teacherId: teacherRecord.id,
+            dayOfWeek: a.dayOfWeek,
+            period: a.period,
+            isAvailable: a.isAvailable !== undefined ? a.isAvailable : true,
+          })),
+          skipDuplicates: true,
+        });
       }
 
       // Agar sinf biriktirilgan bo'lsa, ClassSubject dagi Kelajak soatini shu o'qituvchiga ulash yoki yaratish

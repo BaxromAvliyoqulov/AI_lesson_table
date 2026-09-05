@@ -320,3 +320,88 @@ export function isClassSecondShift(
   );
 }
 
+/**
+ * DB Branch ID Resolver: "b39_2", "b39_1", "filial", "asosiy" yoki CUID ni aniq DB Branch ID siga bog'lash
+ */
+export function resolveDbBranchId(
+  branches: Array<{ id: string; name: string; isMain?: boolean }>,
+  targetBranchIdOrName?: string
+): string {
+  if (!branches || branches.length === 0) return "";
+  if (!targetBranchIdOrName) {
+    return (branches.find((b) => b.isMain) || branches[0]).id;
+  }
+
+  // 1. Direct ID match
+  const byId = branches.find((b) => b.id === targetBranchIdOrName);
+  if (byId) return byId.id;
+
+  const lower = targetBranchIdOrName.toLowerCase();
+  const isBranchFilial =
+    lower.includes("filial") ||
+    lower.includes("branch_2") ||
+    lower.includes("b39_2") ||
+    lower.includes("b_2");
+
+  if (isBranchFilial) {
+    const filial = branches.find(
+      (b) => !b.isMain || b.name.toLowerCase().includes("filial")
+    );
+    if (filial) return filial.id;
+  } else {
+    const main = branches.find(
+      (b) => b.isMain || b.name.toLowerCase().includes("asosiy")
+    );
+    if (main) return main.id;
+  }
+
+  return branches[0].id;
+}
+
+/**
+ * DB Shift ID Resolver: "s39_2", "s39_1", "2-smena", "1-smena" yoki CUID ni aniq DB Shift ID siga bog'lash
+ */
+export function resolveDbShiftId(
+  shifts: Array<{ id: string; name: string; order?: number }>,
+  targetShiftIdOrName?: string
+): string {
+  if (!shifts || shifts.length === 0) return "";
+  if (!targetShiftIdOrName) {
+    return (shifts.find((s) => s.order === 1) || shifts[0]).id;
+  }
+
+  // 1. Direct ID match
+  const byId = shifts.find((s) => s.id === targetShiftIdOrName);
+  if (byId) return byId.id;
+
+  const lower = targetShiftIdOrName.toLowerCase();
+  const isSecond =
+    lower.includes("2") ||
+    lower.includes("tush") ||
+    lower.includes("keyin") ||
+    lower.includes("s39_2") ||
+    lower.includes("shift_2");
+
+  if (isSecond) {
+    const s2 = shifts.find(
+      (s) =>
+        s.order === 2 ||
+        s.name.toLowerCase().includes("2") ||
+        s.name.toLowerCase().includes("tush") ||
+        s.name.toLowerCase().includes("keyin")
+    );
+    if (s2) return s2.id;
+  } else {
+    const s1 = shifts.find(
+      (s) =>
+        s.order === 1 ||
+        s.name.toLowerCase().includes("1") ||
+        s.name.toLowerCase().includes("ertalab") ||
+        s.name.toLowerCase().includes("abetgacha")
+    );
+    if (s1) return s1.id;
+  }
+
+  return shifts[0].id;
+}
+

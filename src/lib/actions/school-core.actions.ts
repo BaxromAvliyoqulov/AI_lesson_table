@@ -14,6 +14,7 @@ import {
   BellPeriod,
 } from "@/types";
 import { CSPSolver } from "@/lib/solver/csp-solver";
+import { resolveDbBranchId, resolveDbShiftId } from "@/lib/utils";
 
 /**
  * 0. Maktab ID yoki slug bo'yicha bazadagi haqiqiy School yozuvini aniqlash (Auto-Resolver)
@@ -171,9 +172,16 @@ export async function getSchoolFullData(schoolId?: string) {
       branchIds: t.branches.map((b) => b.branchId),
       weeklyHourCapacity: t.weeklyHourCapacity,
       maxConsecutiveHours: t.maxConsecutiveHours,
+      maxGapsPerDay: t.maxGapsPerDay || 1,
       methodDayOfWeek: t.methodDay !== null ? t.methodDay : undefined,
       homeroomClassId: t.homeroomClassId || undefined,
       teachingStages: (t.teachingStages as any) || "BOTH",
+      availabilities: (t.availabilities || []).map((a) => ({
+        teacherId: a.teacherId,
+        dayOfWeek: a.dayOfWeek,
+        period: a.period,
+        isAvailable: a.isAvailable,
+      })),
     }));
 
     const classes: SchoolClass[] = school.classes.map((c) => {
@@ -186,6 +194,9 @@ export async function getSchoolFullData(schoolId?: string) {
         name: c.name,
         grade: c.grade,
         isPrimary: c.isPrimary,
+        studentCount: c.studentCount || 25,
+        isClosed: c.isClosed || false,
+        blockedDays: c.grade <= 4 ? [6] : [],
         homeroomTeacherId: homeroomTeacher ? homeroomTeacher.id : undefined,
         subjects: c.subjects.map((cs) => ({
           id: cs.id,
@@ -193,6 +204,7 @@ export async function getSchoolFullData(schoolId?: string) {
           subjectId: cs.subjectId,
           teacherId: cs.teacherId,
           weeklyHours: cs.weeklyHours,
+          groupType: (cs.groupType as any) || "WHOLE",
         })),
       };
     });
@@ -212,6 +224,7 @@ export async function getSchoolFullData(schoolId?: string) {
         branchId: l.branchId,
         dayOfWeek: l.dayOfWeek,
         periodNumber: l.periodNumber,
+        groupType: (l.groupType as any) || "WHOLE",
         isLocked: l.isLocked,
       }));
 
@@ -451,6 +464,7 @@ export async function syncFullSchoolDataAction(
             branchMap.set(b.id, existing.id);
           }
         }
+        const allDbBranches = await tx.branch.findMany({ where: { schoolId: actualSchoolId } });
 
         // 4. Smenalar
         const shiftMap = new Map<string, string>();
@@ -475,12 +489,13 @@ export async function syncFullSchoolDataAction(
             shiftMap.set(sh.id, existing.id);
           }
         }
+        const allDbShifts = await tx.shift.findMany({ where: { schoolId: actualSchoolId } });
 
         // 5. Xonalar
         const roomMap = new Map<string, string>();
         if (fullData.rooms && fullData.rooms.length > 0) {
           for (const r of fullData.rooms) {
-            const bId = branchMap.get(r.branchId) || Array.from(branchMap.values())[0];
+            const bId = branchMap.get(r.branchId) || resolveDbBranchId(allDbBranches, r.branchId);
             let existing = await tx.room.findFirst({
               where: { OR: [{ id: r.id }, { schoolId: actualSchoolId, name: r.name.trim() }] },
             });
@@ -526,6 +541,7 @@ export async function syncFullSchoolDataAction(
                   phone: t.phone || null,
                   weeklyHourCapacity: t.weeklyHourCapacity || 20,
                   maxConsecutiveHours: t.maxConsecutiveHours || 4,
+                  maxGapsPerDay: t.maxGapsPerDay || 1,
                   methodDay: t.methodDayOfWeek !== undefined ? t.methodDayOfWeek : null,
                   teachingStages: (t.teachingStages as any) || "BOTH",
                 },
@@ -538,6 +554,7 @@ export async function syncFullSchoolDataAction(
                   phone: t.phone || null,
                   weeklyHourCapacity: t.weeklyHourCapacity || 20,
                   maxConsecutiveHours: t.maxConsecutiveHours || 4,
+                  maxGapsPerDay: t.maxGapsPerDay || 1,
                   methodDay: t.methodDayOfWeek !== undefined ? t.methodDayOfWeek : null,
                   teachingStages: (t.teachingStages as any) || "BOTH",
                 },
@@ -545,6 +562,21 @@ export async function syncFullSchoolDataAction(
             }
             teacherMap.set(t.id, existing.id);
             teacherMap.set(t.fullName.trim(), existing.id);
+
+            // Bo'sh vaqtlar (Availabilities)
+            if (t.availabilities && t.availabilities.length > 0) {
+              await tx.teacherAvailability.deleteMany({ where: { teacherId: existing.id } });
+              await tx.teacherAvailability.createMany({
+                data: t.availabilities.map((a) => ({
+                  schoolId: actualSchoolId,
+                  teacherId: existing.id,
+                  dayOfWeek: a.dayOfWeek,
+                  period: a.period,
+                  isAvailable: a.isAvailable !== undefined ? a.isAvailable : true,
+                })),
+                skipDuplicates: true,
+              });
+            }
 
             // Fan bog'lamalari
             if (t.subjectIds && t.subjectIds.length > 0) {
@@ -566,8 +598,8 @@ export async function syncFullSchoolDataAction(
         const classMap = new Map<string, string>();
         if (fullData.classes && fullData.classes.length > 0) {
           for (const c of fullData.classes) {
-            const bId = branchMap.get(c.branchId) || Array.from(branchMap.values())[0];
-            const sId = shiftMap.get(c.shiftId) || Array.from(shiftMap.values())[0];
+            const bId = branchMap.get(c.branchId) || resolveDbBranchId(allDbBranches, c.branchId);
+            const sId = shiftMap.get(c.shiftId) || resolveDbShiftId(allDbShifts, c.shiftId);
             if (!bId || !sId) continue;
 
             let existing = await tx.class.findFirst({
@@ -583,6 +615,8 @@ export async function syncFullSchoolDataAction(
                   name: c.name.trim(),
                   grade: c.grade,
                   isPrimary: c.isPrimary || c.grade <= 4,
+                  studentCount: c.studentCount || 25,
+                  isClosed: c.isClosed || false,
                 },
               });
             } else {
@@ -593,6 +627,8 @@ export async function syncFullSchoolDataAction(
                   shiftId: sId,
                   grade: c.grade,
                   isPrimary: c.isPrimary || c.grade <= 4,
+                  studentCount: c.studentCount || 25,
+                  isClosed: c.isClosed || false,
                 },
               });
             }
@@ -625,6 +661,7 @@ export async function syncFullSchoolDataAction(
                         subjectId: dbSub.id,
                         teacherId: dbTeacher.id,
                         weeklyHours: cs.weeklyHours,
+                        groupType: cs.groupType || "WHOLE",
                       },
                     });
                   }
@@ -724,6 +761,7 @@ export async function syncFullSchoolDataAction(
                 branchId: mappedBranchId,
                 dayOfWeek: l.dayOfWeek,
                 periodNumber: l.periodNumber,
+                groupType: l.groupType || "WHOLE",
                 isLocked: l.isLocked || false,
               });
             }

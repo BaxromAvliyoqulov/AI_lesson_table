@@ -122,6 +122,7 @@ model Teacher {
   phone               String?
   weeklyHourCapacity  Int     @default(20)
   maxConsecutiveHours Int     @default(4)
+  maxGapsPerDay       Int?    @default(1)
   methodDay           Int?    // 0-6 (Yakshanba-Shanba), "metod kuni" — bu kunda dars yo'q
   homeroomClassId     String? @unique
   teachingStages      String? @default("BOTH") // "PRIMARY" | "HIGH" | "BOTH"
@@ -194,13 +195,15 @@ model Room {
 
 // ─── CLASS (Sinf) ─────────────────────────────────────────────────────────────
 model Class {
-  id        String  @id @default(cuid())
-  schoolId  String
-  branchId  String
-  shiftId   String
-  name      String  // "1-A"
-  grade     Int     // 1..11
-  isPrimary Boolean @default(false)
+  id           String  @id @default(cuid())
+  schoolId     String
+  branchId     String
+  shiftId      String
+  name         String  // "1-A"
+  grade        Int     // 1..11
+  isPrimary    Boolean @default(false)
+  studentCount Int?    @default(25)
+  isClosed     Boolean @default(false)
 
   school   School       @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   branch   Branch       @relation(fields: [branchId], references: [id], onDelete: Cascade)
@@ -212,18 +215,19 @@ model Class {
 }
 
 model ClassSubject {
-  id          String @id @default(cuid())
+  id          String  @id @default(cuid())
   schoolId    String
   classId     String
   subjectId   String
   teacherId   String
   weeklyHours Int
+  groupType   String? @default("WHOLE") // WHOLE | GROUP_1 | GROUP_2
 
   class   Class   @relation(fields: [classId], references: [id], onDelete: Cascade)
   subject Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
   teacher Teacher @relation(fields: [teacherId], references: [id], onDelete: Cascade)
 
-  @@unique([classId, subjectId, teacherId])
+  @@unique([classId, subjectId, teacherId, groupType])
   @@index([schoolId, classId])
 }
 
@@ -257,6 +261,7 @@ model Lesson {
   branchId     String
   dayOfWeek    Int     // 1-6
   periodNumber Int     // 1..8
+  groupType    String? @default("WHOLE") // WHOLE | GROUP_1 | GROUP_2
   isLocked     Boolean @default(false)
 
   schedule     Schedule          @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
@@ -268,7 +273,7 @@ model Lesson {
   branch       Branch            @relation(fields: [branchId], references: [id], onDelete: Cascade)
   replacements LessonReplacement[]
 
-  @@unique([scheduleId, classId, dayOfWeek, periodNumber])
+  @@unique([scheduleId, classId, dayOfWeek, periodNumber, groupType])
   @@index([scheduleId, teacherId, dayOfWeek, periodNumber])
   @@index([scheduleId, roomId, dayOfWeek, periodNumber])
   @@index([schoolId, dayOfWeek])
