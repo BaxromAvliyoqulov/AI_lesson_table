@@ -512,6 +512,13 @@ export default function HomePage() {
               teachers={schoolTeachers}
               rooms={schoolRooms}
               lessons={schoolLessons}
+              shifts={schoolShifts}
+              branches={schoolBranches}
+              onOpenZamena={(l) => setSelectedZamenaLesson(l)}
+              onSelectClass={(classId) => {
+                store.setSelectedClassId(classId);
+                store.setViewMode("CLASS");
+              }}
             />
           ) : (
             <MasterGrid
