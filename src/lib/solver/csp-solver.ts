@@ -95,10 +95,18 @@ export class CSPSolver {
       // 2.2. Smena bo'yicha aniq soat tekshiruvi:
       if (shiftGroup === "shift2") {
         const av2 = t.availabilities.find(
-          (a) => a.dayOfWeek === day && (a.period === 10 + period || a.period === period)
+          (a) => a.dayOfWeek === day && a.period === 10 + period
         );
-        if (av2 && av2.isAvailable === false) {
-          return false;
+        if (av2) {
+          if (av2.isAvailable === false) return false;
+        } else {
+          const hasShift2Avails = t.availabilities.some((a) => a.period >= 10);
+          if (!hasShift2Avails) {
+            const avGeneral = t.availabilities.find(
+              (a) => a.dayOfWeek === day && a.period === period
+            );
+            if (avGeneral && avGeneral.isAvailable === false) return false;
+          }
         }
       } else {
         const av1 = t.availabilities.find(
