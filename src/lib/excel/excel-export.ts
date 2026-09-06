@@ -210,11 +210,11 @@ export async function exportScheduleToExcel(options: ExcelExportOptions) {
     // Reestr sarlavhasini merge qilish (3 ta ustun)
     ws.mergeCells(7, reestrStartCol, 7, reestrStartCol + 2);
 
-    // Qator 7 dizayni
+    // Qator 7 dizayni (Sinflarni smena bo'yicha ajratish: 1-smena och pushti/warm, 2-smena och ko'k)
     row7.eachCell((cell, colNumber) => {
-      cell.font = { bold: true, size: 10.5, name: "Times New Roman", color: { argb: "FF000000" } };
       cell.alignment = { horizontal: "center", vertical: "middle" };
-      if (colNumber <= lastClassColNum) {
+      if (colNumber <= 3) {
+        cell.font = { bold: true, size: 10.5, name: "Times New Roman", color: { argb: "FF000000" } };
         cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFE2E8F0" } };
         cell.border = {
           top: { style: "medium", color: { argb: "FF000000" } },
@@ -222,7 +222,28 @@ export async function exportScheduleToExcel(options: ExcelExportOptions) {
           left: { style: "thin", color: { argb: "FF000000" } },
           right: { style: "thin", color: { argb: "FF000000" } },
         };
+      } else if (colNumber <= lastClassColNum) {
+        const classIdx = Math.floor((colNumber - 4) / 2);
+        const targetCls = branchClasses[classIdx];
+        const isShift2 = targetCls ? isClassSecondShift(targetCls, shifts) : false;
+
+        if (isShift2) {
+          // 2-smena: Ko'k rang
+          cell.font = { bold: true, size: 10.5, name: "Times New Roman", color: { argb: "FF1E3A8A" } };
+          cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFDBEAFE" } };
+        } else {
+          // 1-smena: Asl o'z rangida (och pushti/rose)
+          cell.font = { bold: true, size: 10.5, name: "Times New Roman", color: { argb: "FF881337" } };
+          cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFFE4E6" } };
+        }
+        cell.border = {
+          top: { style: "medium", color: { argb: "FF000000" } },
+          bottom: { style: "thin", color: { argb: "FF000000" } },
+          left: { style: "thin", color: { argb: "FF000000" } },
+          right: { style: "thin", color: { argb: "FF000000" } },
+        };
       } else if (colNumber >= reestrStartCol) {
+        cell.font = { bold: true, size: 10.5, name: "Times New Roman", color: { argb: "FF000000" } };
         cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFCBD5E1" } };
         cell.border = {
           top: { style: "medium", color: { argb: "FF000000" } },

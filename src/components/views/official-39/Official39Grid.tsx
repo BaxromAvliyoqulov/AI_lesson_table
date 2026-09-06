@@ -103,6 +103,7 @@ export const Official39Grid: React.FC<Official39GridProps> = ({
               {displayClasses.map((cls) => {
                 const homeroomTeacher = getHomeroomTeacher(cls);
                 const isClassLocked = lockedClassIds?.includes(cls.id);
+                const isShift2 = isClassSecondShift(cls, shifts);
 
                 const isBranchClass =
                   cls.branchId === "b39_2" ||
@@ -116,17 +117,23 @@ export const Official39Grid: React.FC<Official39GridProps> = ({
                     colSpan={2}
                     onClick={() => onOpenHomeroomModal(cls, homeroomTeacher?.id)}
                     className={`border border-black px-1.5 py-1 text-center font-black text-xs min-w-[92px] cursor-pointer hover:opacity-90 transition-opacity select-none ${
-                      isClassLocked
+                      isShift2
+                        ? isClassLocked
+                          ? "bg-blue-100 text-blue-950 border-blue-600 shadow-[inset_0_0_0_1px_rgba(37,99,235,0.4)]"
+                          : "bg-blue-50 text-blue-900 border-blue-400"
+                        : isClassLocked
                         ? "bg-rose-50 text-rose-950 border-rose-600"
                         : isBranchClass
                         ? "bg-amber-100 text-amber-950"
                         : "bg-slate-100 text-slate-900"
                     }`}
-                    title={`${cls.name} sinfi — Sinf rahbari: ${homeroomTeacher?.fullName || "Tayinlanmagan"} (O'zgartirish uchun bosing)`}
+                    title={`${cls.name} sinfi (${isShift2 ? "2-smena / Abetdan keyin" : "1-smena / Abetgacha"}) — Sinf rahbari: ${homeroomTeacher?.fullName || "Tayinlanmagan"} (O'zgartirish uchun bosing)`}
                   >
                     <div className="flex flex-col items-center">
                       <div className="flex items-center justify-center gap-1 w-full">
-                        <span className="tracking-wide font-black text-xs">{cls.name}</span>
+                        <span className={`tracking-wide font-black text-xs ${isShift2 ? "text-blue-950" : "text-rose-950"}`}>
+                          {cls.name}
+                        </span>
                         <button
                           type="button"
                           onClick={(e) => {
@@ -135,7 +142,9 @@ export const Official39Grid: React.FC<Official39GridProps> = ({
                           }}
                           className={`p-0.5 rounded text-[11px] transition-transform active:scale-90 hover:scale-110 cursor-pointer ${
                             isClassLocked
-                              ? "text-rose-600 font-bold"
+                              ? isShift2
+                                ? "text-blue-700 font-bold hover:text-blue-900"
+                                : "text-rose-600 font-bold hover:text-rose-900"
                               : "text-slate-400 hover:text-slate-700 opacity-60 hover:opacity-100"
                           }`}
                           title={
@@ -148,23 +157,23 @@ export const Official39Grid: React.FC<Official39GridProps> = ({
                         </button>
                       </div>
                       {homeroomTeacher ? (
-                        <span className="text-[8px] font-semibold text-slate-600 truncate max-w-[85px]">
+                        <span className={`text-[8px] font-semibold truncate max-w-[85px] ${isShift2 ? "text-blue-900/90 font-bold" : "text-slate-600"}`}>
                           {homeroomTeacher.fullName.split(" ")[0]}
                         </span>
                       ) : (
-                        <span className="text-[7.5px] font-bold text-rose-600/80">
+                        <span className={`text-[7.5px] font-bold ${isShift2 ? "text-blue-600/80" : "text-rose-600/80"}`}>
                           + Rahbar
                         </span>
                       )}
                       {cls.branchId === "b39_2" && (
                         <span className="text-[7.5px] font-bold text-amber-900">(Filial)</span>
                       )}
-                      {isClassSecondShift(cls, shifts) ? (
-                        <span className="text-[7px] font-extrabold text-indigo-700 bg-indigo-50 px-1 py-0.5 rounded border border-indigo-200 mt-0.5 whitespace-nowrap shadow-2xs">
+                      {isShift2 ? (
+                        <span className="text-[7px] font-black text-blue-900 bg-blue-200/90 px-1 py-0.5 rounded border border-blue-400 mt-0.5 whitespace-nowrap shadow-2xs">
                           🌤️ 2-smena
                         </span>
                       ) : (
-                        <span className="text-[7px] font-extrabold text-amber-700 bg-amber-50 px-1 py-0.5 rounded border border-amber-200 mt-0.5 whitespace-nowrap shadow-2xs">
+                        <span className="text-[7px] font-extrabold text-amber-800 bg-amber-100/90 px-1 py-0.5 rounded border border-amber-300 mt-0.5 whitespace-nowrap shadow-2xs">
                           ☀️ 1-smena
                         </span>
                       )}
