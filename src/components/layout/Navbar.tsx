@@ -533,6 +533,18 @@ export const Navbar: React.FC<NavbarProps> = ({
             )}
           </div>
 
+          {/* Super Admin Boshqaruviga Qaytish */}
+          {(session?.user as any)?.role === "SUPER_ADMIN" && (
+            <a
+              href="/super-admin"
+              className="flex items-center gap-1.5 rounded-xl border border-amber-500/40 bg-amber-500/15 px-2.5 py-1.5 text-xs font-bold text-amber-800 hover:bg-amber-500/25 transition-colors shadow-sm"
+              title="Super Admin Boshqaruv Paneliga qaytish"
+            >
+              <Shield className="h-3.5 w-3.5 text-amber-600" />
+              <span>Super Admin</span>
+            </a>
+          )}
+
           {/* 4. Maktab Sozlamalari (Alohida Sahifa) */}
           <a
             href="/sozlamalar"

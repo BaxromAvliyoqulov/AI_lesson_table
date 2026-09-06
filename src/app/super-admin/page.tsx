@@ -35,7 +35,7 @@ import { ConfirmActionModal } from "@/components/modals/ConfirmActionModal";
 
 export default function SuperAdminPage() {
   const router = useRouter();
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const store = useSchoolStore();
 
   const [schools, setSchools] = useState<SuperAdminSchoolRecord[]>([]);
@@ -87,10 +87,11 @@ export default function SuperAdminPage() {
   }, []);
 
   useEffect(() => {
-    if (session?.user && session.user.role !== "SUPER_ADMIN") {
-      router.push("/super-admin/login");
+    if (status === "loading") return;
+    if (!session?.user || (session.user as any).role !== "SUPER_ADMIN") {
+      router.push("/login?callbackUrl=/super-admin");
     }
-  }, [session, router]);
+  }, [session, status, router]);
 
   useEffect(() => {
     loadData();

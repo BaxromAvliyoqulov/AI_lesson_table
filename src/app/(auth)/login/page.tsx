@@ -57,7 +57,8 @@ export default function LoginPage() {
         if (res?.error) {
           setError(ERROR_MESSAGES[res.error] ?? ERROR_MESSAGES.default);
         } else {
-          window.location.href = callbackUrl;
+          const isSuper = email.trim().toLowerCase().includes("superadmin");
+          window.location.href = isSuper ? "/super-admin" : (callbackUrl === "/login" ? "/" : callbackUrl);
         }
       } catch {
         setError(ERROR_MESSAGES.default);
@@ -82,7 +83,8 @@ export default function LoginPage() {
         if (res?.error) {
           setError(ERROR_MESSAGES[res.error] ?? ERROR_MESSAGES.default);
         } else {
-          window.location.href = callbackUrl;
+          const targetUrl = type === "superAdmin" ? "/super-admin" : (callbackUrl === "/login" ? "/" : callbackUrl);
+          window.location.href = targetUrl;
         }
       } catch {
         setError(ERROR_MESSAGES.default);
