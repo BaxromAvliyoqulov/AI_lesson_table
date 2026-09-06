@@ -209,12 +209,24 @@ export default function HomePage() {
     showToast("O'rinbosar o'qituvchi muvaffaqiyatli biriktirildi!");
   };
 
-  // F5 va sahifa yangilanishida dars jadvali rejimini saqlash (URL ?view=...)
+  // F5 va sahifa yangilanishida dars jadvali rejimini va maktabni saqlash (URL ?view=... & ?school=...)
   React.useEffect(() => {
     if (typeof window !== "undefined") {
-      const urlView = new URLSearchParams(window.location.search).get("view")?.toUpperCase();
+      const urlParams = new URLSearchParams(window.location.search);
+      const urlView = urlParams.get("view")?.toUpperCase();
       if (urlView && ["OFFICIAL_39", "MASTER", "CLASS", "TEACHER"].includes(urlView)) {
         store.setViewMode(urlView as any);
+      }
+
+      const schoolParam = urlParams.get("school");
+      if (schoolParam) {
+        if (schoolParam === "ai-school" || schoolParam === "school_ai") {
+          store.setCurrentSchoolId("school_ai");
+        } else if (schoolParam === "39" || schoolParam === "demo-maktab") {
+          store.setCurrentSchoolId("cmthn422g0001uff8vhccbxmz");
+        } else {
+          store.setCurrentSchoolId(schoolParam);
+        }
       }
     }
   }, []);
@@ -238,6 +250,12 @@ export default function HomePage() {
           store.setCurrentSchoolId(id);
           store.setSelectedBranch("ALL");
           setGenerationResult(null);
+          if (typeof window !== "undefined") {
+            const url = new URL(window.location.href);
+            const selectedSchool = store.schools.find((s) => s.id === id);
+            url.searchParams.set("school", selectedSchool?.slug || id);
+            window.history.replaceState({}, "", url.toString());
+          }
         }}
         onAddSchool={() => setIsAddSchoolOpen(true)}
         zoomLevel={store.zoomLevel}

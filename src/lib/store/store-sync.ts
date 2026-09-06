@@ -419,14 +419,25 @@ export function useStoreSync() {
           lessons: saved.lessons || [],
         });
         updateStore(
-          (prev) => ({
-            ...prev,
-            ...saved,
-            classes: normalized.classes,
-            teachers: normalized.teachers,
-            lessons: normalized.lessons,
-            isGenerating: false,
-          }),
+          (prev) => {
+            const mergedSchools = [...prev.schools];
+            if (saved.schools && Array.isArray(saved.schools)) {
+              for (const s of saved.schools) {
+                if (!mergedSchools.some((ms) => ms.id === s.id)) {
+                  mergedSchools.push(s);
+                }
+              }
+            }
+            return {
+              ...prev,
+              ...saved,
+              schools: mergedSchools,
+              classes: normalized.classes,
+              teachers: normalized.teachers,
+              lessons: normalized.lessons,
+              isGenerating: false,
+            };
+          },
           false
         );
       }
