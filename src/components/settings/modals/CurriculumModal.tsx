@@ -615,6 +615,55 @@ export const CurriculumModal: React.FC<CurriculumModalProps> = ({
   ) => {
     setSubjectsList((prev) => {
       const list = deduplicateClassSubjects(prev, subjectMap, allSubjects, targetClass?.homeroomTeacherId);
+
+      // Agar 2-guruh o'qituvchisi tanlansa, lekin ro'yxatda hali GROUP_2 mavjud bo'lmasa:
+      if (groupType === "GROUP_2") {
+        const hasGroup2 = list.some(
+          (item) => item.subjectId === subjectId && item.groupType === "GROUP_2"
+        );
+        if (!hasGroup2) {
+          const group1Item = list.find((item) => item.subjectId === subjectId);
+          const newGroup2Item: ClassSubject = {
+            classId: targetClass?.id || "",
+            subjectId,
+            weeklyHours: group1Item?.weeklyHours || 1,
+            teacherId,
+            groupType: "GROUP_2",
+          };
+          const updated = list.map((item) =>
+            item.subjectId === subjectId ? { ...item, groupType: "GROUP_1" as const } : item
+          );
+          return deduplicateClassSubjects(
+            [...updated, newGroup2Item],
+            subjectMap,
+            allSubjects,
+            targetClass?.homeroomTeacherId
+          );
+        }
+      }
+
+      // Agar 1-guruh o'qituvchisi tanlansa, lekin ro'yxatda mavjud bo'lmasa:
+      if (groupType === "GROUP_1") {
+        const hasGroup1 = list.some(
+          (item) => item.subjectId === subjectId && (item.groupType === "GROUP_1" || item.groupType === "WHOLE")
+        );
+        if (!hasGroup1) {
+          const newGroup1Item: ClassSubject = {
+            classId: targetClass?.id || "",
+            subjectId,
+            weeklyHours: 1,
+            teacherId,
+            groupType: "GROUP_1",
+          };
+          return deduplicateClassSubjects(
+            [...list, newGroup1Item],
+            subjectMap,
+            allSubjects,
+            targetClass?.homeroomTeacherId
+          );
+        }
+      }
+
       return list.map((item) => {
         if (item.subjectId === subjectId) {
           const gType = item.groupType || "WHOLE";
