@@ -48,7 +48,7 @@ interface ClassesTabProps {
   onBulkAddClasses?: (newClasses: SchoolClass[]) => void;
 }
 
-type ClassFilterType = "ALL" | "PRIMARY" | "MIDDLE" | "HIGH" | "NO_HOMEROOM" | "LOCKED";
+type ClassFilterType = "ALL" | "PRIMARY" | "MIDDLE" | "HIGH" | "NO_HOMEROOM" | "LOCKED" | "INCOMPLETE_CURRICULUM";
 
 const AVAILABLE_GRADES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
 const AVAILABLE_LETTERS = ["A", "B", "D", "E", "F", "G", "H", "I", "J", "K"];
@@ -224,6 +224,43 @@ export const ClassesTab: React.FC<ClassesTabProps> = ({
     return map;
   }, [classes]);
 
+  const isClassIncompleteCurriculum = useCallback((cls: SchoolClass) => {
+    const subjects = cls.subjects || [];
+    if (subjects.length === 0) return true;
+
+    const uniqueSubjectMap = new Map<string, { hasT1: boolean; hasT2: boolean; isSplit: boolean }>();
+    subjects.forEach((s) => {
+      if (!uniqueSubjectMap.has(s.subjectId)) {
+        uniqueSubjectMap.set(s.subjectId, { hasT1: false, hasT2: false, isSplit: false });
+      }
+      const entry = uniqueSubjectMap.get(s.subjectId)!;
+      if (s.groupType === "GROUP_2") {
+        entry.isSplit = true;
+        entry.hasT2 = !!s.teacherId;
+      } else if (s.groupType === "GROUP_1") {
+        entry.isSplit = true;
+        entry.hasT1 = !!s.teacherId;
+      } else {
+        entry.hasT1 = !!s.teacherId;
+      }
+    });
+
+    for (const entry of uniqueSubjectMap.values()) {
+      if (entry.isSplit) {
+        if (!entry.hasT1 || !entry.hasT2) return true;
+      } else {
+        if (!entry.hasT1) return true;
+      }
+    }
+
+    return false;
+  }, []);
+
+  const incompleteCurriculumCount = useMemo(
+    () => classes.filter(isClassIncompleteCurriculum).length,
+    [classes, isClassIncompleteCurriculum]
+  );
+
   const filteredClasses = useMemo(() => {
     let list = classes;
 
@@ -246,6 +283,8 @@ export const ClassesTab: React.FC<ClassesTabProps> = ({
       list = list.filter((c) => !getClassHomeroomTeacher(c));
     } else if (filterType === "LOCKED") {
       list = list.filter((c) => lockedClassIds.includes(c.id));
+    } else if (filterType === "INCOMPLETE_CURRICULUM") {
+      list = list.filter(isClassIncompleteCurriculum);
     }
 
     if (search.trim()) {
@@ -259,7 +298,7 @@ export const ClassesTab: React.FC<ClassesTabProps> = ({
     }
 
     return sortClassesByName(list);
-  }, [classes, shiftFilter, isClassShift1, isClassShift2, selectedGrade, filterType, search, getClassHomeroomTeacher, lockedClassIds]);
+  }, [classes, shiftFilter, isClassShift1, isClassShift2, selectedGrade, filterType, search, getClassHomeroomTeacher, lockedClassIds, isClassIncompleteCurriculum]);
 
   // Ommaviy sinflarni yaratish
   const handleCreateBulkClasses = () => {
@@ -707,6 +746,35 @@ export const ClassesTab: React.FC<ClassesTabProps> = ({
             </div>
           </div>
 
+          {incompleteCurriculumCount > 0 && (
+            <div
+              onClick={() => {
+                setFilterType((prev) => (prev === "INCOMPLETE_CURRICULUM" ? "ALL" : "INCOMPLETE_CURRICULUM"));
+                setSelectedGrade(null);
+              }}
+              className={`flex items-center gap-2 p-2 rounded-xl border cursor-pointer transition-all shadow-xs ${
+                filterType === "INCOMPLETE_CURRICULUM"
+                  ? "bg-amber-600 text-white border-amber-700 ring-2 ring-amber-400/50"
+                  : "bg-amber-500/10 border-amber-500/30 text-amber-800 dark:text-amber-300 hover:bg-amber-500/20"
+              }`}
+              title="Ustoz tayinlanmagan sinflarni ko'rish"
+            >
+              <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
+                filterType === "INCOMPLETE_CURRICULUM" ? "bg-white/20 text-white" : "bg-amber-500 text-white"
+              }`}>
+                <AlertTriangle className="w-4 h-4 animate-bounce" />
+              </div>
+              <div className="min-w-0">
+                <div className={`text-[10px] font-bold uppercase tracking-tight ${
+                  filterType === "INCOMPLETE_CURRICULUM" ? "text-white/90" : "text-amber-700 dark:text-amber-400"
+                }`}>
+                  Ustozsiz fanlar
+                </div>
+                <div className="text-xs font-black">{incompleteCurriculumCount} ta sinfda!</div>
+              </div>
+            </div>
+          )}
+
           <div className="flex items-center gap-2 p-2 rounded-xl bg-muted/30 border border-border/50">
             <div className="w-7 h-7 rounded-lg bg-blue-500/10 text-blue-600 flex items-center justify-center shrink-0">
               <BarChart3 className="w-4 h-4" />
@@ -797,6 +865,24 @@ export const ClassesTab: React.FC<ClassesTabProps> = ({
               >
                 <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
                 <span>⚠️ Rahbari yo'qlar ({noHomeroomCount})</span>
+              </button>
+            )}
+
+            {incompleteCurriculumCount > 0 && (
+              <button
+                type="button"
+                onClick={() => {
+                  setFilterType(filterType === "INCOMPLETE_CURRICULUM" ? "ALL" : "INCOMPLETE_CURRICULUM");
+                  setSelectedGrade(null);
+                }}
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer whitespace-nowrap shrink-0 border shadow-xs ${
+                  filterType === "INCOMPLETE_CURRICULUM"
+                    ? "bg-amber-600 text-white border-amber-700 shadow-sm ring-2 ring-amber-400/40"
+                    : "bg-amber-100 dark:bg-amber-950/60 text-amber-900 dark:text-amber-200 border-amber-300 dark:border-amber-700 hover:bg-amber-200 dark:hover:bg-amber-900/80"
+                }`}
+              >
+                <AlertTriangle className="w-3.5 h-3.5 shrink-0 text-amber-600 dark:text-amber-400 animate-pulse" />
+                <span>⚠️ Ustoz tayinlanmagan ({incompleteCurriculumCount})</span>
               </button>
             )}
           </div>

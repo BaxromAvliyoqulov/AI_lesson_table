@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import Link from "next/link";
 import { useSchoolStore } from "@/lib/store/useSchoolStore";
 import { SchoolClass, Teacher, Subject, Room, ClassSubject, TeacherAvailability, BellPeriod } from "@/types";
@@ -30,6 +30,7 @@ import {
   Sliders,
   CheckCircle2,
   AlertCircle,
+  AlertTriangle,
   Sparkles,
 } from "lucide-react";
 
@@ -131,10 +132,87 @@ export default function SettingsPage() {
     ? store.rooms.filter((r) => r.schoolId === store.currentSchoolId)
     : store.rooms;
 
+  // Kamchiliklar monitoringi (Smart Warning Badges)
+  const classesWithIssuesCount = useMemo(() => {
+    const teacherHomerooms = new Set<string>();
+    schoolTeachers.forEach((t) => {
+      if (t.homeroomClassId) {
+        teacherHomerooms.add(t.homeroomClassId.toLowerCase());
+      }
+    });
+
+    return schoolClasses.filter((c) => {
+      const cId = c.id.toLowerCase();
+      const cName = c.name.toLowerCase();
+      const hasHomeroom =
+        teacherHomerooms.has(cId) ||
+        teacherHomerooms.has(cName) ||
+        (c.subjects || []).some(
+          (s) =>
+            (s.subjectId === "sub_sinf_soati" || s.subjectId?.toLowerCase().includes("sinf_soati")) &&
+            !!s.teacherId
+        );
+
+      if (!hasHomeroom) return true;
+
+      const subjects = c.subjects || [];
+      if (subjects.length === 0) return true;
+
+      const uniqueSubjectMap = new Map<string, { hasT1: boolean; hasT2: boolean; isSplit: boolean }>();
+      subjects.forEach((s) => {
+        if (!uniqueSubjectMap.has(s.subjectId)) {
+          uniqueSubjectMap.set(s.subjectId, { hasT1: false, hasT2: false, isSplit: false });
+        }
+        const entry = uniqueSubjectMap.get(s.subjectId)!;
+        if (s.groupType === "GROUP_2") {
+          entry.isSplit = true;
+          entry.hasT2 = !!s.teacherId;
+        } else if (s.groupType === "GROUP_1") {
+          entry.isSplit = true;
+          entry.hasT1 = !!s.teacherId;
+        } else {
+          entry.hasT1 = !!s.teacherId;
+        }
+      });
+
+      for (const entry of uniqueSubjectMap.values()) {
+        if (entry.isSplit) {
+          if (!entry.hasT1 || !entry.hasT2) return true;
+        } else {
+          if (!entry.hasT1) return true;
+        }
+      }
+
+      return false;
+    }).length;
+  }, [schoolClasses, schoolTeachers]);
+
+  const teachersWithoutHoursCount = useMemo(() => {
+    const assignedIds = new Set<string>();
+    schoolClasses.forEach((c) => {
+      (c.subjects || []).forEach((s) => {
+        if (s.teacherId) assignedIds.add(s.teacherId);
+      });
+    });
+    return schoolTeachers.filter((t) => !assignedIds.has(t.id)).length;
+  }, [schoolClasses, schoolTeachers]);
+
   // Tab definitions
   const tabs = [
-    { id: "CLASSES" as SettingTab, label: "Sinflar", icon: GraduationCap, count: schoolClasses.length },
-    { id: "TEACHERS" as SettingTab, label: "O'qituvchilar", icon: Users, count: schoolTeachers.length },
+    {
+      id: "CLASSES" as SettingTab,
+      label: "Sinflar",
+      icon: GraduationCap,
+      count: schoolClasses.length,
+      warningCount: classesWithIssuesCount,
+    },
+    {
+      id: "TEACHERS" as SettingTab,
+      label: "O'qituvchilar",
+      icon: Users,
+      count: schoolTeachers.length,
+      warningCount: teachersWithoutHoursCount > 0 ? teachersWithoutHoursCount : undefined,
+    },
     { id: "AVAILABILITY" as SettingTab, label: "Bo'sh vaqtlar", icon: Calendar },
     { id: "SUBJECTS" as SettingTab, label: "Fanlar", icon: BookOpen, count: schoolSubjects.length },
     { id: "ROOMS" as SettingTab, label: "Xonalar", icon: DoorOpen, count: schoolRooms.length },
@@ -249,21 +327,31 @@ export default function SettingsPage() {
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
-                    isActive
+                  className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${isActive
                       ? "bg-primary text-primary-foreground shadow-md shadow-primary/20"
                       : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
-                  }`}
+                    }`}
                 >
                   <Icon className="w-4 h-4" />
                   <span>{tab.label}</span>
                   {tab.count !== undefined && (
                     <span
-                      className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
-                        isActive ? "bg-white/20 text-white" : "bg-muted text-muted-foreground"
-                      }`}
+                      className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${isActive ? "bg-white/20 text-white" : "bg-muted text-muted-foreground"
+                        }`}
                     >
                       {tab.count}
+                    </span>
+                  )}
+                  {tab.warningCount !== undefined && tab.warningCount > 0 && (
+                    <span
+                      className={`inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full font-extrabold shadow-sm animate-pulse ${isActive
+                          ? "bg-amber-400 text-amber-950 font-black ring-2 ring-white/40"
+                          : "bg-amber-500 text-white"
+                        }`}
+                      title={`${tab.warningCount} ta kamchilik mavjud`}
+                    >
+                      <AlertTriangle className="w-3 h-3 shrink-0" />
+                      <span>{tab.warningCount} ta kamchilik</span>
                     </span>
                   )}
                 </button>
@@ -275,6 +363,26 @@ export default function SettingsPage() {
 
       {/* Main Content Body */}
       <main className="flex-1 max-w-[1920px] w-full mx-auto px-4 sm:px-6 lg:px-8 xl:px-10 py-6">
+        {classesWithIssuesCount > 0 && activeTab === "CLASSES" && (
+          <div className="mb-4 p-4 rounded-2xl border border-amber-500/40 bg-amber-500/10 flex flex-wrap items-center justify-between gap-3 text-xs text-amber-900 dark:text-amber-200 shadow-sm">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-sm">
+                <AlertTriangle className="w-4 h-4 animate-bounce" />
+              </div>
+              <div>
+                <div className="font-extrabold text-sm text-amber-900 dark:text-amber-100 flex items-center gap-2">
+                  <span>Diqqat: {classesWithIssuesCount} ta sinfda kamchilik bor!</span>
+                </div>
+                <div className="text-[11px] text-amber-700 dark:text-amber-300 font-medium">
+                  Sinfdagi ayrim fanlarga o'qituvchi tayinlanmagan yoki sinf rahbari kiritilmagan.
+                </div>
+              </div>
+            </div>
+            <span className="text-[11px] font-bold bg-amber-500/20 text-amber-900 dark:text-amber-200 px-3 py-1.5 rounded-xl border border-amber-500/30">
+              Quyidagi «⚠️ Ustoz tayinlanmagan ({classesWithIssuesCount})» tugmasini bosing
+            </span>
+          </div>
+        )}
         {activeTab === "CLASSES" && (
           <ClassesTab
             classes={schoolClasses}
