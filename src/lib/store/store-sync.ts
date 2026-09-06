@@ -116,16 +116,13 @@ export function normalizeHomeroomSinfSoati({
       const cleanSubjects = existingSubjects.filter(
         (s) => !isSinfSoatiCheck(s.subjectId)
       );
-      // Fanlar dublikatini tozalash (Deduplication) - Guruhlarni (GROUP_1, GROUP_2) saqlagan holda
-      const dedupedClean: ClassSubject[] = [];
-      const seenIds = new Set<string>();
+      // Fanlar dublikatini tozalash (Deduplication) - LATER (yangi) yozuvlar ustuvor
+      const cleanSubMap = new Map<string, ClassSubject>();
       for (const s of cleanSubjects) {
         const subKey = `${s.subjectId}_${s.groupType || "WHOLE"}`;
-        if (!seenIds.has(subKey)) {
-          seenIds.add(subKey);
-          dedupedClean.push(s);
-        }
+        cleanSubMap.set(subKey, s);
       }
+      const dedupedClean = Array.from(cleanSubMap.values());
       return {
         ...c,
         name: normalizeClassName(c.name),
@@ -139,16 +136,13 @@ export function normalizeHomeroomSinfSoati({
       (s) => !isSinfSoatiCheck(s.subjectId)
     );
 
-    // Boshqa fanlar dublikatini ham tozalash (GROUP_1 va GROUP_2 ni saqlaymiz)
-    const dedupedOther: ClassSubject[] = [];
-    const seenOtherIds = new Set<string>();
+    // Boshqa fanlar dublikatini ham tozalash (LATER yangi yozuv ustuvor)
+    const otherSubMap = new Map<string, ClassSubject>();
     for (const s of otherSubjects) {
       const subKey = `${s.subjectId}_${s.groupType || "WHOLE"}`;
-      if (!seenOtherIds.has(subKey)) {
-        seenOtherIds.add(subKey);
-        dedupedOther.push(s);
-      }
+      otherSubMap.set(subKey, s);
     }
+    const dedupedOther = Array.from(otherSubMap.values());
 
     // QAT'IY 1 DONA (1 soatlik) SINF SOATI
     const singleHomeroomHour: ClassSubject = {

@@ -402,13 +402,13 @@ export async function saveTeacherWorkloadAction(
                 },
               });
 
-              // 1-o'qituvchi uchun
+              // 1-o'qituvchi uchun (GROUP_1)
               await tx.classSubject.deleteMany({
                 where: {
                   classId: cls.id,
                   subjectId: sub.id,
-                  teacherId: teacher.id,
                   schoolId: actualSchoolId,
+                  groupType: "GROUP_1",
                 },
               });
               await tx.classSubject.create({
@@ -418,17 +418,18 @@ export async function saveTeacherWorkloadAction(
                   subjectId: sub.id,
                   teacherId: teacher.id,
                   weeklyHours: a.weeklyHours,
+                  groupType: "GROUP_1",
                 },
               });
 
-              // 2-o'qituvchi uchun ham yozish
+              // 2-o'qituvchi uchun ham yozish (GROUP_2)
               if (secondTeacher) {
                 await tx.classSubject.deleteMany({
                   where: {
                     classId: cls.id,
                     subjectId: sub.id,
-                    teacherId: secondTeacher.id,
                     schoolId: actualSchoolId,
+                    groupType: "GROUP_2",
                   },
                 });
                 await tx.classSubject.create({
@@ -438,16 +439,21 @@ export async function saveTeacherWorkloadAction(
                     subjectId: sub.id,
                     teacherId: secondTeacher.id,
                     weeklyHours: a.weeklyHours,
+                    groupType: "GROUP_2",
                   },
                 });
               }
             } else {
+              // WHOLE dars: Ushbu sinf va fandan boshqa har qanday eski WHOLE yozuvlarni tozalash (yangi o'qituvchi ustuvor!)
               await tx.classSubject.deleteMany({
                 where: {
                   classId: cls.id,
                   subjectId: sub.id,
-                  teacherId: teacher.id,
                   schoolId: actualSchoolId,
+                  OR: [
+                    { groupType: "WHOLE" },
+                    { groupType: null },
+                  ],
                 },
               });
 
@@ -458,6 +464,7 @@ export async function saveTeacherWorkloadAction(
                   subjectId: sub.id,
                   teacherId: teacher.id,
                   weeklyHours: a.weeklyHours,
+                  groupType: a.groupType || "WHOLE",
                 },
               });
             }

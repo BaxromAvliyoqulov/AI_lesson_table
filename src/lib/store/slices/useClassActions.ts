@@ -398,20 +398,23 @@ export function useClassActions() {
             }
           }
 
+          // Yangi biriktirilgan fanlar BIRINCHI o'ringa qo'yiladi (ular ustuvor)
           const deduped: ClassSubject[] = [
+            ...addedSubjects,
             ...remainingSubjects.filter(
               (rs) =>
                 !addedSubjects.some(
-                  (as) => as.subjectId === rs.subjectId && as.teacherId === rs.teacherId
+                  (as) =>
+                    as.subjectId === rs.subjectId &&
+                    (as.groupType || "WHOLE") === (rs.groupType || "WHOLE")
                 )
             ),
-            ...addedSubjects,
           ];
 
           // KAFOLAT: Har bir sinfda Sinf soati FAQAT VA FAQAT 1 DONA bo'lishi shart!
-          // Va hech bir fandan ayni bir sinfda 2 xil satr (dublikat) bo'lmasligi kafolatlanadi
+          // Va boshqa fanlarda ham (guruhlarni hisobga olgan holda) dublikat bo'lmaydi
           let seenSinfSoatiInClass = false;
-          const seenSubIdsInClass = new Set<string>();
+          const seenSubKeysInClass = new Set<string>();
           const strictlyUniqueSubjects: ClassSubject[] = [];
 
           for (const s of deduped) {
@@ -424,8 +427,9 @@ export function useClassActions() {
               continue;
             }
 
-            if (seenSubIdsInClass.has(s.subjectId)) continue;
-            seenSubIdsInClass.add(s.subjectId);
+            const subKey = `${s.subjectId}_${s.groupType || "WHOLE"}`;
+            if (seenSubKeysInClass.has(subKey)) continue;
+            seenSubKeysInClass.add(subKey);
             strictlyUniqueSubjects.push(s);
           }
 
