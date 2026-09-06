@@ -3,7 +3,7 @@
 import React, { useState, useTransition } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Eye, EyeOff, Loader2, AlertCircle, KeyRound, Shield, School } from "lucide-react";
+import { Eye, EyeOff, Loader2, AlertCircle, KeyRound, Shield, School, Sparkles } from "lucide-react";
 import { Logo } from "@/components/brand/Logo";
 
 const ERROR_MESSAGES: Record<string, string> = {
@@ -13,13 +13,18 @@ const ERROR_MESSAGES: Record<string, string> = {
 };
 
 const DEMO_ACCOUNTS = {
+  aiSchoolAdmin: {
+    label: "✨ AI School (Ideal Jadval)",
+    email: "admin@ai-school.uz",
+    password: "admin123",
+  },
   schoolAdmin: {
-    label: "Maktab Admin",
+    label: "🏫 39-maktab (Asosiy)",
     email: "admin@demo-maktab.uz",
     password: "admin123",
   },
   superAdmin: {
-    label: "Super Admin",
+    label: "🛡️ Super Admin",
     email: "superadmin@jadvalai.uz",
     password: "admin123",
   },
@@ -61,7 +66,7 @@ export default function LoginPage() {
     });
   };
 
-  const fillCredentials = (type: "schoolAdmin" | "superAdmin") => {
+  const fillCredentials = (type: "aiSchoolAdmin" | "schoolAdmin" | "superAdmin") => {
     const acc = DEMO_ACCOUNTS[type];
     setEmail(acc.email);
     setPassword(acc.password);
@@ -91,38 +96,58 @@ export default function LoginPage() {
         </div>
 
         {/* Demo Credentials Quick-Fill Card */}
-        <div className="mb-5 p-4 rounded-2xl bg-indigo-500/10 border border-indigo-500/25 backdrop-blur-md">
-          <div className="flex items-center gap-2 mb-2 text-indigo-300 text-xs font-semibold uppercase tracking-wider">
+        <div className="mb-5 p-4 rounded-2xl bg-indigo-500/10 border border-indigo-500/25 backdrop-blur-md space-y-2">
+          <div className="flex items-center gap-2 text-indigo-300 text-xs font-semibold uppercase tracking-wider">
             <KeyRound className="w-3.5 h-3.5 text-amber-400" />
             <span>Sinov uchun login va parollar</span>
           </div>
 
-          <div className="grid grid-cols-2 gap-2 mt-2.5">
+          <div className="grid grid-cols-1 gap-2">
             <button
               type="button"
-              onClick={() => fillCredentials("schoolAdmin")}
-              className="p-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-left transition-all hover:border-indigo-400/40 group cursor-pointer"
+              onClick={() => fillCredentials("aiSchoolAdmin")}
+              className="p-2.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-left transition-all hover:border-emerald-400/60 group cursor-pointer"
             >
-              <div className="flex items-center gap-1.5 text-xs font-semibold text-white group-hover:text-indigo-300">
-                <School className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
-                <span>Maktab Admin</span>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-300">
+                  <Sparkles className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                  <span>AI School (39-maktab Mukammal Jadvali)</span>
+                </div>
+                <span className="text-[10px] px-2 py-0.5 rounded-full font-extrabold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+                  0 ta ziddiyat
+                </span>
               </div>
-              <p className="text-[11px] text-slate-400 mt-1 font-mono truncate">admin@demo-maktab.uz</p>
-              <p className="text-[10px] text-amber-400/90 font-mono mt-0.5">Parol: admin123</p>
+              <p className="text-[11px] text-slate-300 mt-1 font-mono">admin@ai-school.uz</p>
+              <p className="text-[10px] text-emerald-400/90 font-mono mt-0.5">Parol: admin123 (Kirish uchun bosing)</p>
             </button>
 
-            <button
-              type="button"
-              onClick={() => fillCredentials("superAdmin")}
-              className="p-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-left transition-all hover:border-amber-400/40 group cursor-pointer"
-            >
-              <div className="flex items-center gap-1.5 text-xs font-semibold text-white group-hover:text-amber-300">
-                <Shield className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                <span>Super Admin</span>
-              </div>
-              <p className="text-[11px] text-slate-400 mt-1 font-mono truncate">superadmin@jadvalai.uz</p>
-              <p className="text-[10px] text-amber-400/90 font-mono mt-0.5">Parol: admin123</p>
-            </button>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => fillCredentials("schoolAdmin")}
+                className="p-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-left transition-all hover:border-indigo-400/40 group cursor-pointer"
+              >
+                <div className="flex items-center gap-1.5 text-xs font-semibold text-white group-hover:text-indigo-300">
+                  <School className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+                  <span>39-maktab (Asosiy)</span>
+                </div>
+                <p className="text-[11px] text-slate-400 mt-1 font-mono truncate">admin@demo-maktab.uz</p>
+                <p className="text-[10px] text-amber-400/90 font-mono mt-0.5">Parol: admin123</p>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => fillCredentials("superAdmin")}
+                className="p-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-left transition-all hover:border-amber-400/40 group cursor-pointer"
+              >
+                <div className="flex items-center gap-1.5 text-xs font-semibold text-white group-hover:text-amber-300">
+                  <Shield className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                  <span>Super Admin</span>
+                </div>
+                <p className="text-[11px] text-slate-400 mt-1 font-mono truncate">superadmin@jadvalai.uz</p>
+                <p className="text-[10px] text-amber-400/90 font-mono mt-0.5">Parol: admin123</p>
+              </button>
+            </div>
           </div>
         </div>
 
