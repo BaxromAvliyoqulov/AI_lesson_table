@@ -330,20 +330,43 @@ export class CSPSolver {
           this.subjectMap.get(s.subjectId)?.name.toLowerCase().includes("sinf soati")
       );
 
-      const homeroomId = cls.homeroomTeacherId || (ss ? ss.teacherId : null);
-      const slotD1P1 = slots.find((s) => s.day === 1 && s.period === 1);
+      let homeroomId = cls.homeroomTeacherId || (ss ? ss.teacherId : null);
+      if (!homeroomId) {
+        const rawClassId = cls.id.toLowerCase();
+        const rawClassName = cls.name.toLowerCase();
+        const normClassName = rawClassName.replace(/[^a-z0-9]/g, "");
+        const byTeacher = this.input.teachers.find((t) => {
+          if (!t.homeroomClassId) return false;
+          const tHId = t.homeroomClassId.toLowerCase();
+          return tHId === rawClassId || tHId === rawClassName || tHId.replace(/[^a-z0-9]/g, "") === normClassName;
+        });
+        if (byTeacher) homeroomId = byTeacher.id;
+      }
+      const d1p1Slots = slots.filter((s) => s.day === 1 && s.period === 1);
 
-      if (slotD1P1 && homeroomId && !slotD1P1.isLocked) {
-        slotD1P1.subjectId = ss ? ss.subjectId : "sub_kelajak";
-        slotD1P1.teacherId = homeroomId;
-        slotD1P1.isLocked = true;
-        slotD1P1.groupType = "WHOLE";
+      for (const slot of d1p1Slots) {
+        if (slot.groupType === "GROUP_2") {
+          // Kelajak soati hech qachon guruhga bo'linmaydi! Parallel GROUP_2 slotini qulflaymiz:
+          slot.isLocked = true;
+          slot.teacherId = null;
+          slot.subjectId = null;
+        } else if (homeroomId && !slot.isLocked) {
+          const kelajakSub = this.input.subjects.find(
+            (sub) =>
+              sub.name.toLowerCase().includes("kelajak") ||
+              sub.name.toLowerCase().includes("sinf soati")
+          );
+          slot.subjectId = ss ? ss.subjectId : (kelajakSub?.id || "sub_kelajak");
+          slot.teacherId = homeroomId;
+          slot.isLocked = true;
+          slot.groupType = "WHOLE";
 
-        const k = getOccKey(homeroomId, 1, 1, cls.id);
-        teacherOccupancy.set(k, (teacherOccupancy.get(k) || 0) + 1);
+          const k = getOccKey(homeroomId, 1, 1, cls.id);
+          teacherOccupancy.set(k, (teacherOccupancy.get(k) || 0) + 1);
 
-        const dk = `${homeroomId}_1`;
-        teacherDailyHours.set(dk, (teacherDailyHours.get(dk) || 0) + 1);
+          const dk = `${homeroomId}_1`;
+          teacherDailyHours.set(dk, (teacherDailyHours.get(dk) || 0) + 1);
+        }
       }
     }
 
@@ -476,6 +499,9 @@ export class CSPSolver {
       // QAT'IY METOD KUNI VA BIR KUNDA 1 FAN PROTOKOLI:
       const emptySlots = slots.filter((s) => {
         if (s.isLocked || s.teacherId !== null) return false;
+
+        // DUSHANBA 1-DARS FAQAT KELAJAK SOATI UCHUN!
+        if (s.day === 1 && s.period === 1) return false;
 
         // Boshlang'ich sinflarda 6-soat dars QAT'IYAN TAQIQLANADI!
         if (isPrimary && s.period >= 6) return false;
@@ -741,6 +767,7 @@ export class CSPSolver {
       // 2-usul: Mavjud darsni (victim) boshqa bo'sh joyga ko'chirib, o'rniga req ni qo'yish (Kempe-Chain Bumping)
       for (const targetSlot of clsSlots) {
         if (targetSlot.isLocked || !targetSlot.teacherId || !targetSlot.subjectId) continue;
+        if (targetSlot.day === 1 && targetSlot.period === 1) continue; // Dushanba 1-soat daxlsiz!
         if (targetSlot.groupType === "GROUP_2") continue;
         if (isPrimary && targetSlot.period >= 6) continue;
         if (!this.isTeacherSlotAvailable(targetSlot.day, targetSlot.period, req.teacherId, req.subjectId, getShiftGroup(req.classId))) continue;
@@ -764,6 +791,7 @@ export class CSPSolver {
         // Victim darsni ko'chirib o'tkazish mumkin bo'lgan bo'sh slot bormi?
         const altSlot = clsSlots.find((alt) => {
           if (alt.teacherId !== null || alt.isLocked) return false;
+          if (alt.day === 1 && alt.period === 1) return false; // Dushanba 1-soat daxlsiz!
           if (alt.groupType === "GROUP_2") return false;
           if (isPrimary && alt.period >= 6) return false;
           if (!this.isTeacherSlotAvailable(alt.day, alt.period, victimTeacherId, victimSubjectId, getShiftGroup(req.classId))) return false;
@@ -806,6 +834,7 @@ export class CSPSolver {
         // va 5-qadamdagi Min-Conflicts local search o'qituvchining boshqa sinfdagi darsini surib ziddiyatni bartaraf etadi
         const fallbackSlot = clsSlots.find((s) => {
           if (s.teacherId !== null || s.isLocked) return false;
+          if (s.day === 1 && s.period === 1) return false; // Dushanba 1-soat daxlsiz!
           if (s.groupType === "GROUP_2") return false;
           if (isPrimary && s.period >= 6) return false;
           if (!this.isTeacherSlotAvailable(s.day, s.period, req.teacherId, req.subjectId, getShiftGroup(req.classId))) return false;
@@ -831,6 +860,7 @@ export class CSPSolver {
         // sinfning eng birinchi bo'sh slotiga darsni joylashtiramiz (Ziddiyat paydo bo'lsa, min-conflicts yoki AI patrul ko'rsatadi)
         const anyEmptySlot = clsSlots.find((s) => {
           if (s.teacherId !== null || s.isLocked) return false;
+          if (s.day === 1 && s.period === 1) return false; // Dushanba 1-soat daxlsiz!
           if (s.groupType === "GROUP_2" && req.groupType !== "GROUP_2") return false;
           if (s.groupType !== "GROUP_2" && req.groupType === "GROUP_2") return false;
           if (isPrimary && s.period >= 6) return false;
@@ -1123,6 +1153,7 @@ export class CSPSolver {
 
               let resolved = false;
               for (const candidate of otherDaySlots) {
+                if (candidate.groupType === "GROUP_2") continue;
                 const tId = candidate.teacherId!;
                 const sId = candidate.subjectId!;
 
@@ -1167,9 +1198,14 @@ export class CSPSolver {
     // ── 6. FINAL LESSON OBYEKTLARINI HOSIL QILISH ─────────────────────────────
     const lessons: Lesson[] = [];
     let methodDayViolations = 0;
+    const seenSlots = new Set<string>();
 
     for (const slot of allSlots) {
       if (!slot.teacherId || !slot.subjectId) continue;
+      const slotKey = `${slot.classId}_${slot.day}_${slot.period}_${slot.groupType || "WHOLE"}`;
+      if (seenSlots.has(slotKey)) continue;
+      seenSlots.add(slotKey);
+
       const cls = this.classMap.get(slot.classId)!;
 
       if (!this.isTeacherSlotAvailable(slot.day, slot.period, slot.teacherId, slot.subjectId, getShiftGroup(slot.classId))) {
