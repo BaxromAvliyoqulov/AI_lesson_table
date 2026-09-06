@@ -7,6 +7,7 @@ import {
   isKelajakOrSinfSoatiSubject,
   isSubjectEligibleForSplit,
 } from "@/lib/curriculum-templates";
+import { sortClassesByName, normalizeClassName } from "@/lib/utils";
 import {
   X,
   Plus,
@@ -57,9 +58,62 @@ export const TeacherWorkloadModal: React.FC<TeacherWorkloadModalProps> = ({
   const [assignments, setAssignments] = useState<TeacherClassAssignment[]>([]);
   const lastInitializedTeacherIdRef = useRef<string | null>(null);
 
+  // Faqat o'qituvchining maktabiga tegishli sinflarni olamiz va sinf nomi bo'yicha qat'iy deduplikatsiya qilamiz
+  const schoolClasses = useMemo(() => {
+    const bySchool = teacher?.schoolId
+      ? classes.filter((c) => !c.schoolId || c.schoolId === teacher.schoolId)
+      : classes;
+    const targetClasses = bySchool.length > 0 ? bySchool : classes;
+
+    const seenNames = new Set<string>();
+    const deduped: SchoolClass[] = [];
+    for (const c of targetClasses) {
+      const key = normalizeClassName(c.name).toUpperCase();
+      if (!seenNames.has(key)) {
+        seenNames.add(key);
+        deduped.push(c);
+      }
+    }
+    return sortClassesByName(deduped);
+  }, [classes, teacher?.schoolId]);
+
   const subjectMap = useMemo(() => new Map(subjects.map((s) => [s.id, s])), [subjects]);
-  const classMap = useMemo(() => new Map(classes.map((c) => [c.id, c])), [classes]);
-  const teacherMap = useMemo(() => new Map(teachers.map((t) => [t.id, t])), [teachers]);
+  const classMap = useMemo(() => new Map(schoolClasses.map((c) => [c.id, c])), [schoolClasses]);
+
+  // Faqat shu maktab o'qituvchilarini tanlovga beramiz (boshqa maktab aralashib ketmasligi uchun)
+  const schoolTeachers = useMemo(() => {
+    const bySchool = teacher?.schoolId
+      ? teachers.filter((t) => !t.schoolId || t.schoolId === teacher.schoolId)
+      : teachers;
+    return bySchool.length > 0 ? bySchool : teachers;
+  }, [teachers, teacher?.schoolId]);
+
+  const teacherMap = useMemo(() => new Map(schoolTeachers.map((t) => [t.id, t])), [schoolTeachers]);
+
+  const classNameToCanonicalClassMap = useMemo(() => {
+    const map = new Map<string, SchoolClass>();
+    schoolClasses.forEach((c) => {
+      map.set(normalizeClassName(c.name).toUpperCase(), c);
+    });
+    return map;
+  }, [schoolClasses]);
+
+  const resolveCanonicalClass = (classIdOrName: string): SchoolClass | undefined => {
+    if (!classIdOrName) return undefined;
+    const byId = classMap.get(classIdOrName);
+    if (byId) return byId;
+
+    const originalCls = classes.find((c) => c.id === classIdOrName);
+    if (originalCls) {
+      const norm = normalizeClassName(originalCls.name).toUpperCase();
+      const canonical = classNameToCanonicalClassMap.get(norm);
+      if (canonical) return canonical;
+      return originalCls;
+    }
+
+    const norm = normalizeClassName(classIdOrName).toUpperCase();
+    return classNameToCanonicalClassMap.get(norm);
+  };
 
   // Teacher's specialized subjects
   const teacherSubjects = useMemo(() => {
@@ -71,7 +125,7 @@ export const TeacherWorkloadModal: React.FC<TeacherWorkloadModalProps> = ({
 
   const defaultSubjectId = teacherSubjects[0]?.id || subjects[0]?.id || "";
 
-  // Tezkor ommaviy sinf qo'shish paneli uchun state (odatiy holatda yopiq, darslar ro'yxatiga to'siq bo'lmasligi uchun)
+  // Tezkor ommaviy sinf qo'shish paneli uchun state
   const [batchSubjectId, setBatchSubjectId] = useState<string>(defaultSubjectId);
   const [batchHours, setBatchHours] = useState<number>(4);
   const [isBatchOpen, setIsBatchOpen] = useState<boolean>(false);
@@ -110,11 +164,20 @@ export const TeacherWorkloadModal: React.FC<TeacherWorkloadModalProps> = ({
       setParallelFilter("ALL");
 
       const currentList: TeacherClassAssignment[] = [];
-      classes.forEach((cls) => {
+      const seenAssignmentKeys = new Set<string>();
+
+      schoolClasses.forEach((cls) => {
         (cls.subjects || []).forEach((s) => {
           if (s.teacherId === teacher.id) {
-            // AVTOMATIK GURUH SEZISH:
-            // Ushbu sinfda ayni shu fanni o'tadigan boshqa o'qituvchini qidiramiz
+            const canonicalCls = resolveCanonicalClass(cls.id) || cls;
+            const normClassName = normalizeClassName(canonicalCls.name).toUpperCase();
+            const dedupKey = `${normClassName}_${s.subjectId}`;
+
+            if (seenAssignmentKeys.has(dedupKey)) {
+              return; // Bir xil sinf va fan aslo 2 marta qo'shilmaydi!
+            }
+
+            // AVTOMATIK GURUH SEZISH: Ushbu sinfda ayni shu fanni o'tadigan boshqa o'qituvchini qidiramiz
             const otherTeacherSub = (cls.subjects || []).find(
               (other) =>
                 other.subjectId === s.subjectId &&
@@ -130,10 +193,11 @@ export const TeacherWorkloadModal: React.FC<TeacherWorkloadModalProps> = ({
 
             const secondTeacherId = otherTeacherSub ? otherTeacherSub.teacherId : undefined;
 
+            seenAssignmentKeys.add(dedupKey);
             currentList.push({
-              classId: cls.id,
+              classId: canonicalCls.id,
               subjectId: s.subjectId,
-              weeklyHours: Number(s.weeklyHours) || 2,
+              weeklyHours: Number(s.weeklyHours) || (otherTeacherSub ? Number(otherTeacherSub.weeklyHours) : 2),
               isSplit: isSplit,
               groupType: isSplit ? (s.groupType || "GROUP_1") : "WHOLE",
               secondTeacherId,
@@ -145,7 +209,7 @@ export const TeacherWorkloadModal: React.FC<TeacherWorkloadModalProps> = ({
       // KAFOLAT: Agar bu o'qituvchi sinf rahbari bo'lsa, uning sinfiga 1 soatlik Sinf soati avtomatik biriktiriladi!
       const homeroomClassId =
         teacher.homeroomClassId ||
-        classes.find((c) => c.homeroomTeacherId === teacher.id)?.id;
+        schoolClasses.find((c) => c.homeroomTeacherId === teacher.id)?.id;
 
       // KAFOLAT: O'qituvchining dars taqsimotida Sinf soati har doim MAKSIMUM 1 DANA bo'lishi shart!
       const sinfSoatiSub =
@@ -160,8 +224,10 @@ export const TeacherWorkloadModal: React.FC<TeacherWorkloadModalProps> = ({
 
       // Agar o'qituvchi sinf rahbari bo'lsa, o'z sinfiga FAQAT 1 DANA 1 soatlik Sinf soati qo'shamiz
       if (homeroomClassId && sinfSoatiSub) {
+        const canonicalHrClass = resolveCanonicalClass(homeroomClassId);
+        const finalHrClassId = canonicalHrClass?.id || homeroomClassId;
         filteredList.unshift({
-          classId: homeroomClassId,
+          classId: finalHrClassId,
           subjectId: sinfSoatiSub.id,
           weeklyHours: 1,
           isSplit: false,
@@ -171,18 +237,39 @@ export const TeacherWorkloadModal: React.FC<TeacherWorkloadModalProps> = ({
 
       setAssignments(filteredList);
     }
-  }, [isOpen, teacher?.id, teacher, classes, teacherSubjects, subjects, subjectMap]);
+  }, [isOpen, teacher?.id, teacher, schoolClasses, teacherSubjects, subjects, subjectMap]);
+
+  // 100% KAFOLAT: UI da har bir sinf va har bir fan uchun FAQAT VA FAQAT 1 DANA kartochka aks etadi!
+  const uniqueAssignments = useMemo(() => {
+    const seen = new Set<string>();
+    const result: { item: TeacherClassAssignment; index: number }[] = [];
+
+    assignments.forEach((item, index) => {
+      const canonicalClass = resolveCanonicalClass(item.classId);
+      const normClassName = canonicalClass ? normalizeClassName(canonicalClass.name).toUpperCase() : item.classId;
+      const key = `${normClassName}_${item.subjectId}`;
+
+      if (!seen.has(key)) {
+        seen.add(key);
+        const cleanItem = canonicalClass && canonicalClass.id !== item.classId
+          ? { ...item, classId: canonicalClass.id }
+          : item;
+        result.push({ item: cleanItem, index });
+      }
+    });
+
+    return result;
+  }, [assignments, classMap]);
 
   // Total hours assigned vs Teacher's capacity (Kelajak/Sinf soati dars stavkasidan qat'iy chegiriladi!)
   const { totalAssignedHours, totalHomeroomHours, totalPhysicalHours } = useMemo(() => {
     let assigned = 0;
     let homeroom = 0;
-    assignments.forEach((item) => {
+    uniqueAssignments.forEach(({ item }) => {
       const sub = subjectMap.get(item.subjectId) || subjects.find((s) => s.id === item.subjectId);
       const hours = Number(item.weeklyHours) || 0;
       // Faqat o'qituvchi o'zi sinf rahbari bo'lgan sinfdagi (teacher.homeroomClassId === item.classId)
       // 1 soatlik Kelajak/Sinf soatigina dars stavkasidan chegiriladi!
-      // Boshqa sinflardagi darslar (masalan 9A) stavkadan chegirilmaydi!
       const isHomeroomClassHour =
         isKelajakOrSinfSoatiSubject(item.subjectId, sub?.name) &&
         teacher?.homeroomClassId === item.classId;
@@ -198,7 +285,7 @@ export const TeacherWorkloadModal: React.FC<TeacherWorkloadModalProps> = ({
       totalHomeroomHours: homeroom,
       totalPhysicalHours: assigned + homeroom,
     };
-  }, [assignments, subjectMap, subjects]);
+  }, [uniqueAssignments, subjectMap, subjects, teacher?.homeroomClassId]);
 
   const capacity = teacher?.weeklyHourCapacity || 20;
   const remainingHours = capacity - totalAssignedHours;
@@ -207,7 +294,7 @@ export const TeacherWorkloadModal: React.FC<TeacherWorkloadModalProps> = ({
   // Har bir o'qituvchining joriy dars soatlari xaritasi (2-guruh ustozi tanlashda yuklamani ko'rsatish uchun)
   const teacherWorkloadMap = useMemo(() => {
     const map = new Map<string, number>();
-    classes.forEach((cls) => {
+    schoolClasses.forEach((cls) => {
       (cls.subjects || []).forEach((cs) => {
         const sub = subjectMap.get(cs.subjectId) || subjects.find((s) => s.id === cs.subjectId);
         if (cs.teacherId && !isKelajakOrSinfSoatiSubject(cs.subjectId, sub?.name)) {
@@ -216,21 +303,36 @@ export const TeacherWorkloadModal: React.FC<TeacherWorkloadModalProps> = ({
       });
     });
     return map;
-  }, [classes, subjectMap, subjects]);
+  }, [schoolClasses, subjectMap, subjects]);
 
   const handleToggleClassAssignment = (classId: string) => {
     if (!teacher) return;
     const targetSubjectId = batchSubjectId || defaultSubjectId;
-    const existingIndex = assignments.findIndex(
-      (a) => a.classId === classId && a.subjectId === targetSubjectId
-    );
+    const targetClass = resolveCanonicalClass(classId);
+    const targetClassId = targetClass ? targetClass.id : classId;
+    const targetClassName = targetClass ? normalizeClassName(targetClass.name).toUpperCase() : "";
+
+    const existingIndex = assignments.findIndex((a) => {
+      if (a.subjectId !== targetSubjectId) return false;
+      if (a.classId === targetClassId) return true;
+      const aClass = resolveCanonicalClass(a.classId);
+      return aClass && normalizeClassName(aClass.name).toUpperCase() === targetClassName;
+    });
 
     if (existingIndex >= 0) {
       // Allaqachon biriktirilgan -> o'chirish
-      setAssignments((prev) => prev.filter((_, i) => i !== existingIndex));
+      setAssignments((prev) =>
+        prev.filter((a, i) => {
+          if (i === existingIndex) return false;
+          if (a.subjectId !== targetSubjectId) return true;
+          if (a.classId === targetClassId) return false;
+          const aClass = resolveCanonicalClass(a.classId);
+          return !(aClass && normalizeClassName(aClass.name).toUpperCase() === targetClassName);
+        })
+      );
     } else {
       // Biriktirish
-      const cls = classMap.get(classId);
+      const cls = targetClass;
       const standardHours = batchHours || (cls && cls.grade >= 5 ? 3 : 4);
 
       // AVTOMATIK GURUH SEZISH: bu sinfda bu fanni o'tayotgan boshqa ustoz bormi?
@@ -244,13 +346,18 @@ export const TeacherWorkloadModal: React.FC<TeacherWorkloadModalProps> = ({
       const hours = otherTeacherSub ? Number(otherTeacherSub.weeklyHours) || standardHours : standardHours;
 
       setAssignments((prev) => [
-        ...prev,
+        ...prev.filter((a) => {
+          if (a.subjectId !== targetSubjectId) return true;
+          if (a.classId === targetClassId) return false;
+          const aClass = resolveCanonicalClass(a.classId);
+          return !(aClass && normalizeClassName(aClass.name).toUpperCase() === targetClassName);
+        }),
         {
-          classId,
+          classId: targetClassId,
           subjectId: targetSubjectId,
           weeklyHours: hours,
           isSplit,
-          groupType: isSplit ? "GROUP_2" : "WHOLE",
+          groupType: isSplit ? "GROUP_1" : "WHOLE",
           secondTeacherId: otherTeacherSub ? otherTeacherSub.teacherId : undefined,
         },
       ]);
@@ -261,25 +368,45 @@ export const TeacherWorkloadModal: React.FC<TeacherWorkloadModalProps> = ({
   const handleBulkSelectGrade = (grade: number) => {
     if (!teacher) return;
     const targetSubjectId = batchSubjectId || defaultSubjectId;
-    const gradeClasses = classes.filter((c) => c.grade === grade);
+    const gradeClasses = schoolClasses.filter((c) => c.grade === grade);
     if (gradeClasses.length === 0) return;
 
     // Tekshiramiz: barchasi tanlanganmi?
-    const allSelected = gradeClasses.every((c) =>
-      assignments.some((a) => a.classId === c.id && a.subjectId === targetSubjectId)
-    );
+    const allSelected = gradeClasses.every((c) => {
+      const normName = normalizeClassName(c.name).toUpperCase();
+      return assignments.some((a) => {
+        if (a.subjectId !== targetSubjectId) return false;
+        if (a.classId === c.id) return true;
+        const aCls = resolveCanonicalClass(a.classId);
+        return aCls && normalizeClassName(aCls.name).toUpperCase() === normName;
+      });
+    });
 
     if (allSelected) {
       // Hammasini o'chirish
+      const gradeClassNormNames = new Set(gradeClasses.map((c) => normalizeClassName(c.name).toUpperCase()));
       const gradeClassIds = new Set(gradeClasses.map((c) => c.id));
       setAssignments((prev) =>
-        prev.filter((a) => !(gradeClassIds.has(a.classId) && a.subjectId === targetSubjectId))
+        prev.filter((a) => {
+          if (a.subjectId !== targetSubjectId) return true;
+          if (gradeClassIds.has(a.classId)) return false;
+          const aCls = resolveCanonicalClass(a.classId);
+          return !(aCls && gradeClassNormNames.has(normalizeClassName(aCls.name).toUpperCase()));
+        })
       );
     } else {
       // Tanlanmaganlarini qo'shish
       const newItems: TeacherClassAssignment[] = [];
       gradeClasses.forEach((c) => {
-        if (!assignments.some((a) => a.classId === c.id && a.subjectId === targetSubjectId)) {
+        const normName = normalizeClassName(c.name).toUpperCase();
+        const alreadyAssigned = assignments.some((a) => {
+          if (a.subjectId !== targetSubjectId) return false;
+          if (a.classId === c.id) return true;
+          const aCls = resolveCanonicalClass(a.classId);
+          return aCls && normalizeClassName(aCls.name).toUpperCase() === normName;
+        });
+
+        if (!alreadyAssigned) {
           const otherTeacherSub = (c.subjects || []).find(
             (s) =>
               s.subjectId === targetSubjectId &&
@@ -294,7 +421,7 @@ export const TeacherWorkloadModal: React.FC<TeacherWorkloadModalProps> = ({
             subjectId: targetSubjectId,
             weeklyHours: hours,
             isSplit,
-            groupType: isSplit ? "GROUP_2" : "WHOLE",
+            groupType: isSplit ? "GROUP_1" : "WHOLE",
             secondTeacherId: otherTeacherSub ? otherTeacherSub.teacherId : undefined,
           });
         }
@@ -305,10 +432,16 @@ export const TeacherWorkloadModal: React.FC<TeacherWorkloadModalProps> = ({
 
   // Yakka qo'lda yangi qator qo'shish
   const handleAddAssignment = () => {
-    const unassignedClass = classes.find(
-      (c) => !assignments.some((a) => a.classId === c.id && a.subjectId === defaultSubjectId)
-    );
-    const classId = unassignedClass ? unassignedClass.id : classes[0]?.id || "";
+    const unassignedClass = schoolClasses.find((c) => {
+      const normName = normalizeClassName(c.name).toUpperCase();
+      return !assignments.some((a) => {
+        if (a.subjectId !== defaultSubjectId) return false;
+        if (a.classId === c.id) return true;
+        const aCls = resolveCanonicalClass(a.classId);
+        return aCls && normalizeClassName(aCls.name).toUpperCase() === normName;
+      });
+    });
+    const classId = unassignedClass ? unassignedClass.id : schoolClasses[0]?.id || "";
 
     setAssignments((prev) => [
       ...prev,
@@ -323,18 +456,41 @@ export const TeacherWorkloadModal: React.FC<TeacherWorkloadModalProps> = ({
   };
 
   const handleRemoveAssignment = (index: number) => {
-    setAssignments((prev) => prev.filter((_, i) => i !== index));
+    setAssignments((prev) => {
+      const target = prev[index];
+      if (!target) return prev.filter((_, i) => i !== index);
+      const targetClass = resolveCanonicalClass(target.classId);
+      const targetName = targetClass ? normalizeClassName(targetClass.name).toUpperCase() : target.classId;
+
+      return prev.filter((item, i) => {
+        if (i === index) return false;
+        const itemClass = resolveCanonicalClass(item.classId);
+        const itemName = itemClass ? normalizeClassName(itemClass.name).toUpperCase() : item.classId;
+        if (itemName === targetName && item.subjectId === target.subjectId) return false;
+        return true;
+      });
+    });
   };
 
   const handleStepHours = (index: number, delta: number) => {
-    setAssignments((prev) =>
-      prev.map((item, i) => {
-        if (i !== index) return item;
-        const current = Number(item.weeklyHours) || 0;
-        const next = Math.max(1, Math.min(12, current + delta));
-        return { ...item, weeklyHours: next };
-      })
-    );
+    setAssignments((prev) => {
+      const target = prev[index];
+      if (!target) return prev;
+      const targetClass = resolveCanonicalClass(target.classId);
+      const targetName = targetClass ? normalizeClassName(targetClass.name).toUpperCase() : target.classId;
+      const current = Number(target.weeklyHours) || 0;
+      const next = Math.max(1, Math.min(12, current + delta));
+
+      return prev.map((item, i) => {
+        if (i === index) return { ...item, weeklyHours: next };
+        const itemClass = resolveCanonicalClass(item.classId);
+        const itemName = itemClass ? normalizeClassName(itemClass.name).toUpperCase() : item.classId;
+        if (itemName === targetName && item.subjectId === target.subjectId) {
+          return { ...item, weeklyHours: next };
+        }
+        return item;
+      });
+    });
   };
 
   const handleUpdateAssignment = (
@@ -342,9 +498,21 @@ export const TeacherWorkloadModal: React.FC<TeacherWorkloadModalProps> = ({
     key: keyof TeacherClassAssignment,
     val: any
   ) => {
-    setAssignments((prev) =>
-      prev.map((item, i) => (i === index ? { ...item, [key]: val } : item))
-    );
+    setAssignments((prev) => {
+      const updated = prev.map((item, i) => (i === index ? { ...item, [key]: val } : item));
+      const seen = new Set<string>();
+      const result: TeacherClassAssignment[] = [];
+      updated.forEach((item) => {
+        const canonical = resolveCanonicalClass(item.classId);
+        const normName = canonical ? normalizeClassName(canonical.name).toUpperCase() : item.classId;
+        const dedupKey = `${normName}_${item.subjectId}`;
+        if (!seen.has(dedupKey)) {
+          seen.add(dedupKey);
+          result.push(canonical && canonical.id !== item.classId ? { ...item, classId: canonical.id } : item);
+        }
+      });
+      return result;
+    });
   };
 
   // Guruhga bo'lish toggle
@@ -356,7 +524,7 @@ export const TeacherWorkloadModal: React.FC<TeacherWorkloadModalProps> = ({
 
         if (nextIsSplit) {
           // Shu fanni o'tadigan boshqa o'qituvchini topamiz (default taklif)
-          const suitableTeacher = teachers.find(
+          const suitableTeacher = schoolTeachers.find(
             (t) => t.id !== teacher?.id && (t.subjectIds || []).includes(item.subjectId)
           );
           return {
@@ -386,7 +554,7 @@ export const TeacherWorkloadModal: React.FC<TeacherWorkloadModalProps> = ({
     // KAFOLAT: Agar o'qituvchi sinf rahbari bo'lsa, uning sinfiga 1 soatlik Sinf soati doim saqlanadi
     const homeroomClassId =
       teacher.homeroomClassId ||
-      classes.find((c) => c.homeroomTeacherId === teacher.id)?.id;
+      schoolClasses.find((c) => c.homeroomTeacherId === teacher.id)?.id;
 
     if (homeroomClassId) {
       const sinfSoatiSub =
@@ -412,36 +580,52 @@ export const TeacherWorkloadModal: React.FC<TeacherWorkloadModalProps> = ({
       }
     }
 
-    onSave(teacher.id, valid);
+    // Qat'iy deduplikatsiya: har bir sinf va fan uchun FAQAT 1 DANA yozuv ketadi
+    const seenSaveKeys = new Set<string>();
+    const strictlyUniqueAssignments: TeacherClassAssignment[] = [];
+    for (const a of valid) {
+      const canonical = resolveCanonicalClass(a.classId);
+      const normClassName = canonical ? normalizeClassName(canonical.name).toUpperCase() : a.classId;
+      const key = `${normClassName}_${a.subjectId}`;
+      if (!seenSaveKeys.has(key)) {
+        seenSaveKeys.add(key);
+        strictlyUniqueAssignments.push({
+          ...a,
+          classId: canonical ? canonical.id : a.classId,
+        });
+      }
+    }
+
+    onSave(teacher.id, strictlyUniqueAssignments);
     onClose();
   };
 
   // Sinflarni guruhlar (1-4, 5-9, 10-11) bo'yicha ajratish
-  const primaryClasses = useMemo(() => classes.filter((c) => c.grade <= 4), [classes]);
-  const middleClasses = useMemo(() => classes.filter((c) => c.grade >= 5 && c.grade <= 9), [classes]);
-  const highClasses = useMemo(() => classes.filter((c) => c.grade >= 10), [classes]);
+  const primaryClasses = useMemo(() => schoolClasses.filter((c) => c.grade <= 4), [schoolClasses]);
+  const middleClasses = useMemo(() => schoolClasses.filter((c) => c.grade >= 5 && c.grade <= 9), [schoolClasses]);
+  const highClasses = useMemo(() => schoolClasses.filter((c) => c.grade >= 10), [schoolClasses]);
 
   // Noyob sinf raqamlari (5, 6, 7, 8, 9 ...)
   const availableGrades = useMemo(() => {
     const set = new Set<number>();
-    classes.forEach((c) => set.add(c.grade));
+    schoolClasses.forEach((c) => set.add(c.grade));
     return Array.from(set).sort((a, b) => a - b);
-  }, [classes]);
+  }, [schoolClasses]);
 
   // Maktabdagi mavjud barcha parallel harflari (A, B, D...)
   const availableParallels = useMemo(() => {
     const set = new Set<string>();
-    classes.forEach((c) => {
+    schoolClasses.forEach((c) => {
       const match = c.name.match(/[A-Za-zА-Яа-яЎўҚқҒғҲҳ]/);
       if (match) set.add(match[0].toUpperCase());
     });
     return Array.from(set).sort();
-  }, [classes]);
+  }, [schoolClasses]);
 
   // Maktabdagi binolar ro'yxati (Asosiy / Filial)
   const availableBranches = useMemo(() => {
     const map = new Map<string, { id: string; name: string }>();
-    classes.forEach((c) => {
+    schoolClasses.forEach((c) => {
       if (c.branchId && !map.has(c.branchId)) {
         const isBranch =
           c.branchId.toLowerCase().includes("filial") ||
@@ -454,7 +638,7 @@ export const TeacherWorkloadModal: React.FC<TeacherWorkloadModalProps> = ({
       }
     });
     return Array.from(map.values());
-  }, [classes]);
+  }, [schoolClasses]);
 
   // Har bir sinf joriy filtrlarga mos keladimi?
   const isClassMatchingFilters = (c: SchoolClass) => {
@@ -490,19 +674,39 @@ export const TeacherWorkloadModal: React.FC<TeacherWorkloadModalProps> = ({
   const handleBulkSelectFilteredClasses = () => {
     if (!teacher || allFilteredClasses.length === 0) return;
     const targetSubjectId = batchSubjectId || defaultSubjectId;
-    const allSelected = allFilteredClasses.every((c) =>
-      assignments.some((a) => a.classId === c.id && a.subjectId === targetSubjectId)
-    );
+    const allSelected = allFilteredClasses.every((c) => {
+      const normName = normalizeClassName(c.name).toUpperCase();
+      return assignments.some((a) => {
+        if (a.subjectId !== targetSubjectId) return false;
+        if (a.classId === c.id) return true;
+        const aCls = resolveCanonicalClass(a.classId);
+        return aCls && normalizeClassName(aCls.name).toUpperCase() === normName;
+      });
+    });
 
     if (allSelected) {
-      const ids = new Set(allFilteredClasses.map((c) => c.id));
+      const classNormNames = new Set(allFilteredClasses.map((c) => normalizeClassName(c.name).toUpperCase()));
+      const classIds = new Set(allFilteredClasses.map((c) => c.id));
       setAssignments((prev) =>
-        prev.filter((a) => !(ids.has(a.classId) && a.subjectId === targetSubjectId))
+        prev.filter((a) => {
+          if (a.subjectId !== targetSubjectId) return true;
+          if (classIds.has(a.classId)) return false;
+          const aCls = resolveCanonicalClass(a.classId);
+          return !(aCls && classNormNames.has(normalizeClassName(aCls.name).toUpperCase()));
+        })
       );
     } else {
       const newItems: TeacherClassAssignment[] = [];
       allFilteredClasses.forEach((c) => {
-        if (!assignments.some((a) => a.classId === c.id && a.subjectId === targetSubjectId)) {
+        const normName = normalizeClassName(c.name).toUpperCase();
+        const isAssigned = assignments.some((a) => {
+          if (a.subjectId !== targetSubjectId) return false;
+          if (a.classId === c.id) return true;
+          const aCls = resolveCanonicalClass(a.classId);
+          return aCls && normalizeClassName(aCls.name).toUpperCase() === normName;
+        });
+
+        if (!isAssigned) {
           const otherTeacherSub = (c.subjects || []).find(
             (s) =>
               s.subjectId === targetSubjectId &&
@@ -519,7 +723,7 @@ export const TeacherWorkloadModal: React.FC<TeacherWorkloadModalProps> = ({
             subjectId: targetSubjectId,
             weeklyHours: hours,
             isSplit,
-            groupType: isSplit ? "GROUP_2" : "WHOLE",
+            groupType: isSplit ? "GROUP_1" : "WHOLE",
             secondTeacherId: otherTeacherSub ? otherTeacherSub.teacherId : undefined,
           });
         }
@@ -804,8 +1008,8 @@ export const TeacherWorkloadModal: React.FC<TeacherWorkloadModalProps> = ({
                     <Zap className="w-3 h-3" />
                     <span>
                       {allFilteredClasses.every((c) =>
-                        assignments.some(
-                          (a) => a.classId === c.id && a.subjectId === (batchSubjectId || defaultSubjectId)
+                        uniqueAssignments.some(
+                          ({ item: a }) => a.classId === c.id && a.subjectId === (batchSubjectId || defaultSubjectId)
                         )
                       )
                         ? `Filtrlanganlarni bekor qilish (${allFilteredClasses.length} sinf)`
@@ -825,15 +1029,18 @@ export const TeacherWorkloadModal: React.FC<TeacherWorkloadModalProps> = ({
                     return true;
                   })
                   .map((g) => {
-                    const gClasses = classes.filter((c) => c.grade === g && isClassMatchingFilters(c));
+                    const gClasses = schoolClasses.filter((c) => c.grade === g && isClassMatchingFilters(c));
                     if (gClasses.length === 0) return null;
                     const isAll =
                       gClasses.length > 0 &&
-                      gClasses.every((c) =>
-                        assignments.some(
-                          (a) => a.classId === c.id && a.subjectId === (batchSubjectId || defaultSubjectId)
-                        )
-                      );
+                      gClasses.every((c) => {
+                        const normName = normalizeClassName(c.name).toUpperCase();
+                        return uniqueAssignments.some(
+                          ({ item: a }) =>
+                            (a.classId === c.id || resolveCanonicalClass(a.classId)?.id === c.id || (resolveCanonicalClass(a.classId) && normalizeClassName(resolveCanonicalClass(a.classId)!.name).toUpperCase() === normName)) &&
+                            a.subjectId === (batchSubjectId || defaultSubjectId)
+                        );
+                      });
                     return (
                       <button
                         key={`bulk_grade_${g}`}
@@ -863,12 +1070,17 @@ export const TeacherWorkloadModal: React.FC<TeacherWorkloadModalProps> = ({
                   </div>
                   <div className="flex flex-wrap gap-1.5">
                     {filteredMiddleClasses.map((c) => {
-                      const isAssigned = assignments.some(
-                        (a) => a.classId === c.id && a.subjectId === (batchSubjectId || defaultSubjectId)
+                      const normName = normalizeClassName(c.name).toUpperCase();
+                      const isAssigned = uniqueAssignments.some(
+                        ({ item: a }) =>
+                          (a.classId === c.id || resolveCanonicalClass(a.classId)?.id === c.id || (resolveCanonicalClass(a.classId) && normalizeClassName(resolveCanonicalClass(a.classId)!.name).toUpperCase() === normName)) &&
+                          a.subjectId === (batchSubjectId || defaultSubjectId)
                       );
-                      const assignItem = assignments.find(
-                        (a) => a.classId === c.id && a.subjectId === (batchSubjectId || defaultSubjectId)
-                      );
+                      const assignItem = uniqueAssignments.find(
+                        ({ item: a }) =>
+                          (a.classId === c.id || resolveCanonicalClass(a.classId)?.id === c.id || (resolveCanonicalClass(a.classId) && normalizeClassName(resolveCanonicalClass(a.classId)!.name).toUpperCase() === normName)) &&
+                          a.subjectId === (batchSubjectId || defaultSubjectId)
+                      )?.item;
                       return (
                         <button
                           key={`btn_cls_${c.id}`}
@@ -900,12 +1112,17 @@ export const TeacherWorkloadModal: React.FC<TeacherWorkloadModalProps> = ({
                   </div>
                   <div className="flex flex-wrap gap-1.5">
                     {filteredPrimaryClasses.map((c) => {
-                      const isAssigned = assignments.some(
-                        (a) => a.classId === c.id && a.subjectId === (batchSubjectId || defaultSubjectId)
+                      const normName = normalizeClassName(c.name).toUpperCase();
+                      const isAssigned = uniqueAssignments.some(
+                        ({ item: a }) =>
+                          (a.classId === c.id || resolveCanonicalClass(a.classId)?.id === c.id || (resolveCanonicalClass(a.classId) && normalizeClassName(resolveCanonicalClass(a.classId)!.name).toUpperCase() === normName)) &&
+                          a.subjectId === (batchSubjectId || defaultSubjectId)
                       );
-                      const assignItem = assignments.find(
-                        (a) => a.classId === c.id && a.subjectId === (batchSubjectId || defaultSubjectId)
-                      );
+                      const assignItem = uniqueAssignments.find(
+                        ({ item: a }) =>
+                          (a.classId === c.id || resolveCanonicalClass(a.classId)?.id === c.id || (resolveCanonicalClass(a.classId) && normalizeClassName(resolveCanonicalClass(a.classId)!.name).toUpperCase() === normName)) &&
+                          a.subjectId === (batchSubjectId || defaultSubjectId)
+                      )?.item;
                       return (
                         <button
                           key={`btn_cls_${c.id}`}
@@ -937,12 +1154,17 @@ export const TeacherWorkloadModal: React.FC<TeacherWorkloadModalProps> = ({
                   </div>
                   <div className="flex flex-wrap gap-1.5">
                     {filteredHighClasses.map((c) => {
-                      const isAssigned = assignments.some(
-                        (a) => a.classId === c.id && a.subjectId === (batchSubjectId || defaultSubjectId)
+                      const normName = normalizeClassName(c.name).toUpperCase();
+                      const isAssigned = uniqueAssignments.some(
+                        ({ item: a }) =>
+                          (a.classId === c.id || resolveCanonicalClass(a.classId)?.id === c.id || (resolveCanonicalClass(a.classId) && normalizeClassName(resolveCanonicalClass(a.classId)!.name).toUpperCase() === normName)) &&
+                          a.subjectId === (batchSubjectId || defaultSubjectId)
                       );
-                      const assignItem = assignments.find(
-                        (a) => a.classId === c.id && a.subjectId === (batchSubjectId || defaultSubjectId)
-                      );
+                      const assignItem = uniqueAssignments.find(
+                        ({ item: a }) =>
+                          (a.classId === c.id || resolveCanonicalClass(a.classId)?.id === c.id || (resolveCanonicalClass(a.classId) && normalizeClassName(resolveCanonicalClass(a.classId)!.name).toUpperCase() === normName)) &&
+                          a.subjectId === (batchSubjectId || defaultSubjectId)
+                      )?.item;
                       return (
                         <button
                           key={`btn_cls_${c.id}`}
@@ -977,14 +1199,14 @@ export const TeacherWorkloadModal: React.FC<TeacherWorkloadModalProps> = ({
 
         {/* ── ASSIGNMENTS LIST ────────────────────────────────────────────── */}
         <div className="p-4 sm:p-6 overflow-y-auto custom-scrollbar flex-1 space-y-3 min-w-0">
-          {assignments.length === 0 ? (
+          {uniqueAssignments.length === 0 ? (
             <div className="py-14 text-center rounded-3xl border border-dashed border-border bg-muted/20">
               <GraduationCap className="w-12 h-12 text-muted-foreground/40 mx-auto mb-3" />
               <h4 className="text-sm font-bold text-foreground">
                 Hozircha birorta sinf biriktirilmagan
               </h4>
               <p className="text-xs text-muted-foreground mt-1 max-w-md mx-auto">
-                Yuqoridagi <strong>"⚡ Tezkor sinf tanlash"</strong> panelidan kerakli sinflarni bir bosishda belgilang yoki <strong>"Qatorda qo'shish"</strong> tugmasidan foydalaning.
+                Yuqoridagi <strong>&quot;⚡ Tezkor sinf tanlash&quot;</strong> panelidan kerakli sinflarni bir bosishda belgilang yoki <strong>&quot;Qatorda qo&apos;shish&quot;</strong> tugmasidan foydalaning.
               </p>
               <div className="mt-4 flex items-center justify-center">
                 <button
@@ -1008,13 +1230,13 @@ export const TeacherWorkloadModal: React.FC<TeacherWorkloadModalProps> = ({
                 <div className="w-8 shrink-0 text-center">O&apos;chirish</div>
               </div>
 
-              {assignments.map((item, index) => {
+              {uniqueAssignments.map(({ item, index }) => {
                 const sub = subjectMap.get(item.subjectId);
-                const cls = classMap.get(item.classId);
+                const cls = resolveCanonicalClass(item.classId) || classMap.get(item.classId);
                 const isKelajak = isKelajakOrSinfSoatiSubject(item.subjectId, sub?.name);
 
                 // Ayni shu fanni o'tadigan boshqa o'qituvchilar (2-guruh ustozi tanlash uchun)
-                const candidateTeachers = teachers.filter((t) => t.id !== teacher.id);
+                const candidateTeachers = schoolTeachers.filter((t) => t.id !== teacher.id);
                 const specializedCandidateTeachers = candidateTeachers.filter((t) =>
                   (t.subjectIds || []).includes(item.subjectId)
                 );
@@ -1024,7 +1246,7 @@ export const TeacherWorkloadModal: React.FC<TeacherWorkloadModalProps> = ({
 
                 return (
                   <div
-                    key={`${item.classId}_${item.subjectId}_${index}`}
+                    key={`${item.classId}_${item.subjectId}`}
                     className={`flex flex-col gap-2.5 p-3.5 rounded-2xl border transition-all min-w-0 ${
                       item.isSplit
                         ? "bg-indigo-50/40 dark:bg-indigo-950/20 border-indigo-300/80 dark:border-indigo-800/80 shadow-xs"
@@ -1041,7 +1263,7 @@ export const TeacherWorkloadModal: React.FC<TeacherWorkloadModalProps> = ({
                           }
                           className="w-full px-3 py-2 text-xs font-bold rounded-xl border border-border bg-background focus:ring-2 focus:ring-primary/20 focus:border-primary cursor-pointer truncate"
                         >
-                          {classes.map((c) => (
+                          {schoolClasses.map((c) => (
                             <option key={c.id} value={c.id}>
                               {c.name} sinfi ({c.grade}-sinf)
                             </option>
@@ -1161,29 +1383,35 @@ export const TeacherWorkloadModal: React.FC<TeacherWorkloadModalProps> = ({
                       </div>
 
                       {/* 4. 👥 GURUHGA BO'LISH TOGGLE TUGMASI */}
-                      <div className="w-full sm:w-52 flex items-center justify-center sm:justify-start shrink-0">
-                        <button
-                          type="button"
-                          onClick={() => handleToggleSplit(index)}
-                          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer select-none ${
-                            item.isSplit
-                              ? "bg-indigo-600 text-white shadow-xs ring-2 ring-indigo-500/30"
-                              : "bg-muted/70 hover:bg-muted text-muted-foreground hover:text-foreground border border-border/80"
-                          }`}
-                          title="Sinfni 2 ta guruhga bo'lib (masalan Ingliz tili, Rus tili, Informatika) 2 ta o'qituvchiga biriktirish"
-                        >
-                          <Users2 className="w-3.5 h-3.5" />
-                          <span>{item.isSplit ? "Guruhga bo'lingan (1-2)" : "Guruhga bo'lish"}</span>
-                        </button>
+                      <div className="w-full sm:w-52 shrink-0 flex items-center justify-center">
+                        {isKelajak ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-[11px] font-bold bg-muted/50 text-muted-foreground border border-border">
+                            Butun sinf (Majburiy)
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => handleToggleSplit(index)}
+                            className={`w-full py-1.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-xs ${
+                              item.isSplit
+                                ? "bg-indigo-600 text-white shadow-indigo-500/20 hover:bg-indigo-700"
+                                : "bg-card border border-border text-foreground hover:bg-muted/60"
+                            }`}
+                            title="Sinfni 2 ta guruhga bo'lib (masalan Ingliz tili, Rus tili, Informatika) 2 ta o'qituvchiga biriktirish"
+                          >
+                            <Users2 className="w-3.5 h-3.5 shrink-0" />
+                            <span>{item.isSplit ? "Guruhga bo'lingan (1-2)" : "Guruhga bo'lish"}</span>
+                          </button>
+                        )}
                       </div>
 
                       {/* 5. O'chirish tugmasi */}
-                      <div className="self-end sm:self-center shrink-0">
+                      <div className="shrink-0 flex items-center justify-end sm:justify-center">
                         <button
                           type="button"
                           onClick={() => handleRemoveAssignment(index)}
-                          className="p-1.5 rounded-xl text-rose-500 hover:bg-rose-500/10 transition-colors cursor-pointer"
-                          title="O'chirish"
+                          className="w-8 h-8 rounded-xl text-muted-foreground hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors flex items-center justify-center cursor-pointer"
+                          title="Dars soatini o'chirish"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -1216,7 +1444,7 @@ export const TeacherWorkloadModal: React.FC<TeacherWorkloadModalProps> = ({
                     )}
 
                     {/* ── 👥 GURUHNI 2-QISMINI O'TADIGAN O'QITUVCHINI BELGILASH ── */}
-                    {item.isSplit && (
+                    {item.isSplit && !isKelajak && (
                       <div className="mt-1 p-2.5 rounded-xl bg-indigo-500/10 dark:bg-indigo-950/30 border border-indigo-500/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5 text-xs">
                         <div className="flex items-center gap-2 text-indigo-950 dark:text-indigo-200 font-bold">
                           <span className="w-2 h-2 rounded-full bg-indigo-600 animate-pulse" />
@@ -1228,7 +1456,7 @@ export const TeacherWorkloadModal: React.FC<TeacherWorkloadModalProps> = ({
                         <div className="flex items-center gap-2 w-full sm:w-auto">
                           <span className="font-bold text-indigo-950 dark:text-indigo-200 shrink-0 flex items-center gap-1">
                             <UserCheck className="w-3.5 h-3.5 text-indigo-600" />
-                            2-guruh o'qituvchisi:
+                            2-guruh o&apos;qituvchisi:
                           </span>
                           <select
                             value={item.secondTeacherId || ""}
@@ -1237,7 +1465,7 @@ export const TeacherWorkloadModal: React.FC<TeacherWorkloadModalProps> = ({
                             }
                             className="px-2.5 py-1 text-xs font-bold rounded-lg border border-indigo-300 dark:border-indigo-700 bg-background text-foreground focus:ring-2 focus:ring-indigo-500 cursor-pointer min-w-[200px]"
                           >
-                            <option value="">-- O'qituvchini tanlang --</option>
+                            <option value="">-- O&apos;qituvchini tanlang --</option>
                             {specializedCandidateTeachers.length > 0 && (
                               <optgroup label="⭐ Shu fan mutaxassislari:">
                                 {specializedCandidateTeachers.map((t) => {
@@ -1279,7 +1507,7 @@ export const TeacherWorkloadModal: React.FC<TeacherWorkloadModalProps> = ({
         <div className="flex items-center justify-between px-6 py-4 border-t border-border/80 bg-muted/20 shrink-0">
           <div className="text-xs text-muted-foreground flex flex-wrap items-center gap-2">
             <span className="font-bold text-foreground">
-              {assignments.length} ta fan
+              {uniqueAssignments.length} ta fan
             </span>
             <span>•</span>
             <span className="font-black text-indigo-600 dark:text-indigo-400">

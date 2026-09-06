@@ -110,27 +110,39 @@ export default function SettingsPage() {
     setTimeout(() => setToast(null), 3000);
   };
 
-  // Filter school data by current school ID
+  // Filter school data by current school ID (39-maktab standart)
+  const activeSchoolId = store.currentSchoolId || "cmthn422g0001uff8vhccbxmz";
   const currentSchool =
-    store.schools.find((s) => s.id === store.currentSchoolId) || store.schools[0];
-  const schoolBranches = store.branches.filter((b) => b.schoolId === store.currentSchoolId).length > 0
-    ? store.branches.filter((b) => b.schoolId === store.currentSchoolId)
-    : store.branches;
-  const schoolShifts = store.shifts.filter((s) => s.schoolId === store.currentSchoolId).length > 0
-    ? store.shifts.filter((s) => s.schoolId === store.currentSchoolId)
-    : store.shifts;
-  const schoolClasses = store.classes.filter((c) => c.schoolId === store.currentSchoolId).length > 0
-    ? store.classes.filter((c) => c.schoolId === store.currentSchoolId)
-    : store.classes;
-  const schoolTeachers = store.teachers.filter((t) => t.schoolId === store.currentSchoolId).length > 0
-    ? store.teachers.filter((t) => t.schoolId === store.currentSchoolId)
-    : store.teachers;
-  const schoolSubjects = store.subjects.filter((s) => s.schoolId === store.currentSchoolId).length > 0
-    ? store.subjects.filter((s) => s.schoolId === store.currentSchoolId)
-    : store.subjects;
-  const schoolRooms = store.rooms.filter((r) => r.schoolId === store.currentSchoolId).length > 0
-    ? store.rooms.filter((r) => r.schoolId === store.currentSchoolId)
-    : store.rooms;
+    store.schools.find((s) => s.id === activeSchoolId) || store.schools[0];
+  const schoolBranches = useMemo(() => {
+    const list = store.branches.filter((b) => b.schoolId === activeSchoolId);
+    return list.length > 0 ? list : store.branches.filter((b) => !b.schoolId || b.schoolId === activeSchoolId);
+  }, [store.branches, activeSchoolId]);
+
+  const schoolShifts = useMemo(() => {
+    const list = store.shifts.filter((s) => s.schoolId === activeSchoolId);
+    return list.length > 0 ? list : store.shifts.filter((s) => !s.schoolId || s.schoolId === activeSchoolId);
+  }, [store.shifts, activeSchoolId]);
+
+  const schoolClasses = useMemo(() => {
+    const list = store.classes.filter((c) => c.schoolId === activeSchoolId);
+    return list.length > 0 ? list : store.classes.filter((c) => !c.schoolId || c.schoolId === activeSchoolId);
+  }, [store.classes, activeSchoolId]);
+
+  const schoolTeachers = useMemo(() => {
+    const list = store.teachers.filter((t) => t.schoolId === activeSchoolId);
+    return list.length > 0 ? list : store.teachers.filter((t) => !t.schoolId || t.schoolId === activeSchoolId);
+  }, [store.teachers, activeSchoolId]);
+
+  const schoolSubjects = useMemo(() => {
+    const list = store.subjects.filter((s) => s.schoolId === activeSchoolId);
+    return list.length > 0 ? list : store.subjects.filter((s) => !s.schoolId || s.schoolId === activeSchoolId);
+  }, [store.subjects, activeSchoolId]);
+
+  const schoolRooms = useMemo(() => {
+    const list = store.rooms.filter((r) => r.schoolId === activeSchoolId);
+    return list.length > 0 ? list : store.rooms.filter((r) => !r.schoolId || r.schoolId === activeSchoolId);
+  }, [store.rooms, activeSchoolId]);
 
   // Kamchiliklar monitoringi (Smart Warning Badges)
   const classesWithIssuesCount = useMemo(() => {
