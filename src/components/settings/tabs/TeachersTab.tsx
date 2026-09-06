@@ -140,9 +140,11 @@ export const TeachersTab: React.FC<TeachersTabProps> = ({
         (c.subjects || []).forEach((cs) => {
           if (cs.teacherId === t.id) {
             const sub = subjectMap.get(cs.subjectId);
-            const isHomeroomClassHour = isKelajakOrSinfSoatiSubject(cs.subjectId, sub?.name);
+            const isHomeroomClassHour =
+              isKelajakOrSinfSoatiSubject(cs.subjectId, sub?.name) &&
+              (t.homeroomClassId === c.id || c.homeroomTeacherId === t.id);
 
-            // Kelajak soati / Sinf soati tarbiyaviy soat bo'lib, o'qituvchi dars stavkasiga kirmaydi
+            // Faqat o'qituvchi o'zi sinf rahbari bo'lgan sinfdagi 1 soatlik Sinf soati dars stavkasiga kirmaydi
             if (!isHomeroomClassHour) {
               hours += Number(cs.weeklyHours) || 0;
             }

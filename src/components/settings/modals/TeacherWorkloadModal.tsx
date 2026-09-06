@@ -268,9 +268,11 @@ export const TeacherWorkloadModal: React.FC<TeacherWorkloadModalProps> = ({
     uniqueAssignments.forEach(({ item }) => {
       const sub = subjectMap.get(item.subjectId) || subjects.find((s) => s.id === item.subjectId);
       const hours = Number(item.weeklyHours) || 0;
-      // O'zbekiston xalq ta'limi qoidalariga ko'ra Kelajak/Sinf soati tarbiyaviy soat bo'lib,
-      // u o'qituvchining umumiy pedagogik dars soati (stavkasi) yig'indisiga QO'SHILMAYDI!
-      const isHomeroomClassHour = isKelajakOrSinfSoatiSubject(item.subjectId, sub?.name);
+      // Faqat o'qituvchi o'zi sinf rahbari bo'lgan sinfdagi (teacher.homeroomClassId === item.classId)
+      // 1 soatlik Kelajak/Sinf soatigina dars stavkasidan chegiriladi!
+      const isHomeroomClassHour =
+        isKelajakOrSinfSoatiSubject(item.subjectId, sub?.name) &&
+        teacher?.homeroomClassId === item.classId;
 
       if (isHomeroomClassHour) {
         homeroom += hours;
