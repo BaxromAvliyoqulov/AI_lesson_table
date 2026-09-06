@@ -40,19 +40,27 @@ export class CSPSolver {
    * dars o'tadi, ularning qonuniy metod kuni — SHANBA (6) kuni hisoblanadi.
    */
   public isStrictMethodDay(day: number, teacherId?: string | null, subjectId?: string | null): boolean {
-    // 1. O'qituvchining shaxsiy belgilangan metod kuni
+    // 1. O'qituvchining shaxsiy yoki rasmiy metod kuni
     if (teacherId) {
       const t = this.teacherMap.get(teacherId);
-      const tMethod = t?.methodDayOfWeek ?? t?.methodDay;
-      if (tMethod !== undefined && tMethod !== null && tMethod >= 1 && tMethod <= 6) {
-        if (tMethod === day) return true;
+      if (t) {
+        const tMethod = t.methodDayOfWeek ?? t.methodDay;
+        if (tMethod !== undefined && tMethod !== null && tMethod >= 1 && tMethod <= 6) {
+          if (tMethod === day) return true;
+        }
+        const eff = getEffectiveTeacherMethodDay(t, this.subjects);
+        if (eff.day === day) return true;
       }
     }
-    // 2. Fanning rasmiy metod kuni (agar belgilangan bo'lsa)
+    // 2. Fanning rasmiy metod kuni (agar belgilangan bo'lsa yoki rasmiy O'zbekiston standarti)
     if (subjectId) {
       const s = this.subjectMap.get(subjectId);
-      if (s?.methodDayOfWeek !== undefined && s.methodDayOfWeek !== null) {
-        if (s.methodDayOfWeek === day) return true;
+      if (s) {
+        if (s.methodDayOfWeek !== undefined && s.methodDayOfWeek !== null && s.methodDayOfWeek >= 1 && s.methodDayOfWeek <= 6) {
+          if (s.methodDayOfWeek === day) return true;
+        }
+        const subMethod = getOfficialMethodDayForSubject(s.name || s.id);
+        if (subMethod === day) return true;
       }
     }
     return false;
