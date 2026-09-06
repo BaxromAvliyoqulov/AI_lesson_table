@@ -284,6 +284,7 @@ export function isClassSecondShift(
 ): boolean {
   if (!cls) return false;
 
+  // 1. Agar shifts ro'yxati berilgan bo'lsa, aniq order va nom bo'yicha tekshirish
   if (shifts && shifts.length > 0 && cls.shiftId) {
     const s = shifts.find((sh) => sh.id === cls.shiftId);
     if (s) {
@@ -310,25 +311,39 @@ export function isClassSecondShift(
     }
   }
 
-  // 39-maktab qoidasi: D sinflari (filial) tushdan keyin (2-smena) o'qiydi
-  if (cls.name) {
-    const trimmed = cls.name.trim().toUpperCase();
-    if (trimmed.endsWith("D")) return true;
-  }
-
+  // 2. shiftId identifikatori orqali tekshirish
   if (cls.shiftId) {
     const sId = cls.shiftId.toLowerCase();
-    return (
+    if (
       sId === "s39_2" ||
       sId.includes("shift_2") ||
       sId.includes("shift2") ||
       sId.includes("smena_2") ||
       sId.includes("smena2") ||
-      sId.includes("2") ||
       sId.includes("tush") ||
       sId.includes("ikkinchi") ||
       sId.includes("abetdan")
-    );
+    ) {
+      return true;
+    }
+    if (
+      sId === "s39_1" ||
+      sId.includes("shift_1") ||
+      sId.includes("shift1") ||
+      sId.includes("smena_1") ||
+      sId.includes("smena1") ||
+      sId.includes("ertalab") ||
+      sId.includes("birinchi") ||
+      sId.includes("abetgacha")
+    ) {
+      return false;
+    }
+  }
+
+  // 3. Maktab standarti bo'yicha fallback: 2, 3, 5, 6, 7 sinflar 2-smena (Abetdan keyin)
+  if (cls.grade !== undefined && cls.grade !== null) {
+    if ([2, 3, 5, 6, 7].includes(cls.grade)) return true;
+    if ([1, 4, 8, 9, 10, 11].includes(cls.grade)) return false;
   }
 
   return false;

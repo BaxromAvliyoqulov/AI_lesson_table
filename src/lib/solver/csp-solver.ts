@@ -273,7 +273,7 @@ export class CSPSolver {
     // ── 2. QAT'IY BELGILANGAN VA QULFLANGAN DARSLAR (Lock / Pin) ───
     const getShiftGroup = (classId: string): string => {
       const cls = this.classMap.get(classId);
-      return isClassSecondShift(cls) ? "shift2" : "shift1";
+      return isClassSecondShift(cls, this.input.shifts) ? "shift2" : "shift1";
     };
 
     const getOccKey = (teacherId: string, day: number, period: number, classId: string): string => {

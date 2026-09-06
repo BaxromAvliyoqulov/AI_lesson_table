@@ -314,7 +314,7 @@ export const MasterGrid: React.FC<MasterGridProps> = ({
 
     // 1. HARD CONSTRAINT: O'qituvchi ish grafigi / Metod kuni (Shift-aware)
     const targetClass = classes.find((c) => c.id === targetClassId);
-    const targetIsShift2 = isClassSecondShift(targetClass);
+    const targetIsShift2 = isClassSecondShift(targetClass, shifts);
     const targetPeriodKey = targetIsShift2 ? 10 + targetPeriod : targetPeriod;
 
     if (teacher?.availabilities) {

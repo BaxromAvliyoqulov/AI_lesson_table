@@ -423,8 +423,9 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
       classes,
       subjects,
       teachers,
+      shifts,
     });
-  }, [lessons, classes, subjects, teachers]);
+  }, [lessons, classes, subjects, teachers, shifts]);
 
   const teacherConflictsSet = conflictDetectionResult.conflictLessonIds;
 
@@ -801,6 +802,7 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
             teachers={teachers}
             subjects={subjects}
             rooms={rooms}
+            shifts={shifts}
             subjectMap={subjectMap}
             teacherMap={teacherMap}
             teacherNumberMap={teacherNumberMap}

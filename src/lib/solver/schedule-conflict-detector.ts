@@ -1,4 +1,4 @@
-import { Lesson, SchoolClass, Subject, Teacher } from "@/types";
+import { Lesson, SchoolClass, Subject, Teacher, Shift } from "@/types";
 import { getOfficialMethodDayForSubject, getEffectiveTeacherMethodDay } from "@/lib/constants/method-days";
 import { isClassSecondShift } from "@/lib/utils";
 
@@ -52,11 +52,13 @@ export function detectScheduleConflicts({
   classes = [],
   subjects = [],
   teachers = [],
+  shifts = [],
 }: {
   lessons: Lesson[];
   classes: SchoolClass[];
   subjects: Subject[];
   teachers: Teacher[];
+  shifts?: Shift[];
 }): ConflictDetectionResult {
   const classMap = new Map(classes.map((c) => [c.id, c]));
   const subjectMap = new Map(subjects.map((s) => [s.id, s]));
@@ -71,7 +73,7 @@ export function detectScheduleConflicts({
   for (const l of lessons) {
     if (!l.teacherId) continue;
     const cls = classMap.get(l.classId);
-    const shiftGroup = isClassSecondShift(cls) ? "shift2" : "shift1";
+    const shiftGroup = isClassSecondShift(cls, shifts) ? "shift2" : "shift1";
     const key = `${l.teacherId}_${l.dayOfWeek}_${l.periodNumber}_${shiftGroup}`;
     const existing = teacherSlotMap.get(key) || [];
     existing.push(l);
@@ -88,7 +90,7 @@ export function detectScheduleConflicts({
 
         const first = matchedLessons[0];
         const teacher = teacherMap.get(first.teacherId);
-        const is2 = isClassSecondShift(classMap.get(first.classId));
+        const is2 = isClassSecondShift(classMap.get(first.classId), shifts);
         const shiftLabel = is2 ? "2-smena (Abetdan keyin)" : "1-smena (Abetgacha)";
         const classNames = matchedLessons
           .map((l) => classMap.get(l.classId)?.name || "Sinf")
@@ -134,19 +136,20 @@ export function detectScheduleConflicts({
   }
 
   classDaySubjectMap.forEach((matchedLessons, key) => {
-    if (matchedLessons.length > 1) {
-      matchedLessons.sort((a, b) => a.periodNumber - b.periodNumber);
+    // Guruh darslari (Group 1 va Group 2 bir vaqtda 1-darsda bo'lsa takrorlanish emas)
+    const uniquePeriods = Array.from(new Set(matchedLessons.map((m) => m.periodNumber))).sort((a, b) => a - b);
+    if (uniquePeriods.length > 1) {
       const first = matchedLessons[0];
       const cls = classMap.get(first.classId);
       const subject = subjectMap.get(first.subjectId);
       const teacher = teacherMap.get(first.teacherId);
-      const periods = matchedLessons.map((m) => `${m.periodNumber}-dars`).join(", ");
+      const periodsStr = uniquePeriods.map((p) => `${p}-dars`).join(", ");
 
       const isPrimary = (cls?.grade ?? 5) <= 4;
-      const isTripleOrMore = matchedLessons.length >= 3;
+      const isTripleOrMore = uniquePeriods.length >= 3;
       const isConsecutivePair =
-        matchedLessons.length === 2 &&
-        matchedLessons[1].periodNumber - matchedLessons[0].periodNumber === 1;
+        uniquePeriods.length === 2 &&
+        uniquePeriods[1] - uniquePeriods[0] === 1;
       const allowsDouble = !isPrimary && (subject?.allowDoubleLesson ?? false);
 
       // Agar 3+ soat bo'lsa YOKI juft dars taqiqlangan fanda 2 soat bo'lsa YOKI juft dars orasi uzilgan bo'lsa
@@ -156,14 +159,14 @@ export function detectScheduleConflicts({
         matchedLessons.forEach((l) => conflictLessonIds.add(l.id));
 
         let reasonText = "";
-        if (isPrimary && matchedLessons.length > 1) {
-          reasonText = `boshlang'ich sinfda (${cls?.name || "1-4 sinf"}) kuniga ${matchedLessons.length} soat (${periods}) qo'yilgan. SanPiN 0341-17 qoidasi bo'yicha boshlang'ich sinflarda bitta fandan kuniga faqat 1 soat dars o'tilishi shart!`;
+        if (isPrimary && uniquePeriods.length > 1) {
+          reasonText = `boshlang'ich sinfda (${cls?.name || "1-4 sinf"}) kuniga ${uniquePeriods.length} soat (${periodsStr}) qo'yilgan. SanPiN 0341-17 qoidasi bo'yicha boshlang'ich sinflarda bitta fandan kuniga faqat 1 soat dars o'tilishi shart!`;
         } else if (isTripleOrMore) {
-          reasonText = `kuniga ${matchedLessons.length} soat (${periods}) ketma-ket qo'yilgan. Maktab me'yori bo'yicha bu fanga kuniga ko'pi bilan 1-2 soat ruxsat beriladi.`;
+          reasonText = `kuniga ${uniquePeriods.length} soat (${periodsStr}) ketma-ket qo'yilgan. Maktab me'yori bo'yicha bu fanga kuniga ko'pi bilan 1-2 soat ruxsat beriladi.`;
         } else if (!allowsDouble) {
-          reasonText = `kuniga 2 marta (${periods}) qo'yilgan. Bu fanga juft dars o'tish taqiqlangan.`;
+          reasonText = `kuniga 2 marta (${periodsStr}) qo'yilgan. Bu fanga juft dars o'tish taqiqlangan.`;
         } else {
-          reasonText = `kuniga 2 soat (${periods}) orasi uzilgan holda qo'yilgan. Juft darslar faqat ketma-ket bo'lishi shart!`;
+          reasonText = `kuniga 2 soat (${periodsStr}) orasi uzilgan holda qo'yilgan. Juft darslar faqat ketma-ket bo'lishi shart!`;
         }
 
         conflicts.push({
@@ -194,6 +197,13 @@ export function detectScheduleConflicts({
     const teacher = teacherMap.get(l.teacherId);
     const subject = subjectMap.get(l.subjectId);
     const cls = classMap.get(l.classId);
+    const isPrimary = (cls?.grade !== undefined && cls.grade <= 4) || Boolean(cls?.isPrimary);
+
+    // Boshlang'ich sinflarda (1-4) o'qituvchi o'z sinfiga haftada 5 kun dars o'tadi, ularning metod kuni faqat Shanba (6)!
+    // Yuqori sinf kafedra fani metod kunlari (Ona tili Seshanba, Matematika Chorshanba) boshlang'ich ta'limga daxldor emas!
+    if (isPrimary) {
+      continue;
+    }
 
     const teacherMethodInfo = teacher
       ? getEffectiveTeacherMethodDay(teacher, subjects)
