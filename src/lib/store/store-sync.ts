@@ -116,9 +116,19 @@ export function normalizeHomeroomSinfSoati({
       const cleanSubjects = existingSubjects.filter(
         (s) => !isSinfSoatiCheck(s.subjectId)
       );
+      // Agar fanda guruhlarga bo'linish (GROUP_1 yoki GROUP_2) bo'lsa, eski "WHOLE" yozuvini yo'qotamiz
+      const cleanSplitSubjectIds = new Set<string>();
+      for (const s of cleanSubjects) {
+        if (s.groupType === "GROUP_1" || s.groupType === "GROUP_2") {
+          cleanSplitSubjectIds.add(s.subjectId);
+        }
+      }
       // Fanlar dublikatini tozalash (Deduplication) - LATER (yangi) yozuvlar ustuvor
       const cleanSubMap = new Map<string, ClassSubject>();
       for (const s of cleanSubjects) {
+        if (cleanSplitSubjectIds.has(s.subjectId) && (!s.groupType || s.groupType === "WHOLE")) {
+          continue; // Eski ghost WHOLE tashlab yuboriladi
+        }
         const subKey = `${s.subjectId}_${s.groupType || "WHOLE"}`;
         cleanSubMap.set(subKey, s);
       }
@@ -136,9 +146,20 @@ export function normalizeHomeroomSinfSoati({
       (s) => !isSinfSoatiCheck(s.subjectId)
     );
 
+    // Agar fanda guruhlarga bo'linish (GROUP_1 yoki GROUP_2) bo'lsa, eski "WHOLE" yozuvini yo'qotamiz
+    const splitSubjectIds = new Set<string>();
+    for (const s of otherSubjects) {
+      if (s.groupType === "GROUP_1" || s.groupType === "GROUP_2") {
+        splitSubjectIds.add(s.subjectId);
+      }
+    }
+
     // Boshqa fanlar dublikatini ham tozalash (LATER yangi yozuv ustuvor)
     const otherSubMap = new Map<string, ClassSubject>();
     for (const s of otherSubjects) {
+      if (splitSubjectIds.has(s.subjectId) && (!s.groupType || s.groupType === "WHOLE")) {
+        continue; // Eski ghost WHOLE tashlab yuboriladi
+      }
       const subKey = `${s.subjectId}_${s.groupType || "WHOLE"}`;
       otherSubMap.set(subKey, s);
     }
