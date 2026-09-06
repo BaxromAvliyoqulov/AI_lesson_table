@@ -26,7 +26,10 @@ import {
   ArrowUpRight,
   School,
   Building,
+  FileDown,
+  Loader2,
 } from "lucide-react";
+import { exportTeacherScheduleToPDF } from "@/lib/export/teacher-pdf-exporter";
 
 interface TeacherScheduleViewProps {
   classes: SchoolClass[];
@@ -84,6 +87,7 @@ export const TeacherScheduleView: React.FC<TeacherScheduleViewProps> = ({
   const [selectedTeacherId, setSelectedTeacherId] = useState<string>(teachers[0]?.id || "");
   const [shiftFilter, setShiftFilter] = useState<"ALL" | "SHIFT_1" | "SHIFT_2">("ALL");
   const [isCopied, setIsCopied] = useState(false);
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
   const [teacherSearch, setTeacherSearch] = useState("");
 
   // Alifbo bo'yicha saralangan barcha o'qituvchilar
@@ -367,6 +371,28 @@ export const TeacherScheduleView: React.FC<TeacherScheduleViewProps> = ({
     setTimeout(() => setIsCopied(false), 3000);
   };
 
+  const handleExportPDF = async () => {
+    if (!activeTeacher) return;
+    setIsExportingPdf(true);
+    try {
+      await exportTeacherScheduleToPDF({
+        teacher: activeTeacher,
+        lessons,
+        classes,
+        subjects,
+        rooms,
+        shifts,
+        schoolName: "39-UMUMIY O'RTA TA'LIM MAKTABI",
+        academicYear: "2025 - 2026",
+      });
+    } catch (err) {
+      console.error("PDF export error:", err);
+      window.print();
+    } finally {
+      setIsExportingPdf(false);
+    }
+  };
+
   if (!activeTeacher) {
     return (
       <div className="flex flex-col items-center justify-center p-16 text-center">
@@ -523,6 +549,25 @@ export const TeacherScheduleView: React.FC<TeacherScheduleViewProps> = ({
             >
               <Printer className="w-3.5 h-3.5 text-slate-700 dark:text-slate-300" />
               <span>Chop etish</span>
+            </button>
+
+            <button
+              onClick={handleExportPDF}
+              disabled={isExportingPdf}
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-xs cursor-pointer transition-all active:scale-95 disabled:opacity-60"
+              title="O'qituvchiga yuborish uchun dars jadvalini rasmiy A4 PDF formatida yuklab olish"
+            >
+              {isExportingPdf ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin text-white" />
+                  <span>PDF tayyorlanmoqda...</span>
+                </>
+              ) : (
+                <>
+                  <FileDown className="w-3.5 h-3.5 text-white" />
+                  <span>PDF</span>
+                </>
+              )}
             </button>
           </div>
         </div>
