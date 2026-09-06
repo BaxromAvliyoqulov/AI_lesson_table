@@ -78,7 +78,7 @@ export async function exportScheduleToExcel(options: ExcelExportOptions) {
       });
     }
     for (const cls of classes) {
-      cls.subjects.forEach((cs) => {
+      cls.subjects?.forEach((cs) => {
         if (cs.teacherId === t.id && cs.subjectId !== "sub_sinf_soati") {
           const s = subjectMap.get(cs.subjectId);
           if (s) subjectNames.add(s.shortName || s.name);
@@ -113,7 +113,7 @@ export async function exportScheduleToExcel(options: ExcelExportOptions) {
     const activeTeacherIds = new Set<string>();
     for (const cls of branchClasses) {
       if (cls.homeroomTeacherId) activeTeacherIds.add(cls.homeroomTeacherId);
-      cls.subjects.forEach((s) => activeTeacherIds.add(s.teacherId));
+      cls.subjects?.forEach((s) => activeTeacherIds.add(s.teacherId));
     }
     for (const l of lessons) {
       if (branchClasses.some((c) => c.id === l.classId)) {
@@ -146,6 +146,8 @@ export async function exportScheduleToExcel(options: ExcelExportOptions) {
 
     const totalClassCols = branchClasses.length * 2; // Har bir sinf uchun 2 ta ustun (Fan, №)
     const lastClassColNum = 3 + totalClassCols;
+    const isMultiColReestr = finalTeachers.length > 36;
+    const reestrColSpan = isMultiColReestr ? 6 : 3;
     const reestrStartCol = lastClassColNum + 2; // 1 ta bo'sh oraliq ustun
 
     // ── 1. SARLAVHALAR VA TASDIQLASH SHTAMPI ──────────────────────────────────
@@ -190,7 +192,11 @@ export async function exportScheduleToExcel(options: ExcelExportOptions) {
       row7Values.push(cls.name, "");
     });
     // Bo'sh oraliq + Reestr sarlavhasi
-    row7Values.push("", "O'QITUVCHILAR VA FANLAR REESTRI", "", "");
+    row7Values.push("");
+    row7Values.push("O'QITUVCHILAR VA FANLAR REESTRI");
+    for (let i = 1; i < reestrColSpan; i++) {
+      row7Values.push("");
+    }
 
     const row7 = ws.addRow(row7Values);
     row7.height = 26;
@@ -203,7 +209,7 @@ export async function exportScheduleToExcel(options: ExcelExportOptions) {
     });
 
     // Reestr sarlavhasini merge qilish
-    ws.mergeCells(7, reestrStartCol, 7, reestrStartCol + 2);
+    ws.mergeCells(7, reestrStartCol, 7, reestrStartCol + reestrColSpan - 1);
 
     // Qator 7 dizayni
     row7.eachCell((cell, colNumber) => {
@@ -233,7 +239,12 @@ export async function exportScheduleToExcel(options: ExcelExportOptions) {
     branchClasses.forEach(() => {
       row8Values.push("Fan", "№");
     });
-    row8Values.push("", "№", "O'qituvchi F.I.Sh", "O'tadigan Fani / Fanlari");
+    row8Values.push("");
+    if (isMultiColReestr) {
+      row8Values.push("№", "O'qituvchi F.I.Sh", "O'tadigan Fani / Fanlari", "№", "O'qituvchi F.I.Sh", "O'tadigan Fani / Fanlari");
+    } else {
+      row8Values.push("№", "O'qituvchi F.I.Sh", "O'tadigan Fani / Fanlari");
+    }
 
     const row8 = ws.addRow(row8Values);
     row8.height = 20;
@@ -268,7 +279,8 @@ export async function exportScheduleToExcel(options: ExcelExportOptions) {
     // ── 3. DATA ROWS (Dushanba..Shanba, 1..6 Darslar) ────────────────────────
     let currentExcelRow = 9;
     const PERIOD_COUNT = 6;
-    let teacherRowIdx = 0;
+    let globalPeriodIdx = 0;
+    const halfTeachers = isMultiColReestr ? Math.ceil(finalTeachers.length / 2) : finalTeachers.length;
 
     DAYS.forEach((day) => {
       const dayStartRow = currentExcelRow;
@@ -305,14 +317,30 @@ export async function exportScheduleToExcel(options: ExcelExportOptions) {
         });
 
         // O'ng tomondagi O'qituvchilar Reestri qatorlari
-        if (teacherRowIdx < finalTeachers.length) {
-          const t = finalTeachers[teacherRowIdx];
-          const tSubjects = teacherSubjectsMap.get(t.id) || "—";
-          rowData.push("", teacherRowIdx + 1, t.fullName, tSubjects);
-          teacherRowIdx++;
+        rowData.push(""); // Oraliq bo'sh ustun
+        if (isMultiColReestr) {
+          const tIdxA = globalPeriodIdx;
+          const tIdxB = globalPeriodIdx + halfTeachers;
+          const tA = tIdxA < halfTeachers ? finalTeachers[tIdxA] : null;
+          const tB = tIdxB < finalTeachers.length ? finalTeachers[tIdxB] : null;
+
+          const numA = tA ? (teacherNumberMap.get(tA.id) || (tIdxA + 1)) : "";
+          const subA = tA ? (teacherSubjectsMap.get(tA.id) || "—") : "";
+          const numB = tB ? (teacherNumberMap.get(tB.id) || (tIdxB + 1)) : "";
+          const subB = tB ? (teacherSubjectsMap.get(tB.id) || "—") : "";
+
+          rowData.push(numA, tA ? tA.fullName : "", subA, numB, tB ? tB.fullName : "", subB);
         } else {
-          rowData.push("", "", "", "");
+          if (globalPeriodIdx < finalTeachers.length) {
+            const t = finalTeachers[globalPeriodIdx];
+            const tNum = teacherNumberMap.get(t.id) || (globalPeriodIdx + 1);
+            const tSubjects = teacherSubjectsMap.get(t.id) || "—";
+            rowData.push(tNum, t.fullName, tSubjects);
+          } else {
+            rowData.push("", "", "");
+          }
         }
+        globalPeriodIdx++;
 
         const dataRow = ws.addRow(rowData);
         dataRow.height = 22;
@@ -338,13 +366,18 @@ export async function exportScheduleToExcel(options: ExcelExportOptions) {
           } else if (colNumber >= reestrStartCol && cell.value) {
             cell.border = {
               top: { style: "thin", color: { argb: "FF000000" } },
-              bottom: { style: "thin", color: { argb: "FF000000" } },
+              bottom: { style: bottomStyle, color: { argb: "FF000000" } },
               left: { style: "thin", color: { argb: "FF000000" } },
               right: { style: "thin", color: { argb: "FF000000" } },
             };
 
-            if (colNumber === reestrStartCol + 1 || colNumber === reestrStartCol + 2) {
+            const relCol = colNumber - reestrStartCol;
+            if (relCol === 0 || (isMultiColReestr && relCol === 3)) {
+              cell.alignment = { horizontal: "center", vertical: "middle" };
+              cell.font = { bold: true, size: 9, name: "Times New Roman" };
+            } else {
               cell.alignment = { horizontal: "left", vertical: "middle", wrapText: true };
+              cell.font = { size: 9, name: "Times New Roman" };
             }
           }
         });
@@ -380,7 +413,10 @@ export async function exportScheduleToExcel(options: ExcelExportOptions) {
       const count = lessons.filter((l) => l.classId === cls.id).length;
       totalRowValues.push(`${count}`, "");
     });
-    totalRowValues.push("", "", "", "");
+    totalRowValues.push(""); // Oraliq ustun
+    for (let i = 0; i < reestrColSpan; i++) {
+      totalRowValues.push("");
+    }
 
     const totalRow = ws.addRow(totalRowValues);
     totalRow.height = 22;
@@ -419,7 +455,10 @@ export async function exportScheduleToExcel(options: ExcelExportOptions) {
         : "—";
       homeroomRowValues.push(shortName, "");
     });
-    homeroomRowValues.push("", "", "", "");
+    homeroomRowValues.push(""); // Oraliq ustun
+    for (let i = 0; i < reestrColSpan; i++) {
+      homeroomRowValues.push("");
+    }
 
     const homeroomRow = ws.addRow(homeroomRowValues);
     homeroomRow.height = 22;
@@ -462,9 +501,10 @@ export async function exportScheduleToExcel(options: ExcelExportOptions) {
     ws.getCell(currentExcelRow, reestrStartCol).value = `Ruhshunos: ____________________ ${psychologistName}`;
     ws.getCell(currentExcelRow, reestrStartCol).font = {
       bold: true,
-      size: 10.5,
+      size: 10,
       name: "Times New Roman",
     };
+    ws.mergeCells(currentExcelRow, reestrStartCol, currentExcelRow, reestrStartCol + reestrColSpan - 1);
 
     // ── 7. KENG KELTIRILGAN IDEAL USTUN KENGLIKLARI (Auto Zero-Adjustment) ───────
     const colWidths: { width: number }[] = [
@@ -478,10 +518,19 @@ export async function exportScheduleToExcel(options: ExcelExportOptions) {
       colWidths.push({ width: 5.5 });  // O'qituvchi tartib raqami (№)
     });
 
-    colWidths.push({ width: 3.5 });  // Bo'sh oraliq ustun
-    colWidths.push({ width: 5.5 });  // Reestr №
-    colWidths.push({ width: 28 });   // Reestr O'qituvchi F.I.Sh
-    colWidths.push({ width: 30 });   // Reestr O'tadigan Fanlari
+    colWidths.push({ width: 3 });  // Bo'sh oraliq ustun
+    if (isMultiColReestr) {
+      colWidths.push({ width: 4.5 }); // Reestr № (1-ustun)
+      colWidths.push({ width: 24 });  // Reestr O'qituvchi F.I.Sh
+      colWidths.push({ width: 22 });  // Reestr O'tadigan Fanlari
+      colWidths.push({ width: 4.5 }); // Reestr № (2-ustun)
+      colWidths.push({ width: 24 });  // Reestr O'qituvchi F.I.Sh
+      colWidths.push({ width: 22 });  // Reestr O'tadigan Fanlari
+    } else {
+      colWidths.push({ width: 5.5 });  // Reestr №
+      colWidths.push({ width: 28 });   // Reestr O'qituvchi F.I.Sh
+      colWidths.push({ width: 30 });   // Reestr O'tadigan Fanlari
+    }
 
     ws.columns = colWidths;
 
@@ -491,16 +540,18 @@ export async function exportScheduleToExcel(options: ExcelExportOptions) {
 
   // Excel faylni generatsiya qilish va yuklab olish
   const buffer = await workbook.xlsx.writeBuffer();
-  const blob = new Blob([buffer], {
-    type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-  });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  const sanitizedName = (schoolName || "Maktab").replace(/[\s/\\?%*:|"<>]+/g, "_");
-  a.download = `${sanitizedName}_Rasmiy_A3_Dars_Jadvali_${new Date().toISOString().slice(0, 10)}.xlsx`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  if (typeof window !== "undefined" && typeof document !== "undefined") {
+    const blob = new Blob([buffer], {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    const sanitizedName = (schoolName || "Maktab").replace(/[\s/\\?%*:|"<>]+/g, "_");
+    a.download = `${sanitizedName}_Rasmiy_A3_Dars_Jadvali_${new Date().toISOString().slice(0, 10)}.xlsx`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
 }

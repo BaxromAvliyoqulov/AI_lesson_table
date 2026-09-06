@@ -48,7 +48,7 @@ export class CSPSolver {
         if (tMethod !== undefined && tMethod !== null && tMethod >= 1 && tMethod <= 6) {
           if (tMethod === day) return true;
         }
-        const eff = getEffectiveTeacherMethodDay(t, this.subjects);
+        const eff = getEffectiveTeacherMethodDay(t, Array.from(this.subjectMap.values()));
         if (eff.day === day) return true;
       }
     }

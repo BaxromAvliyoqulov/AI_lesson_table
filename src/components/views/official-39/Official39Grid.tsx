@@ -72,7 +72,7 @@ export const Official39Grid: React.FC<Official39GridProps> = ({
 }) => {
   return (
     <div className="w-full overflow-x-auto border-t-2 border-b-2 border-black pb-2">
-      <div className="flex items-start">
+      <div className="flex items-stretch">
         {/* Asosiy Dars Jadvali */}
         <table className="border-collapse border border-black text-center text-[10px] sm:text-[11px] leading-tight font-sans">
           <thead>
