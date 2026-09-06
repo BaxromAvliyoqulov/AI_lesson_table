@@ -205,6 +205,15 @@ export function detectScheduleConflicts({
       continue;
     }
 
+    // Dushanba 1-soat Kelajak soati: sinf rahbarining tarbiyaviy soati bo'lib, metod kuni hisoblanmaydi
+    const isKelajakSoati = l.dayOfWeek === 1 && l.periodNumber === 1 && (
+      subject?.name?.toLowerCase().includes("kelajak") ||
+      subject?.name?.toLowerCase().includes("sinf soati")
+    );
+    if (isKelajakSoati) {
+      continue;
+    }
+
     const teacherMethodInfo = teacher
       ? getEffectiveTeacherMethodDay(teacher, subjects)
       : { day: null, dayName: null, source: "NONE" };

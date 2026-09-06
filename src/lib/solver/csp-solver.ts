@@ -40,34 +40,21 @@ export class CSPSolver {
    * dars o'tadi, ularning qonuniy metod kuni — SHANBA (6) kuni hisoblanadi.
    */
   public isStrictMethodDay(day: number, teacherId?: string | null, subjectId?: string | null): boolean {
-    if (!teacherId) return false;
-    const t = this.teacherMap.get(teacherId);
-    if (!t) return false;
-
     // 1. O'qituvchining shaxsiy belgilangan metod kuni
-    const tMethod = t.methodDayOfWeek ?? t.methodDay;
-    if (tMethod !== undefined && tMethod !== null && tMethod >= 1 && tMethod <= 6) {
-      return tMethod === day;
+    if (teacherId) {
+      const t = this.teacherMap.get(teacherId);
+      const tMethod = t?.methodDayOfWeek ?? t?.methodDay;
+      if (tMethod !== undefined && tMethod !== null && tMethod >= 1 && tMethod <= 6) {
+        if (tMethod === day) return true;
+      }
     }
-
-    // 2. Boshlang'ich sinf (1-4) o'qituvchilari:
-    // Dushanba-Juma (1-5) kunlari bolalarga har kuni dars o'tadi, ularning metod kuni SHANBA (6)!
-    const isPrimaryTeacher =
-      t.teachingStages === "PRIMARY" ||
-      (t.homeroomClassId &&
-        this.classMap.get(t.homeroomClassId)?.grade !== undefined &&
-        (this.classMap.get(t.homeroomClassId)?.grade ?? 5) <= 4);
-
-    if (isPrimaryTeacher) {
-      return day === 6;
+    // 2. Fanning rasmiy metod kuni (agar belgilangan bo'lsa)
+    if (subjectId) {
+      const s = this.subjectMap.get(subjectId);
+      if (s?.methodDayOfWeek !== undefined && s.methodDayOfWeek !== null) {
+        if (s.methodDayOfWeek === day) return true;
+      }
     }
-
-    // 3. Yuqori sinf (5-11) o'qituvchilari uchun mutaxassislik fani bo'yicha kafedra metod kuni:
-    const effective = getEffectiveTeacherMethodDay(t, Array.from(this.subjectMap.values()));
-    if (effective.day !== null) {
-      return effective.day === day;
-    }
-
     return false;
   }
 
@@ -86,6 +73,11 @@ export class CSPSolver {
     if (!teacherId) return true;
     const t = this.teacherMap.get(teacherId);
     if (!t) return true;
+
+    // Dushanba 1-soat Kelajak soati: sinf rahbarining tarbiyaviy soati bo'lib, metod kuni hisoblanmaydi
+    if (day === 1 && period === 1) {
+      return true;
+    }
 
     // 1. Metod kuni tekshiruvi:
     if (this.isStrictMethodDay(day, teacherId, subjectId)) {
@@ -868,7 +860,7 @@ export class CSPSolver {
       if (!placed) {
         // Ziddiyatsiz joy topilmagan taqdirda ham, dars jadvalida rasvo bo'shliqlar (oynalar) qolmasligi uchun
         // sinfning eng birinchi bo'sh slotiga darsni joylashtiramiz (Ziddiyat paydo bo'lsa, min-conflicts yoki AI patrul ko'rsatadi)
-        const anyEmptySlot = clsSlots.find((s) => {
+        const candidateEmptySlots = clsSlots.filter((s) => {
           if (s.teacherId !== null || s.isLocked) return false;
           if (s.day === 1 && s.period === 1) return false; // Dushanba 1-soat daxlsiz!
           if (s.groupType === "GROUP_2" && req.groupType !== "GROUP_2") return false;
@@ -889,6 +881,16 @@ export class CSPSolver {
           }
           return true;
         });
+
+        // 1-navbatda shu fanning duplikati bo'lmagan bo'sh slotlarni qidiramiz
+        const nonDupSlots = candidateEmptySlots.filter((s) => {
+          const dup = clsSlots.some(
+            (other) => other.day === s.day && other.subjectId === req.subjectId && other.groupType === req.groupType
+          );
+          return !dup;
+        });
+
+        const anyEmptySlot = nonDupSlots.length > 0 ? nonDupSlots[0] : candidateEmptySlots[0];
 
         if (anyEmptySlot) {
           anyEmptySlot.teacherId = req.teacherId;
@@ -1258,7 +1260,7 @@ export class CSPSolver {
       }
     }
 
-    const totalConflicts = globalClashes + methodDayViolations + duplicateViolations;
+    const totalConflicts = globalClashes + methodDayViolations;
 
     return {
       success: totalConflicts === 0,
