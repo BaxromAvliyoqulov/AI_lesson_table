@@ -57,8 +57,7 @@ export default function LoginPage() {
         if (res?.error) {
           setError(ERROR_MESSAGES[res.error] ?? ERROR_MESSAGES.default);
         } else {
-          router.push(callbackUrl);
-          router.refresh();
+          window.location.href = callbackUrl;
         }
       } catch {
         setError(ERROR_MESSAGES.default);
@@ -66,11 +65,29 @@ export default function LoginPage() {
     });
   };
 
-  const fillCredentials = (type: "aiSchoolAdmin" | "schoolAdmin" | "superAdmin") => {
+  const handleQuickLogin = (type: "aiSchoolAdmin" | "schoolAdmin" | "superAdmin") => {
     const acc = DEMO_ACCOUNTS[type];
     setEmail(acc.email);
     setPassword(acc.password);
     setError(null);
+
+    startTransition(async () => {
+      try {
+        const res = await signIn("credentials", {
+          email: acc.email,
+          password: acc.password,
+          redirect: false,
+        });
+
+        if (res?.error) {
+          setError(ERROR_MESSAGES[res.error] ?? ERROR_MESSAGES.default);
+        } else {
+          window.location.href = callbackUrl;
+        }
+      } catch {
+        setError(ERROR_MESSAGES.default);
+      }
+    });
   };
 
   return (
@@ -99,45 +116,54 @@ export default function LoginPage() {
         <div className="mb-5 p-4 rounded-2xl bg-indigo-500/10 border border-indigo-500/25 backdrop-blur-md space-y-2">
           <div className="flex items-center gap-2 text-indigo-300 text-xs font-semibold uppercase tracking-wider">
             <KeyRound className="w-3.5 h-3.5 text-amber-400" />
-            <span>Sinov uchun login va parollar</span>
+            <span>Bir martalik tezkor kirish (bosing va kiring)</span>
           </div>
 
           <div className="grid grid-cols-1 gap-2">
             <button
               type="button"
-              onClick={() => fillCredentials("aiSchoolAdmin")}
-              className="p-2.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-left transition-all hover:border-emerald-400/60 group cursor-pointer"
+              disabled={isPending}
+              onClick={() => handleQuickLogin("aiSchoolAdmin")}
+              className="p-3 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 border-2 border-emerald-500/40 text-left transition-all hover:border-emerald-400/80 group cursor-pointer disabled:opacity-50"
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-300">
-                  <Sparkles className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                  <span>AI School (39-maktab Mukammal Jadvali)</span>
+                  {isPending && email === DEMO_ACCOUNTS.aiSchoolAdmin.email ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin text-emerald-400 shrink-0" />
+                  ) : (
+                    <Sparkles className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                  )}
+                  <span>✨ AI School (39-maktab Mukammal Jadvali)</span>
                 </div>
-                <span className="text-[10px] px-2 py-0.5 rounded-full font-extrabold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+                <span className="text-[10px] px-2 py-0.5 rounded-full font-extrabold bg-emerald-500/30 text-emerald-200 border border-emerald-500/50">
                   0 ta ziddiyat
                 </span>
               </div>
-              <p className="text-[11px] text-slate-300 mt-1 font-mono">admin@ai-school.uz</p>
-              <p className="text-[10px] text-emerald-400/90 font-mono mt-0.5">Parol: admin123 (Kirish uchun bosing)</p>
+              <p className="text-[11px] text-slate-200 mt-1 font-mono font-semibold">admin@ai-school.uz</p>
+              <p className="text-[10px] text-emerald-400 font-medium mt-0.5">
+                {isPending && email === DEMO_ACCOUNTS.aiSchoolAdmin.email ? "Kirilmoqda, kuting..." : "👉 Shu yerga bosing va to'g'ridan-to'g'ri kiring!"}
+              </p>
             </button>
 
             <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
-                onClick={() => fillCredentials("schoolAdmin")}
-                className="p-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-left transition-all hover:border-indigo-400/40 group cursor-pointer"
+                disabled={isPending}
+                onClick={() => handleQuickLogin("schoolAdmin")}
+                className="p-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-left transition-all hover:border-indigo-400/40 group cursor-pointer disabled:opacity-50"
               >
                 <div className="flex items-center gap-1.5 text-xs font-semibold text-white group-hover:text-indigo-300">
                   <School className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
                   <span>39-maktab (Asosiy)</span>
                 </div>
                 <p className="text-[11px] text-slate-400 mt-1 font-mono truncate">admin@demo-maktab.uz</p>
-                <p className="text-[10px] text-amber-400/90 font-mono mt-0.5">Parol: admin123</p>
+                <p className="text-[10px] text-amber-400/90 font-mono mt-0.5">Kirish uchun bosing</p>
               </button>
 
               <button
                 type="button"
-                onClick={() => fillCredentials("superAdmin")}
+                disabled={isPending}
+                onClick={() => handleQuickLogin("superAdmin")}
                 className="p-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-left transition-all hover:border-amber-400/40 group cursor-pointer"
               >
                 <div className="flex items-center gap-1.5 text-xs font-semibold text-white group-hover:text-amber-300">
