@@ -208,27 +208,38 @@ export const Navbar: React.FC<NavbarProps> = ({
                   Faol Maktablar (Multi-Tenant)
                 </div>
                 <div className="space-y-1">
-                  {schools.map((s) => (
-                    <button
-                      key={s.id}
-                      onClick={() => {
-                        onSelectSchool(s.id);
-                        setIsSchoolMenuOpen(false);
-                      }}
-                      className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-xs font-semibold transition-colors ${
-                        s.id === currentSchoolId
-                          ? "bg-blue-600 text-white"
-                          : "hover:bg-muted text-foreground"
-                      }`}
-                    >
-                      <span className="truncate">{s.name}</span>
-                      {s.id === currentSchoolId && (
-                        <span className="text-[10px] bg-white/20 px-2 py-0.5 rounded-full">
-                          Tanlangan
+                  {schools.map((s) => {
+                    const isAi = s.slug === "ai-school" || s.name?.includes("AI School");
+                    const isCurrent = s.id === currentSchoolId;
+                    return (
+                      <button
+                        key={s.id}
+                        onClick={() => {
+                          onSelectSchool(s.id);
+                          setIsSchoolMenuOpen(false);
+                        }}
+                        className={`flex w-full items-center justify-between gap-2 rounded-xl px-3 py-2 text-xs font-semibold transition-colors cursor-pointer text-left ${
+                          isCurrent
+                            ? "bg-blue-600 text-white shadow-sm"
+                            : "hover:bg-muted text-foreground"
+                        }`}
+                      >
+                        <span className="truncate">
+                          {isAi ? "✨ " : "🏫 "}
+                          {s.name}
                         </span>
-                      )}
-                    </button>
-                  ))}
+                        {isCurrent ? (
+                          <span className="shrink-0 text-[10px] bg-white/20 px-2 py-0.5 rounded-full font-bold">
+                            Tanlangan
+                          </span>
+                        ) : isAi ? (
+                          <span className="shrink-0 text-[10px] bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-full font-bold">
+                            0 Ziddiyat
+                          </span>
+                        ) : null}
+                      </button>
+                    );
+                  })}
                 </div>
 
                 <div className="mt-2 pt-2 border-t border-border">

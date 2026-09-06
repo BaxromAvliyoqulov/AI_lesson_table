@@ -27,10 +27,20 @@ import {
   Printer,
   FileText,
 } from "lucide-react";
+import { useSession } from "next-auth/react";
 import { AppModalsContainer } from "@/components/modals/AppModalsContainer";
 
 export default function HomePage() {
   const store = useSchoolStore();
+  const { data: session } = useSession();
+
+  // Foydalanuvchi ma'lum maktabga login qilgan bo'lsa, o'sha maktabni avtomatik ochish
+  React.useEffect(() => {
+    const userSchoolId = (session?.user as any)?.schoolId;
+    if (userSchoolId && store.currentSchoolId !== userSchoolId) {
+      store.setCurrentSchoolId(userSchoolId);
+    }
+  }, [session?.user, store.currentSchoolId]);
 
   // Local UI modal states
   const [isWizardOpen, setIsWizardOpen] = useState(false);
@@ -274,7 +284,11 @@ export default function HomePage() {
             }`}
           >
             <FileSpreadsheet className="h-4 w-4 text-emerald-300" />
-            <span>39-Maktab Rasmiy Jadvali (Excel)</span>
+            <span>
+              {currentSchool?.name?.includes("39")
+                ? "39-Maktab Rasmiy Jadvali (Excel)"
+                : `${currentSchool?.name || "Rasmiy"} Jadvali (Excel)`}
+            </span>
           </button>
 
           <button

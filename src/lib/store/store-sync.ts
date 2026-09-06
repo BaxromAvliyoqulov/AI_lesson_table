@@ -308,6 +308,7 @@ export function useStoreSync() {
       if (res.success && res.data) {
         const {
           schoolInfo,
+          allSchools,
           branches,
           shifts,
           subjects,
@@ -316,7 +317,7 @@ export function useStoreSync() {
           classes,
           lessons,
           bellPeriods,
-        } = res.data;
+        } = res.data as any;
 
         const normalized = normalizeHomeroomSinfSoati({
           classes: sortClassesByName(classes),
@@ -327,13 +328,14 @@ export function useStoreSync() {
 
         updateStore(
           (prev) => {
+            const resolvedSchools = (allSchools && allSchools.length > 0)
+              ? allSchools
+              : [schoolInfo, ...prev.schools.filter((s: any) => s.id !== schoolInfo.id)];
+
             const newState = {
               ...prev,
               currentSchoolId: schoolInfo.id,
-              schools: [
-                schoolInfo,
-                ...prev.schools.filter((s) => s.id !== schoolInfo.id && s.id !== "school_39"),
-              ],
+              schools: resolvedSchools,
               branches,
               shifts,
               subjects,

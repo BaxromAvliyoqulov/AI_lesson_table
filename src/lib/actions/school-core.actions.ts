@@ -315,10 +315,38 @@ export async function getSchoolFullData(schoolId?: string) {
       }
     }
 
+    const allSchoolsRaw = await prisma.school.findMany({
+      select: {
+        id: true,
+        slug: true,
+        name: true,
+        region: true,
+        academicYear: true,
+        approvalDate: true,
+        directorFullName: true,
+        academicVicePrincipalName: true,
+        psychologistName: true,
+      },
+      orderBy: { createdAt: "asc" },
+    });
+
+    const allSchools: SchoolInfo[] = allSchoolsRaw.map((s) => ({
+      id: s.id,
+      slug: s.slug,
+      name: s.name,
+      region: s.region || "",
+      academicYear: s.academicYear || "2025 - 2026",
+      approvalDate: s.approvalDate || "",
+      directorName: s.directorFullName || "",
+      vicePrincipalName: s.academicVicePrincipalName || "",
+      psychologistName: s.psychologistName || "",
+    }));
+
     return {
       success: true,
       data: {
         schoolInfo,
+        allSchools,
         branches,
         shifts,
         subjects,
