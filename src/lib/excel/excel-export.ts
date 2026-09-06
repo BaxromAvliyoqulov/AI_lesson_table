@@ -1,6 +1,6 @@
 import ExcelJS from "exceljs";
 import { Lesson, SchoolClass, Subject, Teacher, Room, Branch, Shift } from "@/types";
-import { sortClassesByName, getCanonicalOrderedTeachers } from "@/lib/utils";
+import { sortClassesByName, getCanonicalOrderedTeachers, isClassSecondShift } from "@/lib/utils";
 import { isKelajakOrSinfSoatiSubject } from "@/lib/curriculum-templates";
 
 export interface ExcelExportOptions {
@@ -50,6 +50,7 @@ export async function exportScheduleToExcel(options: ExcelExportOptions) {
     teachers,
     lessons,
     branches = [],
+    shifts = [],
     schoolName = "39 - umumiy o'rta ta'lim maktabi",
     region = "Muzrabot tumani",
     directorFullName = "M. Ramazonov",
@@ -146,8 +147,7 @@ export async function exportScheduleToExcel(options: ExcelExportOptions) {
 
     const totalClassCols = branchClasses.length * 2; // Har bir sinf uchun 2 ta ustun (Fan, №)
     const lastClassColNum = 3 + totalClassCols;
-    const isMultiColReestr = finalTeachers.length > 36;
-    const reestrColSpan = isMultiColReestr ? 6 : 3;
+    const reestrColSpan = 3; // Har doim yagona 3 ta ustun: №, O'qituvchi F.I.Sh, O'tadigan Fani
     const reestrStartCol = lastClassColNum + 2; // 1 ta bo'sh oraliq ustun
 
     // ── 1. SARLAVHALAR VA TASDIQLASH SHTAMPI ──────────────────────────────────
@@ -193,10 +193,9 @@ export async function exportScheduleToExcel(options: ExcelExportOptions) {
     });
     // Bo'sh oraliq + Reestr sarlavhasi
     row7Values.push("");
-    row7Values.push("O'QITUVCHILAR VA FANLAR REESTRI");
-    for (let i = 1; i < reestrColSpan; i++) {
-      row7Values.push("");
-    }
+    row7Values.push(`O'QITUVCHILAR VA FANLAR REESTRI (${finalTeachers.length} NAFAR)`);
+    row7Values.push("");
+    row7Values.push("");
 
     const row7 = ws.addRow(row7Values);
     row7.height = 26;
@@ -208,8 +207,8 @@ export async function exportScheduleToExcel(options: ExcelExportOptions) {
       colIdx += 2;
     });
 
-    // Reestr sarlavhasini merge qilish
-    ws.mergeCells(7, reestrStartCol, 7, reestrStartCol + reestrColSpan - 1);
+    // Reestr sarlavhasini merge qilish (3 ta ustun)
+    ws.mergeCells(7, reestrStartCol, 7, reestrStartCol + 2);
 
     // Qator 7 dizayni
     row7.eachCell((cell, colNumber) => {
@@ -240,11 +239,7 @@ export async function exportScheduleToExcel(options: ExcelExportOptions) {
       row8Values.push("Fan", "№");
     });
     row8Values.push("");
-    if (isMultiColReestr) {
-      row8Values.push("№", "O'qituvchi F.I.Sh", "O'tadigan Fani / Fanlari", "№", "O'qituvchi F.I.Sh", "O'tadigan Fani / Fanlari");
-    } else {
-      row8Values.push("№", "O'qituvchi F.I.Sh", "O'tadigan Fani / Fanlari");
-    }
+    row8Values.push("№", "O'qituvchi F.I.Sh", "O'tadigan Fani");
 
     const row8 = ws.addRow(row8Values);
     row8.height = 20;
@@ -280,7 +275,6 @@ export async function exportScheduleToExcel(options: ExcelExportOptions) {
     let currentExcelRow = 9;
     const PERIOD_COUNT = 6;
     let globalPeriodIdx = 0;
-    const halfTeachers = isMultiColReestr ? Math.ceil(finalTeachers.length / 2) : finalTeachers.length;
 
     DAYS.forEach((day) => {
       const dayStartRow = currentExcelRow;
@@ -316,29 +310,15 @@ export async function exportScheduleToExcel(options: ExcelExportOptions) {
           }
         });
 
-        // O'ng tomondagi O'qituvchilar Reestri qatorlari
+        // O'ng tomondagi O'qituvchilar Reestri qatorlari (Yagona 3 ta ustun)
         rowData.push(""); // Oraliq bo'sh ustun
-        if (isMultiColReestr) {
-          const tIdxA = globalPeriodIdx;
-          const tIdxB = globalPeriodIdx + halfTeachers;
-          const tA = tIdxA < halfTeachers ? finalTeachers[tIdxA] : null;
-          const tB = tIdxB < finalTeachers.length ? finalTeachers[tIdxB] : null;
-
-          const numA = tA ? (teacherNumberMap.get(tA.id) || (tIdxA + 1)) : "";
-          const subA = tA ? (teacherSubjectsMap.get(tA.id) || "—") : "";
-          const numB = tB ? (teacherNumberMap.get(tB.id) || (tIdxB + 1)) : "";
-          const subB = tB ? (teacherSubjectsMap.get(tB.id) || "—") : "";
-
-          rowData.push(numA, tA ? tA.fullName : "", subA, numB, tB ? tB.fullName : "", subB);
+        if (globalPeriodIdx < finalTeachers.length) {
+          const t = finalTeachers[globalPeriodIdx];
+          const tNum = teacherNumberMap.get(t.id) || (globalPeriodIdx + 1);
+          const tSubjects = teacherSubjectsMap.get(t.id) || "—";
+          rowData.push(tNum, t.fullName, tSubjects);
         } else {
-          if (globalPeriodIdx < finalTeachers.length) {
-            const t = finalTeachers[globalPeriodIdx];
-            const tNum = teacherNumberMap.get(t.id) || (globalPeriodIdx + 1);
-            const tSubjects = teacherSubjectsMap.get(t.id) || "—";
-            rowData.push(tNum, t.fullName, tSubjects);
-          } else {
-            rowData.push("", "", "");
-          }
+          rowData.push("", "", "");
         }
         globalPeriodIdx++;
 
@@ -372,7 +352,7 @@ export async function exportScheduleToExcel(options: ExcelExportOptions) {
             };
 
             const relCol = colNumber - reestrStartCol;
-            if (relCol === 0 || (isMultiColReestr && relCol === 3)) {
+            if (relCol === 0) {
               cell.alignment = { horizontal: "center", vertical: "middle" };
               cell.font = { bold: true, size: 9, name: "Times New Roman" };
             } else {
@@ -407,106 +387,151 @@ export async function exportScheduleToExcel(options: ExcelExportOptions) {
       };
     });
 
-    // ── 4. JAMI DARS SOATLARI STATISTIKA QATORI ───────────────────────────────
-    const totalRowValues: (string | number)[] = ["Dars soati", "", ""];
-    branchClasses.forEach((cls) => {
-      const count = lessons.filter((l) => l.classId === cls.id).length;
-      totalRowValues.push(`${count}`, "");
-    });
-    totalRowValues.push(""); // Oraliq ustun
-    for (let i = 0; i < reestrColSpan; i++) {
-      totalRowValues.push("");
+    // ── 4. AGAR O'QITUVCHILAR 36 TADAN KO'P BO'LSA, DARS JADVALINI PASTI BILAN TO'LIQ MOSLASH ───
+    // Bu yerda o'qituvchilar reestri uzaygan sari, chap tomondagi dars jadvalining pastki
+    // qismiga statistika, sinf rahbarlari, xonalar va rasmiy tasdiq bloklari qo'shilib,
+    // ikkala tomon 100% bir xil qatorda tugaydi!
+    const remainingTeachersCount = Math.max(0, finalTeachers.length - globalPeriodIdx);
+    const extraRowsNeeded = Math.max(2, remainingTeachersCount);
+
+    for (let extraIdx = 0; extraIdx < extraRowsNeeded; extraIdx++) {
+      const currentTeacher = globalPeriodIdx < finalTeachers.length ? finalTeachers[globalPeriodIdx] : null;
+      const tNum = currentTeacher ? (teacherNumberMap.get(currentTeacher.id) || (globalPeriodIdx + 1)) : "";
+      const tName = currentTeacher ? currentTeacher.fullName : "";
+      const tSub = currentTeacher ? (teacherSubjectsMap.get(currentTeacher.id) || "—") : "";
+
+      const extraRowValues: (string | number)[] = [];
+
+      if (extraIdx === 0) {
+        // 1. Dars soati jami qatori
+        extraRowValues.push("Dars soati", "", "");
+        branchClasses.forEach((cls) => {
+          const count = lessons.filter((l) => l.classId === cls.id).length;
+          extraRowValues.push(`${count}`, "");
+        });
+      } else if (extraIdx === 1) {
+        // 2. Sinf rahbarlari qatori
+        extraRowValues.push("Sinf rahbar", "", "");
+        branchClasses.forEach((cls) => {
+          const homeroomTeacher =
+            teachers.find((t) => t.id === cls.homeroomTeacherId) ||
+            teachers.find((t) => t.homeroomClassId === cls.id);
+          const shortName = homeroomTeacher
+            ? homeroomTeacher.fullName.split(" ").slice(0, 2).join(" ")
+            : "—";
+          extraRowValues.push(shortName, "");
+        });
+      } else if (extraIdx === 2) {
+        // 3. Smena taqsimoti qatori
+        extraRowValues.push("Smena", "", "");
+        branchClasses.forEach((cls) => {
+          const isShift2 = isClassSecondShift(cls, shifts);
+          extraRowValues.push(isShift2 ? "2-smena" : "1-smena", "");
+        });
+      } else if (extraIdx === 3) {
+        // 4. O'quvchilar soni qatori
+        extraRowValues.push("O'quvchilar", "", "");
+        branchClasses.forEach((cls) => {
+          extraRowValues.push(cls.studentCount ? `${cls.studentCount} nafar` : "—", "");
+        });
+      } else if (extraIdx === 4) {
+        // 5. Biriktirilgan bino/filial
+        extraRowValues.push("Bino/Filial", "", "");
+        branchClasses.forEach((cls) => {
+          const isBranch = cls.branchId === "b39_2" || cls.name.endsWith("D");
+          extraRowValues.push(isBranch ? "1-Filial" : "Asosiy bino", "");
+        });
+      } else if (extraIdx === 5) {
+        // 6. Rasmiy imzo: Zauch
+        extraRowValues.push(`O'quv ishlari bo'yicha direktor o'rinbosari: ____________________ ${academicVicePrincipalName}`);
+        for (let c = 1; c < lastClassColNum; c++) extraRowValues.push("");
+      } else if (extraIdx === 6) {
+        // 7. Rasmiy imzo: Ruhshunos
+        extraRowValues.push(`Maktab amaliyotchi psixologi: ____________________ ${psychologistName}`);
+        for (let c = 1; c < lastClassColNum; c++) extraRowValues.push("");
+      } else if (extraIdx === 7) {
+        // 8. Kasaba uyushmasi
+        extraRowValues.push("Kasaba uyushmasi qo'mitasi raisi: ____________________");
+        for (let c = 1; c < lastClassColNum; c++) extraRowValues.push("");
+      } else if (extraIdx === 8) {
+        // 9. Tasdiq sanasi va me'yorlar
+        extraRowValues.push(`Tasdiqlangan sana: ${approvalDate} | O'quv yili: ${academicYear}`);
+        for (let c = 1; c < lastClassColNum; c++) extraRowValues.push("");
+      } else {
+        // 10+. SanPiN va MMTV standartlari eslatmasi
+        extraRowValues.push(`SanPiN 0341-17 va MMTV talablari asosida tuzilgan rasmiy dars jadvali.`);
+        for (let c = 1; c < lastClassColNum; c++) extraRowValues.push("");
+      }
+
+      // Reestr ustunlari
+      extraRowValues.push(""); // Oraliq bo'sh ustun
+      extraRowValues.push(tNum, tName, tSub);
+
+      const extraRow = ws.addRow(extraRowValues);
+      extraRow.height = 22;
+
+      // Merge qilish
+      if (extraIdx < 5) {
+        // A..C sarlavhani merge qilish
+        ws.mergeCells(currentExcelRow, 1, currentExcelRow, 3);
+        let curCol = 4;
+        branchClasses.forEach(() => {
+          ws.mergeCells(currentExcelRow, curCol, currentExcelRow, curCol + 1);
+          curCol += 2;
+        });
+      } else {
+        // Imzo va izohlar uchun butun chap tomonni merge qilish (Cols 1..lastClassColNum)
+        ws.mergeCells(currentExcelRow, 1, currentExcelRow, lastClassColNum);
+      }
+
+      extraRow.eachCell((cell, colNumber) => {
+        if (colNumber <= lastClassColNum) {
+          cell.font = {
+            bold: extraIdx === 0 || extraIdx >= 5,
+            size: extraIdx >= 5 ? 9.5 : 9,
+            name: "Times New Roman",
+          };
+          cell.alignment = {
+            horizontal: extraIdx >= 5 ? "left" : "center",
+            vertical: "middle",
+            wrapText: true,
+          };
+          cell.fill = {
+            type: "pattern",
+            pattern: "solid",
+            fgColor: {
+              argb: extraIdx === 0 ? "FFE2E8F0" : extraIdx < 5 ? "FFF8FAFC" : "FFFFFFFF",
+            },
+          };
+          cell.border = {
+            top: { style: "thin", color: { argb: "FF000000" } },
+            bottom: { style: extraIdx === extraRowsNeeded - 1 ? "medium" : "thin", color: { argb: "FF000000" } },
+            left: { style: "thin", color: { argb: "FF000000" } },
+            right: { style: "thin", color: { argb: "FF000000" } },
+          };
+        } else if (colNumber >= reestrStartCol && cell.value) {
+          cell.border = {
+            top: { style: "thin", color: { argb: "FF000000" } },
+            bottom: { style: extraIdx === extraRowsNeeded - 1 ? "medium" : "thin", color: { argb: "FF000000" } },
+            left: { style: "thin", color: { argb: "FF000000" } },
+            right: { style: "thin", color: { argb: "FF000000" } },
+          };
+          const relCol = colNumber - reestrStartCol;
+          if (relCol === 0) {
+            cell.alignment = { horizontal: "center", vertical: "middle" };
+            cell.font = { bold: true, size: 9, name: "Times New Roman" };
+          } else {
+            cell.alignment = { horizontal: "left", vertical: "middle", wrapText: true };
+            cell.font = { size: 9, name: "Times New Roman" };
+          }
+        }
+      });
+
+      globalPeriodIdx++;
+      currentExcelRow++;
     }
 
-    const totalRow = ws.addRow(totalRowValues);
-    totalRow.height = 22;
-
-    // Dars soati sarlavhasini A..C merge
-    ws.mergeCells(currentExcelRow, 1, currentExcelRow, 3);
-    let totCol = 4;
-    branchClasses.forEach(() => {
-      ws.mergeCells(currentExcelRow, totCol, currentExcelRow, totCol + 1);
-      totCol += 2;
-    });
-
-    totalRow.eachCell((cell, colNumber) => {
-      if (colNumber <= lastClassColNum) {
-        cell.font = { bold: true, size: 10, name: "Times New Roman" };
-        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFE2E8F0" } };
-        cell.alignment = { horizontal: "center", vertical: "middle" };
-        cell.border = {
-          top: { style: "medium", color: { argb: "FF000000" } },
-          bottom: { style: "thin", color: { argb: "FF000000" } },
-          left: { style: "thin", color: { argb: "FF000000" } },
-          right: { style: "thin", color: { argb: "FF000000" } },
-        };
-      }
-    });
-    currentExcelRow++;
-
-    // ── 5. SINF RAHBARLARI QATORI ─────────────────────────────────────────────
-    const homeroomRowValues: (string | number)[] = ["Sinf rahbar", "", ""];
-    branchClasses.forEach((cls) => {
-      const homeroomTeacher =
-        teachers.find((t) => t.id === cls.homeroomTeacherId) ||
-        teachers.find((t) => t.homeroomClassId === cls.id);
-      const shortName = homeroomTeacher
-        ? homeroomTeacher.fullName.split(" ").slice(0, 2).join(" ")
-        : "—";
-      homeroomRowValues.push(shortName, "");
-    });
-    homeroomRowValues.push(""); // Oraliq ustun
-    for (let i = 0; i < reestrColSpan; i++) {
-      homeroomRowValues.push("");
-    }
-
-    const homeroomRow = ws.addRow(homeroomRowValues);
-    homeroomRow.height = 22;
-
-    ws.mergeCells(currentExcelRow, 1, currentExcelRow, 3);
-    let hrCol = 4;
-    branchClasses.forEach(() => {
-      ws.mergeCells(currentExcelRow, hrCol, currentExcelRow, hrCol + 1);
-      hrCol += 2;
-    });
-
-    homeroomRow.eachCell((cell, colNumber) => {
-      if (colNumber <= lastClassColNum) {
-        cell.font = { bold: true, size: 9, name: "Times New Roman" };
-        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFFFFFF" } };
-        cell.alignment = { horizontal: "center", vertical: "middle", wrapText: true };
-        cell.border = {
-          top: { style: "thin", color: { argb: "FF000000" } },
-          bottom: { style: "medium", color: { argb: "FF000000" } },
-          left: { style: "thin", color: { argb: "FF000000" } },
-          right: { style: "thin", color: { argb: "FF000000" } },
-        };
-      }
-    });
-    currentExcelRow++;
-
-    // ── 6. RASMIY IMZOLAR (FOOTER SIGNATURES) ─────────────────────────────────
-    ws.addRow([]);
-    ws.getRow(currentExcelRow).height = 14;
-    currentExcelRow++;
-
-    const signRow = ws.addRow([
-      "",
-      `O'quv ishlar bo'yicha direktor o'rinbosari: ____________________ ${academicVicePrincipalName}`,
-    ]);
-    signRow.height = 24;
-    signRow.font = { bold: true, size: 10.5, name: "Times New Roman" };
-
-    // Ruhshunos imzosi (Reestr tagiga)
-    ws.getCell(currentExcelRow, reestrStartCol).value = `Ruhshunos: ____________________ ${psychologistName}`;
-    ws.getCell(currentExcelRow, reestrStartCol).font = {
-      bold: true,
-      size: 10,
-      name: "Times New Roman",
-    };
-    ws.mergeCells(currentExcelRow, reestrStartCol, currentExcelRow, reestrStartCol + reestrColSpan - 1);
-
-    // ── 7. KENG KELTIRILGAN IDEAL USTUN KENGLIKLARI (Auto Zero-Adjustment) ───────
+    // ── 5. KENG KELTIRILGAN IDEAL USTUN KENGLIKLARI (Yagona 3 ustunli Reestr) ───
     const colWidths: { width: number }[] = [
       { width: 7 },   // Col A: Kun
       { width: 5.5 }, // Col B: Dars
@@ -514,23 +539,14 @@ export async function exportScheduleToExcel(options: ExcelExportOptions) {
     ];
 
     branchClasses.forEach(() => {
-      colWidths.push({ width: 15.5 }); // Fan nomi (Hech qachon qisilib qolmaydi)
+      colWidths.push({ width: 15.5 }); // Fan nomi
       colWidths.push({ width: 5.5 });  // O'qituvchi tartib raqami (№)
     });
 
-    colWidths.push({ width: 3 });  // Bo'sh oraliq ustun
-    if (isMultiColReestr) {
-      colWidths.push({ width: 4.5 }); // Reestr № (1-ustun)
-      colWidths.push({ width: 24 });  // Reestr O'qituvchi F.I.Sh
-      colWidths.push({ width: 22 });  // Reestr O'tadigan Fanlari
-      colWidths.push({ width: 4.5 }); // Reestr № (2-ustun)
-      colWidths.push({ width: 24 });  // Reestr O'qituvchi F.I.Sh
-      colWidths.push({ width: 22 });  // Reestr O'tadigan Fanlari
-    } else {
-      colWidths.push({ width: 5.5 });  // Reestr №
-      colWidths.push({ width: 28 });   // Reestr O'qituvchi F.I.Sh
-      colWidths.push({ width: 30 });   // Reestr O'tadigan Fanlari
-    }
+    colWidths.push({ width: 3 });    // Bo'sh oraliq ustun
+    colWidths.push({ width: 5.5 });  // Reestr №
+    colWidths.push({ width: 28 });   // Reestr O'qituvchi F.I.Sh
+    colWidths.push({ width: 32 });   // Reestr O'tadigan Fanlari
 
     ws.columns = colWidths;
 
