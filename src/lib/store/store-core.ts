@@ -14,7 +14,6 @@ export function createInitialState(): SchoolStoreState {
     { periodNumber: 4, startTime: "10:45", endTime: "11:30", breakDurationMinutes: 5 },
     { periodNumber: 5, startTime: "11:35", endTime: "12:20", breakDurationMinutes: 5 },
     { periodNumber: 6, startTime: "12:25", endTime: "13:10", breakDurationMinutes: 5 },
-    { periodNumber: 7, startTime: "13:15", endTime: "14:00", breakDurationMinutes: 5 },
   ];
 
   return {

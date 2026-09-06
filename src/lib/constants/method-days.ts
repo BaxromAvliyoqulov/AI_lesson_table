@@ -227,16 +227,18 @@ export interface EffectiveMethodDayResult {
 export function getEffectiveTeacherMethodDay(
   teacher: {
     methodDayOfWeek?: number | null;
+    methodDay?: number | null;
     subjectIds?: string[];
     fullName?: string;
   },
   allSubjects: Array<{ id: string; name: string; methodDayOfWeek?: number | null }> = []
 ): EffectiveMethodDayResult {
-  // 1. O'qituvchining shaxsiy belgilangan metod kuni
-  if (teacher.methodDayOfWeek !== undefined && teacher.methodDayOfWeek !== null && teacher.methodDayOfWeek >= 1 && teacher.methodDayOfWeek <= 6) {
+  // 1. O'qituvchining shaxsiy belgilangan metod kuni (methodDayOfWeek yoki methodDay)
+  const mDay = teacher.methodDayOfWeek ?? teacher.methodDay;
+  if (mDay !== undefined && mDay !== null && mDay >= 1 && mDay <= 6) {
     return {
-      day: teacher.methodDayOfWeek,
-      dayName: WEEKDAY_NAME_MAP[teacher.methodDayOfWeek] || null,
+      day: mDay,
+      dayName: WEEKDAY_NAME_MAP[mDay] || null,
       source: "TEACHER_EXPLICIT",
     };
   }

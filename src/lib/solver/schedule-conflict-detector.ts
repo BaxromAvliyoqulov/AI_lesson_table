@@ -211,19 +211,10 @@ export function detectScheduleConflicts({
 
     const isTeacherMethodDay = teacherMethodInfo.day === l.dayOfWeek;
 
-    const subjectMethodDay =
-      subject?.methodDayOfWeek !== undefined && subject?.methodDayOfWeek !== null
-        ? subject.methodDayOfWeek
-        : getOfficialMethodDayForSubject(subject?.name || l.subjectId);
-
-    const isSubjectMethodDay = subjectMethodDay === l.dayOfWeek;
-
-    if (isTeacherMethodDay || isSubjectMethodDay) {
+    if (isTeacherMethodDay) {
       conflictLessonIds.add(l.id);
 
-      const targetEntity = isTeacherMethodDay
-        ? `${teacher?.fullName || "O'qituvchi"}ning metod kuni`
-        : `${subject?.name || "Fan"}ning rasmiy metod kuni`;
+      const targetEntity = `${teacher?.fullName || "O'qituvchi"}ning metod kuni`;
 
       conflicts.push({
         id: `method_${l.id}`,

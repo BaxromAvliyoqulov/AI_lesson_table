@@ -57,6 +57,11 @@ export function validateDropSlot({
 
   // ─── 🔴 1. QIZIL: QAT'IY ZIDDIYATLAR (CONFLICTS) ───────────────────────────
 
+  // 1.0. 7-soat cheklovi (Maksimal 6 soat)
+  if (targetPeriod > 6) {
+    conflicts.push("🛑 Maksimal 6 soat dars bo'lishi mumkin! 7-soat dars jadvalidan butunlay olib tashlangan.");
+  }
+
   // 1.1. O'qituvchi kolliziyasi (Ayni shu paytda va ayni shu SMENADA boshqa sinfda darsi bor)
   const targetIsShift2 = isClassSecondShift(targetClass, shifts);
   const teacherOtherLesson = otherLessons.find((l) => {
@@ -82,25 +87,16 @@ export function validateDropSlot({
     );
   }
 
-  // 1.2. O'qituvchi yoki Fanning Rasmiy Metod Kuni (Method Day)
+  // 1.2. O'qituvchining Rasmiy Metod Kuni (Method Day)
   const teacherMethodInfo = teacher
     ? getEffectiveTeacherMethodDay(teacher, subjects)
     : { day: null, dayName: null, source: "NONE" };
 
   const isTeacherMethodDay = teacherMethodInfo.day === targetDay;
 
-  const subjectMethodDay =
-    subject?.methodDayOfWeek !== undefined && subject.methodDayOfWeek !== null
-      ? subject.methodDayOfWeek
-      : getOfficialMethodDayForSubject(subject?.name || draggedLesson.subjectId);
-
-  const isSubjectMethodDay = subjectMethodDay === targetDay;
-
-  if (isTeacherMethodDay || isSubjectMethodDay) {
+  if (isTeacherMethodDay) {
     const dayName = WEEKDAY_NAMES[targetDay] || `${targetDay}-kun`;
-    const targetEntity = isTeacherMethodDay
-      ? `${teacher?.fullName || "O'qituvchi"} (${teacherMethodInfo.source === "SUBJECT_OFFICIAL" ? `${teacherMethodInfo.subjectName} fani` : "shaxsiy"} metod kuni)`
-      : `${subject?.name || "Fan"}`;
+    const targetEntity = `${teacher?.fullName || "O'qituvchi"} (${teacherMethodInfo.source === "SUBJECT_OFFICIAL" ? `${teacherMethodInfo.subjectName} fani` : "shaxsiy"} metod kuni)`;
     conflicts.push(
       `🛑 ${targetEntity} uchun ${dayName} rasmiy Metod kuni! Dars qo'yish qat'iyan taqiqlanadi!`
     );

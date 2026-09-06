@@ -67,6 +67,7 @@ export interface Teacher {
   maxConsecutiveHours: number;
   maxGapsPerDay?: number; // Maksimal darchalar (okno) soni
   methodDayOfWeek?: number | null; // Metod kuni (1=Dushanba ... 6=Shanba)
+  methodDay?: number | null; // Prisma DB alias
   homeroomClassId?: string | null;
   subjectIds: string[];
   branchIds: string[];
@@ -131,7 +132,7 @@ export interface ClassSubject {
 
 export interface ClassBlockedPeriod {
   dayOfWeek: number; // 1-6
-  periodNumber: number; // 1-8
+  periodNumber: number; // 1-6
 }
 
 export interface SchoolClass {

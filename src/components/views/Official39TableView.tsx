@@ -374,6 +374,7 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
         time: `${bp.startTime.replace(":", ".")}-${bp.endTime.replace(":", ".")}`,
       }));
     }
+    basePeriods = basePeriods.filter((bp) => bp.period <= 6);
     return isPrimaryOnly ? basePeriods.slice(0, 5) : basePeriods;
   }, [isPrimaryOnly, shiftFilter, shifts]);
 
@@ -636,16 +637,9 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
       teacher.methodDayOfWeek !== null &&
       teacher.methodDayOfWeek === day;
 
-    const sub = subjectMap.get(selectedSubjectId);
-    const isSubMethod =
-      sub?.methodDayOfWeek !== undefined &&
-      sub.methodDayOfWeek !== null &&
-      sub.methodDayOfWeek === day;
-
-    if (isTeacherMethod || isSubMethod) {
-      const targetEntity = isTeacherMethod ? `${teacher?.fullName || "O'qituvchi"}` : `${sub?.name || "Fan"}`;
+    if (isTeacherMethod) {
       showToast(
-        `🛑 ${targetEntity} uchun bu kun rasmiy Metod kuni! Dars qo'yish taqiqlanadi!`,
+        `🛑 ${teacher?.fullName || "O'qituvchi"} uchun bu kun rasmiy Metod kuni! Dars qo'yish taqiqlanadi!`,
         "error"
       );
       return;

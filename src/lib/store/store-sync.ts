@@ -305,6 +305,9 @@ export function normalizeHomeroomSinfSoati({
     }
   });
 
+  // 4. Qat'iy qoida: 7-soat umuman bo'lmasligi kerak (maksimal 6 soat)
+  normalizedLessons = normalizedLessons.filter((l) => l.periodNumber <= 6);
+
   return {
     classes: normalizedClasses,
     teachers: normalizedTeachers,
@@ -358,7 +361,7 @@ export function useStoreSync() {
               teachers: normalized.teachers,
               classes: normalized.classes,
               lessons: normalized.lessons,
-              bellPeriods: bellPeriods.length > 0 ? bellPeriods : prev.bellPeriods,
+              bellPeriods: (bellPeriods && bellPeriods.length > 0 ? bellPeriods : prev.bellPeriods).filter((bp: any) => bp.periodNumber <= 6),
               syncStatus: "synced" as const,
             };
             saveLocalStorageState(newState);
@@ -450,6 +453,7 @@ export function useStoreSync() {
               classes: normalized.classes,
               teachers: normalized.teachers,
               lessons: normalized.lessons,
+              bellPeriods: (saved.bellPeriods || prev.bellPeriods || []).filter((bp: any) => bp.periodNumber <= 6),
               isGenerating: false,
             };
           },

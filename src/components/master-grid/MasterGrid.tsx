@@ -67,7 +67,7 @@ const DAYS = [
   { id: 6, name: "Shanba" },
 ];
 
-const PERIODS = [1, 2, 3, 4, 5, 6, 7];
+const PERIODS = [1, 2, 3, 4, 5, 6];
 
 // Droppable katakcha komponenti
 const GridCell: React.FC<{

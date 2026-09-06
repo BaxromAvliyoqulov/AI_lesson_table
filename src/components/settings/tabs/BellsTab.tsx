@@ -19,7 +19,6 @@ export const DEFAULT_SHIFT_1_BELLS: BellPeriod[] = [
   { periodNumber: 4, startTime: "10:35", endTime: "11:20", breakDurationMinutes: 5 },
   { periodNumber: 5, startTime: "11:25", endTime: "12:10", breakDurationMinutes: 5 },
   { periodNumber: 6, startTime: "12:15", endTime: "13:00", breakDurationMinutes: 5 },
-  { periodNumber: 7, startTime: "13:05", endTime: "13:50", breakDurationMinutes: 5 },
 ];
 
 export const DEFAULT_SHIFT_2_BELLS: BellPeriod[] = [
@@ -29,7 +28,6 @@ export const DEFAULT_SHIFT_2_BELLS: BellPeriod[] = [
   { periodNumber: 4, startTime: "15:35", endTime: "16:20", breakDurationMinutes: 5 },
   { periodNumber: 5, startTime: "16:25", endTime: "17:10", breakDurationMinutes: 5 },
   { periodNumber: 6, startTime: "17:15", endTime: "18:00", breakDurationMinutes: 5 },
-  { periodNumber: 7, startTime: "18:05", endTime: "18:50", breakDurationMinutes: 5 },
 ];
 
 function timeToMins(t: string): number {
@@ -149,6 +147,10 @@ export const BellsTab: React.FC<BellsTabProps> = ({
   };
 
   const handleAddPeriod = () => {
+    if (currentPeriods.length >= 6) {
+      alert("Maksimal 6 soat dars bo'lishi mumkin! 7-soat dars jadvalidan olib tashlangan.");
+      return;
+    }
     const nextNum = currentPeriods.length + 1;
     const last = currentPeriods[currentPeriods.length - 1];
     let start = isSecondShift ? "18:15" : "14:05";
@@ -302,7 +304,6 @@ export const BellsTab: React.FC<BellsTabProps> = ({
                     { periodNumber: 4, startTime: "15:35", endTime: "16:20", breakDurationMinutes: 5 },
                     { periodNumber: 5, startTime: "16:25", endTime: "17:10", breakDurationMinutes: 5 },
                     { periodNumber: 6, startTime: "17:15", endTime: "18:00", breakDurationMinutes: 5 },
-                    { periodNumber: 7, startTime: "18:05", endTime: "18:50", breakDurationMinutes: 5 },
                   ];
                   handleApplyPreset(p);
                 }}
@@ -330,10 +331,16 @@ export const BellsTab: React.FC<BellsTabProps> = ({
           <button
             type="button"
             onClick={handleAddPeriod}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold border border-border hover:bg-muted transition-colors cursor-pointer"
+            disabled={currentPeriods.length >= 6}
+            className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold border border-border transition-colors ${
+              currentPeriods.length >= 6
+                ? "opacity-50 cursor-not-allowed bg-muted text-muted-foreground"
+                : "hover:bg-muted cursor-pointer text-foreground"
+            }`}
+            title={currentPeriods.length >= 6 ? "Maksimal 6 soat dars belgilangan" : "Yangi soat qo'shish"}
           >
             <Plus className="w-4 h-4 text-primary" />
-            <span>Soat qo&apos;shish</span>
+            <span>Soat qo&apos;shish (max 6)</span>
           </button>
 
           <button

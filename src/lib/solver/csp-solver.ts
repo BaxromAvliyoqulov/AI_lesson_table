@@ -45,8 +45,9 @@ export class CSPSolver {
     if (!t) return false;
 
     // 1. O'qituvchining shaxsiy belgilangan metod kuni
-    if (t.methodDayOfWeek !== undefined && t.methodDayOfWeek !== null && t.methodDayOfWeek >= 1 && t.methodDayOfWeek <= 6) {
-      return t.methodDayOfWeek === day;
+    const tMethod = t.methodDayOfWeek ?? t.methodDay;
+    if (tMethod !== undefined && tMethod !== null && tMethod >= 1 && tMethod <= 6) {
+      return tMethod === day;
     }
 
     // 2. Boshlang'ich sinf (1-4) o'qituvchilari:
@@ -91,17 +92,26 @@ export class CSPSolver {
       return false;
     }
 
-    // 2. Shaxsiy bandlik matrisasi (Qo'lda belgilangan Band / Bo'sh soatlar):
+    // 2. Shaxsiy bandlik matrisasi (Qo'lda yopilgan / Band soatlar):
     if (t.availabilities && t.availabilities.length > 0) {
+      // 2.1. Agar o'qituvchi uchun ushbu kun butunlay yopilgan bo'lsa
+      const dayAvails = t.availabilities.filter((a) => a.dayOfWeek === day);
+      if (dayAvails.length > 0 && dayAvails.every((a) => a.isAvailable === false)) {
+        return false;
+      }
+
+      // 2.2. Smena bo'yicha aniq soat tekshiruvi:
       if (shiftGroup === "shift2") {
-        // 2-smena (Abetdan keyin): 10 + period bo'yicha bandlik tekshiriladi
-        const av2 = t.availabilities.find((a) => a.dayOfWeek === day && a.period === (10 + period));
+        const av2 = t.availabilities.find(
+          (a) => a.dayOfWeek === day && (a.period === 10 + period || a.period === period)
+        );
         if (av2 && av2.isAvailable === false) {
           return false;
         }
       } else {
-        // 1-smena (Ertalabki): period bo'yicha bandlik tekshiriladi
-        const av1 = t.availabilities.find((a) => a.dayOfWeek === day && a.period === period);
+        const av1 = t.availabilities.find(
+          (a) => a.dayOfWeek === day && a.period === period
+        );
         if (av1 && av1.isAvailable === false) {
           return false;
         }
@@ -115,7 +125,7 @@ export class CSPSolver {
     let bestResult: SolverResult | null = null;
     let minConflicts = Infinity;
 
-    for (let attempt = 0; attempt < 6; attempt++) {
+    for (let attempt = 0; attempt < 15; attempt++) {
       const res = this.solveAttempt(attempt);
       if (res.success && res.stats.conflictsCount === 0) {
         return res;
@@ -225,8 +235,8 @@ export class CSPSolver {
         (sum, s) => sum + (s.groupType === "GROUP_2" ? 0 : (Number(s.weeklyHours) || 0)),
         0
       );
-      // QAT'IY SANPIN: Boshlang'ich sinflarda 5 soat, yuqori sinflarda soatiga qarab 6 yoki 7 soat
-      const maxP = isPrimary ? 5 : (totalHoursForClass > 30 ? 7 : 6);
+      // QAT'IY QOIDA: 7-soat umuman bo'lmasligi kerak, maksimal 6 soat
+      const maxP = isPrimary ? 5 : 6;
 
       const slots: Slot[] = [];
       const hasGroup2 = (effectiveClassSubjects.get(cls.id) || []).some(
@@ -864,6 +874,8 @@ export class CSPSolver {
           if (s.groupType === "GROUP_2" && req.groupType !== "GROUP_2") return false;
           if (s.groupType !== "GROUP_2" && req.groupType === "GROUP_2") return false;
           if (isPrimary && s.period >= 6) return false;
+          // O'qituvchining yopilgan vaqti yoki metod kuni bo'lsa dars qo'yish QAT'IYAN TAQIQLANADI!
+          if (!this.isTeacherSlotAvailable(s.day, s.period, req.teacherId, req.subjectId, getShiftGroup(req.classId))) return false;
           if (req.groupType === "WHOLE") {
             const occupiedAtSameTime = clsSlots.some(
               (other) => other !== s && other.day === s.day && other.period === s.period && other.teacherId !== null
@@ -1228,7 +1240,25 @@ export class CSPSolver {
       });
     }
 
-    const totalConflicts = globalClashes + methodDayViolations;
+    let duplicateViolations = 0;
+    const classDaySubjectMap = new Map<string, number>();
+    for (const l of lessons) {
+      if (l.groupType === "GROUP_2") continue;
+      const sub = this.subjectMap.get(l.subjectId);
+      const cls = this.classMap.get(l.classId);
+      const isPrimary = (cls?.grade !== undefined && cls.grade <= 4) || Boolean(cls?.isPrimary);
+      const allowDouble = !isPrimary && Boolean(sub?.allowDoubleLesson);
+      if (!allowDouble) {
+        const key = `${l.classId}_${l.dayOfWeek}_${l.subjectId}`;
+        const count = (classDaySubjectMap.get(key) || 0) + 1;
+        classDaySubjectMap.set(key, count);
+        if (count > 1) {
+          duplicateViolations++;
+        }
+      }
+    }
+
+    const totalConflicts = globalClashes + methodDayViolations + duplicateViolations;
 
     return {
       success: totalConflicts === 0,
