@@ -221,8 +221,12 @@ export class CSPSolver {
       );
 
       const days = this.daysCount;
-      // QAT'IY SANPIN VA MAKTAB QOIDASI: Boshlang'ich sinflarda (1-4) kunlik maksimal dars 5 soat, 6-soat QAT'IYAN TAQIQLANADI!
-      const maxP = isPrimary ? 5 : 6;
+      const totalHoursForClass = (effectiveClassSubjects.get(cls.id) || []).reduce(
+        (sum, s) => sum + (s.groupType === "GROUP_2" ? 0 : (Number(s.weeklyHours) || 0)),
+        0
+      );
+      // QAT'IY SANPIN: Boshlang'ich sinflarda 5 soat, yuqori sinflarda soatiga qarab 6 yoki 7 soat
+      const maxP = isPrimary ? 5 : (totalHoursForClass > 30 ? 7 : 6);
 
       const slots: Slot[] = [];
       const hasGroup2 = (effectiveClassSubjects.get(cls.id) || []).some(
@@ -358,8 +362,9 @@ export class CSPSolver {
     const remaining: ReqLesson[] = [];
     for (const cls of this.input.classes) {
       if (cls.isClosed) continue;
-      // Agar sinf to'liq qulflangan bo'lsa, uning darslari qayta generatsiya qilinmaydi
-      if (lockedClassSet.has(cls.id)) continue;
+      // Qulflangan sinflarning allaqachon mavjud darslari slots ichida qulflangan,
+      // lekin sinfda hali joylashtirilmagan o'quv rejasi soatlari qolgan bo'lsa,
+      // ular bo'sh slotlarni to'ldirish uchun remaining ga olinishi shart!
 
       const subjects = effectiveClassSubjects.get(cls.id) || [];
       const slots = classSlots.get(cls.id) || [];
@@ -489,6 +494,13 @@ export class CSPSolver {
           if (!group1Slot) return false;
         } else {
           if (s.groupType === "GROUP_2") return false;
+          // Agar WHOLE bo'lsa, ayni shu vaqtda hech qanday boshqa dars bo'lmasligi shart:
+          if (req.groupType === "WHOLE") {
+            const parallelSlot = slots.find(
+              (other) => other !== s && other.day === s.day && other.period === s.period && other.teacherId !== null
+            );
+            if (parallelSlot) return false;
+          }
           // Agar GROUP_1 bo'lsa va 2-guruh ham bor bo'lsa:
           // Ayni shu vaqtdagi parallel GROUP_2 sloti bo'sh bo'lishi va 2-guruh o'qituvchisi ham bo'sh bo'lishi shart!
           if (matchingGroup2Req) {
@@ -813,6 +825,38 @@ export class CSPSolver {
           placed = true;
         }
       }
+
+      if (!placed) {
+        // Ziddiyatsiz joy topilmagan taqdirda ham, dars jadvalida rasvo bo'shliqlar (oynalar) qolmasligi uchun
+        // sinfning eng birinchi bo'sh slotiga darsni joylashtiramiz (Ziddiyat paydo bo'lsa, min-conflicts yoki AI patrul ko'rsatadi)
+        const anyEmptySlot = clsSlots.find((s) => {
+          if (s.teacherId !== null || s.isLocked) return false;
+          if (s.groupType === "GROUP_2" && req.groupType !== "GROUP_2") return false;
+          if (s.groupType !== "GROUP_2" && req.groupType === "GROUP_2") return false;
+          if (isPrimary && s.period >= 6) return false;
+          if (req.groupType === "WHOLE") {
+            const occupiedAtSameTime = clsSlots.some(
+              (other) => other !== s && other.day === s.day && other.period === s.period && other.teacherId !== null
+            );
+            if (occupiedAtSameTime) return false;
+          } else if (req.groupType === "GROUP_2") {
+            const matchingGroup1 = clsSlots.find(
+              (other) => other.day === s.day && other.period === s.period && other.groupType === "GROUP_1" && other.subjectId === req.subjectId
+            );
+            if (!matchingGroup1) return false;
+          }
+          return true;
+        });
+
+        if (anyEmptySlot) {
+          anyEmptySlot.teacherId = req.teacherId;
+          anyEmptySlot.subjectId = req.subjectId;
+          anyEmptySlot.groupType = req.groupType;
+          const k = getOccKey(req.teacherId, anyEmptySlot.day, anyEmptySlot.period, req.classId);
+          teacherOccupancy.set(k, (teacherOccupancy.get(k) || 0) + 1);
+          placed = true;
+        }
+      }
     }
 
     // ── 5. TEZ VA KUCHLI MIN-CONFLICTS LOCAL SEARCH (Max 200 iteration) ─────────
@@ -950,7 +994,10 @@ export class CSPSolver {
       const cSlots = classSlots.get(cls.id) || [];
 
       for (let day = 1; day <= 6; day++) {
-        const daySlots = cSlots.filter((s) => s.day === day).sort((a, b) => a.period - b.period);
+        // Faqat asosiy slotlarni (WHOLE yoki GROUP_1) ko'rib chiqamiz, parallel GROUP_2 darcha hisoblanmaydi!
+        const daySlots = cSlots
+          .filter((s) => s.day === day && s.groupType !== "GROUP_2")
+          .sort((a, b) => a.period - b.period);
 
         for (let pass = 0; pass < 12; pass++) {
           let moved = false;
@@ -964,6 +1011,7 @@ export class CSPSolver {
 
               // Ushbu bo'sh slotga ko'chib o'ta oladigan keyingi darsni qidiramiz:
               let foundTargetSlot: Slot | null = null;
+              let foundCompanionSlot: Slot | null = null;
               for (const later of laterSlotsWithLessons) {
                 const tId = later.teacherId!;
                 const sId = later.subjectId!;
@@ -972,6 +1020,18 @@ export class CSPSolver {
                 const isMethod = this.isStrictMethodDay(day, tId, sId);
 
                 if (occ === 0 && !isMethod) {
+                  // Agar GROUP_1 bo'lsa, uning 2-guruhi ham yangi slotda bo'sh bo'lishi kerak
+                  if (later.groupType === "GROUP_1") {
+                    const companion = cSlots.find(
+                      (cs) => cs.day === day && cs.period === later.period && cs.groupType === "GROUP_2" && cs.teacherId
+                    );
+                    if (companion) {
+                      const occ2 = teacherOccupancy.get(getOccKey(companion.teacherId!, day, slot.period, cls.id)) || 0;
+                      const isMethod2 = this.isStrictMethodDay(day, companion.teacherId!, companion.subjectId!);
+                      if (occ2 > 0 || isMethod2) continue;
+                      foundCompanionSlot = companion;
+                    }
+                  }
                   foundTargetSlot = later;
                   break;
                 }
@@ -999,6 +1059,30 @@ export class CSPSolver {
                 foundTargetSlot.subjectId = null;
                 foundTargetSlot.groupType = "WHOLE";
 
+                // Agar 2-guruh hamrohi bo'lsa, uni ham tandem ko'chiramiz
+                if (foundCompanionSlot) {
+                  const targetG2Slot = cSlots.find(
+                    (cs) => cs.day === day && cs.period === slot.period && cs.groupType === "GROUP_2"
+                  );
+                  if (targetG2Slot) {
+                    const tId2 = foundCompanionSlot.teacherId!;
+                    teacherOccupancy.set(
+                      getOccKey(tId2, day, foundCompanionSlot.period, cls.id),
+                      (teacherOccupancy.get(getOccKey(tId2, day, foundCompanionSlot.period, cls.id)) || 1) - 1
+                    );
+                    teacherOccupancy.set(
+                      getOccKey(tId2, day, slot.period, cls.id),
+                      (teacherOccupancy.get(getOccKey(tId2, day, slot.period, cls.id)) || 0) + 1
+                    );
+                    targetG2Slot.teacherId = tId2;
+                    targetG2Slot.subjectId = foundCompanionSlot.subjectId;
+                    targetG2Slot.groupType = "GROUP_2";
+
+                    foundCompanionSlot.teacherId = null;
+                    foundCompanionSlot.subjectId = null;
+                  }
+                }
+
                 moved = true;
                 break;
               }
@@ -1016,7 +1100,9 @@ export class CSPSolver {
       const cSlots = classSlots.get(cls.id) || [];
 
       for (let day = 1; day <= 6; day++) {
-        const daySlots = cSlots.filter((s) => s.day === day).sort((a, b) => a.period - b.period);
+        const daySlots = cSlots
+          .filter((s) => s.day === day && s.groupType !== "GROUP_2")
+          .sort((a, b) => a.period - b.period);
 
         for (let i = 0; i < daySlots.length; i++) {
           const gapSlot = daySlots[i];
