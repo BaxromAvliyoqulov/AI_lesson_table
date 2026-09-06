@@ -197,13 +197,17 @@ export const Navbar: React.FC<NavbarProps> = ({
               className="flex items-center gap-1 text-xs font-semibold text-foreground hover:bg-muted/80 px-1.5 py-0.5 rounded-lg transition-colors cursor-pointer w-fit group text-left mt-0.5"
             >
               <Building2 className="h-3 w-3 text-blue-600" />
-              <span className="truncate max-w-[200px]">{currentSchool?.name || "Maktabni tanlang"}</span>
+              <span className="truncate max-w-[220px]">
+                {currentSchool?.slug === "ai-school" || currentSchool?.name?.includes("AI School")
+                  ? "✨ AI School"
+                  : (currentSchool?.name || "Maktabni tanlang")}
+              </span>
               <ChevronDown className="h-3 w-3 text-muted-foreground group-hover:text-foreground" />
             </button>
 
             {/* Maktablar Ro'yxati Dropdown */}
             {isSchoolMenuOpen && (
-              <div className="absolute left-0 top-14 z-50 w-72 rounded-2xl border border-border bg-card p-2 shadow-2xl animate-in fade-in slide-in-from-top-2">
+              <div className="absolute left-0 top-14 z-50 w-80 rounded-2xl border border-border bg-card p-2 shadow-2xl animate-in fade-in slide-in-from-top-2">
                 <div className="px-3 py-2 text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
                   Faol Maktablar (Multi-Tenant)
                 </div>
@@ -211,6 +215,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   {schools.map((s) => {
                     const isAi = s.slug === "ai-school" || s.name?.includes("AI School");
                     const isCurrent = s.id === currentSchoolId;
+                    const displayName = isAi ? "AI School" : s.name;
                     return (
                       <button
                         key={s.id}
@@ -226,7 +231,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                       >
                         <span className="truncate">
                           {isAi ? "✨ " : "🏫 "}
-                          {s.name}
+                          {displayName}
                         </span>
                         {isCurrent ? (
                           <span className="shrink-0 text-[10px] bg-white/20 px-2 py-0.5 rounded-full font-bold">

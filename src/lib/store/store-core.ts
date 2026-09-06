@@ -34,7 +34,7 @@ export function createInitialState(): SchoolStoreState {
       {
         id: "school_ai",
         slug: "ai-school",
-        name: "AI School (39-maktab Mukammal Jadvali)",
+        name: "AI School",
         region: "Muzrabot tumani",
         academicYear: "2026 - 2027",
         approvalDate: "2026-yil 28-mart",
