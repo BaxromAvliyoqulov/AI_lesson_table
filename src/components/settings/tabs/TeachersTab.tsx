@@ -45,6 +45,7 @@ interface TeachersTabProps {
 const WEEKDAYS = ["Dushanba", "Seshanba", "Chorshanba", "Payshanba", "Juma", "Shanba"];
 
 type HomeroomFilterType = "ALL" | "HOMEROOM_ONLY" | "NON_HOMEROOM";
+type HomeroomStageFilterType = "ALL_STAGES" | "PRIMARY" | "MIDDLE" | "HIGH";
 type WorkloadFilterType = "ALL" | "OPTIMAL" | "UNDERLOADED" | "OVERLOADED";
 
 export const TeachersTab: React.FC<TeachersTabProps> = ({
@@ -62,6 +63,7 @@ export const TeachersTab: React.FC<TeachersTabProps> = ({
   const [search, setSearch] = useState("");
   const [subjectFilter, setSubjectFilter] = useState<string>("ALL");
   const [homeroomFilter, setHomeroomFilter] = useState<HomeroomFilterType>("ALL");
+  const [homeroomStageFilter, setHomeroomStageFilter] = useState<HomeroomStageFilterType>("ALL_STAGES");
   const [workloadFilter, setWorkloadFilter] = useState<WorkloadFilterType>("ALL");
   const [isExporting, setIsExporting] = useState(false);
 
@@ -205,6 +207,24 @@ export const TeachersTab: React.FC<TeachersTabProps> = ({
   );
   const nonHomeroomCount = teachers.length - homeroomCount;
 
+  // Bosqichlar bo'yicha sinf rahbarlari soni (1-4, 5-9, 10-11)
+  const { primaryHrCount, middleHrCount, highHrCount } = useMemo(() => {
+    let primary = 0;
+    let middle = 0;
+    let high = 0;
+
+    teachers.forEach((t) => {
+      const cls = getTeacherHomeroomClass(t);
+      if (!cls) return;
+      const grade = cls.grade || parseInt(cls.name.match(/^(\d+)/)?.[1] || "1", 10);
+      if (grade <= 4) primary++;
+      else if (grade <= 9) middle++;
+      else high++;
+    });
+
+    return { primaryHrCount: primary, middleHrCount: middle, highHrCount: high };
+  }, [teachers, getTeacherHomeroomClass]);
+
   const homeroomPercentage =
     classes.length > 0
       ? Math.min(100, Math.round((homeroomCount / classes.length) * 100))
@@ -219,7 +239,16 @@ export const TeachersTab: React.FC<TeachersTabProps> = ({
     }
 
     if (homeroomFilter === "HOMEROOM_ONLY") {
-      list = list.filter((t) => !!getTeacherHomeroomClass(t));
+      list = list.filter((t) => {
+        const cls = getTeacherHomeroomClass(t);
+        if (!cls) return false;
+        if (homeroomStageFilter === "ALL_STAGES") return true;
+        const grade = cls.grade || parseInt(cls.name.match(/^(\d+)/)?.[1] || "1", 10);
+        if (homeroomStageFilter === "PRIMARY") return grade <= 4;
+        if (homeroomStageFilter === "MIDDLE") return grade >= 5 && grade <= 9;
+        if (homeroomStageFilter === "HIGH") return grade >= 10;
+        return true;
+      });
     } else if (homeroomFilter === "NON_HOMEROOM") {
       list = list.filter((t) => !getTeacherHomeroomClass(t));
     }
@@ -248,7 +277,7 @@ export const TeachersTab: React.FC<TeachersTabProps> = ({
     }
 
     return [...list].sort((a, b) => a.fullName.localeCompare(b.fullName));
-  }, [teachers, subjectFilter, homeroomFilter, workloadFilter, search, getTeacherHomeroomClass, teacherWorkloadMap]);
+  }, [teachers, subjectFilter, homeroomFilter, homeroomStageFilter, workloadFilter, search, getTeacherHomeroomClass, teacherWorkloadMap]);
 
   const handleExportExcel = async () => {
     setIsExporting(true);
@@ -509,7 +538,10 @@ export const TeachersTab: React.FC<TeachersTabProps> = ({
           {/* Sinf Rahbarligi Filtrlar */}
           <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
             <button
-              onClick={() => setHomeroomFilter("ALL")}
+              onClick={() => {
+                setHomeroomFilter("ALL");
+                setHomeroomStageFilter("ALL_STAGES");
+              }}
               className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
                 homeroomFilter === "ALL"
                   ? "bg-foreground text-background shadow-xs font-bold"
@@ -526,7 +558,7 @@ export const TeachersTab: React.FC<TeachersTabProps> = ({
               onClick={() => setHomeroomFilter("HOMEROOM_ONLY")}
               className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
                 homeroomFilter === "HOMEROOM_ONLY"
-                  ? "bg-indigo-600 text-white shadow-xs font-bold"
+                  ? "bg-indigo-600 text-white shadow-xs font-bold ring-2 ring-indigo-500/30"
                   : "bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100"
               }`}
             >
@@ -538,7 +570,10 @@ export const TeachersTab: React.FC<TeachersTabProps> = ({
             </button>
 
             <button
-              onClick={() => setHomeroomFilter("NON_HOMEROOM")}
+              onClick={() => {
+                setHomeroomFilter("NON_HOMEROOM");
+                setHomeroomStageFilter("ALL_STAGES");
+              }}
               className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
                 homeroomFilter === "NON_HOMEROOM"
                   ? "bg-slate-700 text-white shadow-xs font-bold"
@@ -599,6 +634,85 @@ export const TeachersTab: React.FC<TeachersTabProps> = ({
             </button>
           </div>
         </div>
+
+        {/* ── SINF RAHBARLARI BOSQICH SUB-FILTRLARI ───────────────────────── */}
+        {homeroomFilter === "HOMEROOM_ONLY" && (
+          <div className="flex flex-wrap items-center justify-between gap-2 pt-2.5 border-t border-indigo-500/20 bg-indigo-50/40 dark:bg-indigo-950/20 -mx-4 -mb-4 px-4 py-2.5 rounded-b-3xl animate-in fade-in slide-in-from-top-1 duration-200">
+            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
+              <span className="text-[11px] font-bold text-indigo-900 dark:text-indigo-200 uppercase tracking-wider flex items-center gap-1 shrink-0 mr-1">
+                <GraduationCap className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                <span>Bosqich:</span>
+              </span>
+
+              <button
+                type="button"
+                onClick={() => setHomeroomStageFilter("ALL_STAGES")}
+                className={`px-3 py-1 rounded-xl text-xs font-semibold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
+                  homeroomStageFilter === "ALL_STAGES"
+                    ? "bg-indigo-600 text-white font-bold shadow-xs shadow-indigo-600/20"
+                    : "bg-background/80 hover:bg-background text-muted-foreground border border-border/60"
+                }`}
+              >
+                <span>Barcha rahbarlar</span>
+                <span className="ml-1 text-[10px] px-1.5 py-0.2 rounded-md bg-black/10 dark:bg-white/20 font-bold">
+                  {homeroomCount}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setHomeroomStageFilter("PRIMARY")}
+                className={`px-3 py-1 rounded-xl text-xs font-semibold transition-all cursor-pointer whitespace-nowrap shrink-0 flex items-center gap-1.5 ${
+                  homeroomStageFilter === "PRIMARY"
+                    ? "bg-emerald-600 text-white font-bold shadow-xs shadow-emerald-600/20"
+                    : "bg-background/80 hover:bg-background text-muted-foreground border border-border/60"
+                }`}
+              >
+                <span>🌱 1. Boshlang'ich sinflar (1-4)</span>
+                <span className="text-[10px] px-1.5 py-0.2 rounded-md bg-black/10 dark:bg-white/20 font-bold">
+                  {primaryHrCount}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setHomeroomStageFilter("MIDDLE")}
+                className={`px-3 py-1 rounded-xl text-xs font-semibold transition-all cursor-pointer whitespace-nowrap shrink-0 flex items-center gap-1.5 ${
+                  homeroomStageFilter === "MIDDLE"
+                    ? "bg-blue-600 text-white font-bold shadow-xs shadow-blue-600/20"
+                    : "bg-background/80 hover:bg-background text-muted-foreground border border-border/60"
+                }`}
+              >
+                <span>📘 2. O'rta sinflar (5-9)</span>
+                <span className="text-[10px] px-1.5 py-0.2 rounded-md bg-black/10 dark:bg-white/20 font-bold">
+                  {middleHrCount}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setHomeroomStageFilter("HIGH")}
+                className={`px-3 py-1 rounded-xl text-xs font-semibold transition-all cursor-pointer whitespace-nowrap shrink-0 flex items-center gap-1.5 ${
+                  homeroomStageFilter === "HIGH"
+                    ? "bg-purple-600 text-white font-bold shadow-xs shadow-purple-600/20"
+                    : "bg-background/80 hover:bg-background text-muted-foreground border border-border/60"
+                }`}
+              >
+                <span>🎓 3. Yuqori sinflar (10-11)</span>
+                <span className="text-[10px] px-1.5 py-0.2 rounded-md bg-black/10 dark:bg-white/20 font-bold">
+                  {highHrCount}
+                </span>
+              </button>
+            </div>
+
+            <div className="text-[11px] text-muted-foreground font-medium hidden sm:block">
+              {homeroomStageFilter === "ALL_STAGES" && `Jami ${homeroomCount} ta sinf rahbari`}
+              {homeroomStageFilter === "PRIMARY" && `1-4 boshlang'ich: ${primaryHrCount} nafar rahbar`}
+              {homeroomStageFilter === "MIDDLE" && `5-9 o'rta maktab: ${middleHrCount} nafar rahbar`}
+              {homeroomStageFilter === "HIGH" && `10-11 yuqori sinf: ${highHrCount} nafar rahbar`}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ── 3. TEACHERS GRID ───────────────────────────────────────────────── */}
