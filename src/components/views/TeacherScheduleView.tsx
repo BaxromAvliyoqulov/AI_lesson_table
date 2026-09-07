@@ -296,6 +296,27 @@ export const TeacherScheduleView: React.FC<TeacherScheduleViewProps> = ({
   const isOverloaded = scheduledCount > capacity;
   const isUnderloaded = scheduledCount < capacity;
 
+  // Kelajak (Sinf) soati va mutaxassislik fanlarini alohida ajratish
+  const { homeroomHours, subjectHours } = useMemo(() => {
+    let homeroomCount = 0;
+    let subjectCount = 0;
+
+    teacherLessons.forEach((l) => {
+      const subj = subjectMap.get(l.subjectId);
+      const isHomeroom =
+        subj?.name?.toLowerCase().includes("kelajak") ||
+        subj?.name?.toLowerCase().includes("sinf soati");
+
+      if (isHomeroom) {
+        homeroomCount += 1;
+      } else {
+        subjectCount += 1;
+      }
+    });
+
+    return { homeroomHours: homeroomCount, subjectHours: subjectCount };
+  }, [teacherLessons, subjectMap]);
+
   // Sinf rahbarligi
   const homeroomClass = useMemo(() => {
     if (!activeTeacher) return null;
@@ -321,7 +342,11 @@ export const TeacherScheduleView: React.FC<TeacherScheduleViewProps> = ({
     if (!activeTeacher) return;
 
     let text = `📋 ${activeTeacher.fullName} — DARS JADVALI\n`;
-    text += `🏢 Maktab: 39-maktab | Jami yuklama: ${scheduledCount} soat (${capacity} st me'yor)\n`;
+    const totalHoursStr =
+      homeroomHours > 0
+        ? `${subjectHours}+${homeroomHours} soat (${scheduledCount} st, Kelajak soati bilan)`
+        : `${scheduledCount} soat`;
+    text += `🏢 Maktab: 39-maktab | Jami yuklama: ${totalHoursStr} (${capacity} st me'yor)\n`;
     text += `☀️ 1-Smena: ${shift1Count} st | 🌤️ 2-Smena: ${shift2Count} st\n`;
     if (activeMethodDayName) text += `📌 Metod kuni: ${activeMethodDayName}\n`;
     if (homeroomClass) text += `🎖️ Sinf rahbari: ${homeroomClass.name}\n`;
@@ -579,7 +604,10 @@ export const TeacherScheduleView: React.FC<TeacherScheduleViewProps> = ({
           39-UMUMIY O&apos;RTA TA&apos;LIM MAKTABI O&apos;QITUVCHISI DARS JADVALI
         </h1>
         <div className="text-sm font-bold mt-1">
-          {activeTeacher.fullName} &bull; {scheduledCount} soat ({activeMethodDayName ? `Metod kuni: ${activeMethodDayName}` : ""})
+          {activeTeacher.fullName} &bull;{" "}
+          {homeroomHours > 0 ? `${subjectHours} + ${homeroomHours}` : scheduledCount} soat{" "}
+          {homeroomHours > 0 ? `(${scheduledCount} st) ` : ""}
+          ({activeMethodDayName ? `Metod kuni: ${activeMethodDayName}` : ""})
         </div>
       </div>
 
@@ -605,17 +633,41 @@ export const TeacherScheduleView: React.FC<TeacherScheduleViewProps> = ({
             </span>
           </div>
           <div className="mt-2 flex items-baseline gap-1.5">
-            <span className="text-2xl font-black text-foreground">{scheduledCount}</span>
-            <span className="text-xs font-semibold text-muted-foreground">/ {capacity} soat</span>
+            {homeroomHours > 0 ? (
+              <div className="flex items-baseline gap-1 flex-wrap">
+                <span className="text-2xl font-black text-foreground">{subjectHours}</span>
+                <span
+                  className="text-lg font-black text-indigo-600 dark:text-indigo-400 bg-indigo-500/10 px-1 rounded border border-indigo-500/20"
+                  title={`${homeroomHours} soat Kelajak soati (Sinf rahbarligi)`}
+                >
+                  +{homeroomHours}
+                </span>
+                <span className="text-xs font-semibold text-muted-foreground ml-1">
+                  / {capacity} st <span className="text-[10px] font-bold text-foreground">({scheduledCount} st)</span>
+                </span>
+              </div>
+            ) : (
+              <>
+                <span className="text-2xl font-black text-foreground">{scheduledCount}</span>
+                <span className="text-xs font-semibold text-muted-foreground">/ {capacity} soat</span>
+              </>
+            )}
           </div>
-          <div className="mt-2 w-full bg-muted/60 h-1.5 rounded-full overflow-hidden">
-            <div
-              className={`h-full rounded-full transition-all ${
-                isOverloaded ? "bg-rose-500" : isOptimal ? "bg-emerald-500" : "bg-amber-500"
-              }`}
-              style={{ width: `${Math.min(100, loadPercentage)}%` }}
-            />
-          </div>
+          {homeroomHours > 0 ? (
+            <div className="mt-2 text-[9.5px] font-bold text-muted-foreground flex items-center gap-1 truncate">
+              <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 shrink-0" />
+              <span>{subjectHours} st fan + {homeroomHours} st Kelajak soati</span>
+            </div>
+          ) : (
+            <div className="mt-2 w-full bg-muted/60 h-1.5 rounded-full overflow-hidden">
+              <div
+                className={`h-full rounded-full transition-all ${
+                  isOverloaded ? "bg-rose-500" : isOptimal ? "bg-emerald-500" : "bg-amber-500"
+                }`}
+                style={{ width: `${Math.min(100, loadPercentage)}%` }}
+              />
+            </div>
+          )}
         </div>
 
         {/* Card 2: ☀️ ABETGACHA (1-SMENA) */}
@@ -918,8 +970,24 @@ export const TeacherScheduleView: React.FC<TeacherScheduleViewProps> = ({
           <div className="text-[10px] font-black uppercase text-primary tracking-wide">
             JAMI HAFTALIK
           </div>
-          <div className="text-base font-black text-foreground mt-0.5">
-            {scheduledCount} <span className="text-xs font-semibold text-muted-foreground">soat</span>
+          <div className="text-base font-black text-foreground mt-0.5 flex items-baseline justify-center gap-1">
+            {homeroomHours > 0 ? (
+              <>
+                <span>{subjectHours}</span>
+                <span
+                  className="text-xs font-black text-indigo-600 dark:text-indigo-400 bg-indigo-500/10 px-1 py-0.2 rounded border border-indigo-500/20"
+                  title={`${homeroomHours} soat Kelajak soati (Sinf rahbarligi)`}
+                >
+                  +{homeroomHours}
+                </span>
+                <span className="text-xs font-semibold text-muted-foreground">soat</span>
+                <span className="text-[10px] font-bold text-muted-foreground/80">({scheduledCount} st)</span>
+              </>
+            ) : (
+              <>
+                {scheduledCount} <span className="text-xs font-semibold text-muted-foreground">soat</span>
+              </>
+            )}
           </div>
           <div className="mt-0.5 flex items-center justify-center gap-1 text-[9px] font-black">
             <span className="text-amber-600">☀️ {shift1Count} st</span>
