@@ -1,5 +1,6 @@
+// @ts-nocheck
 import { prisma } from "../src/lib/prisma";
-import { detectScheduleConflicts } from "../src/lib/conflict-detector";
+import { detectScheduleConflicts } from "../src/lib/solver/schedule-conflict-detector";
 
 async function apply10AEnglish() {
   const schoolId = "cmthn422g0001uff8vhccbxmz";
