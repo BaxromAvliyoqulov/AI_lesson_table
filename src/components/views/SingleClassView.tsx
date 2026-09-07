@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { SchoolClass, Subject, Teacher, Room, Lesson } from "@/types";
 import { LessonCard } from "@/components/master-grid/LessonCard";
 import { GraduationCap, MapPin, UserCheck, Calendar } from "lucide-react";
@@ -64,10 +64,23 @@ export const SingleClassView: React.FC<SingleClassViewProps> = ({
   // Tanlangan sinfning darslarini olish
   const classLessons = lessons.filter((l) => l.classId === activeClass.id);
 
-  // Lesson lookup: `${day}_${period}`
-  const lessonMap = new Map<string, Lesson>();
+  // Sinf o'quvchilari uchun haftalik dars soati (unikal dars slotlari / vaqtlar soni)
+  const uniquePeriodHours = useMemo(() => {
+    const slotSet = new Set<string>();
+    for (const l of classLessons) {
+      slotSet.add(`${l.dayOfWeek}_${l.periodNumber}`);
+    }
+    return slotSet.size;
+  }, [classLessons]);
+
+  // Lesson lookup: `${day}_${period}` -> Lesson[] (guruhga bo'lingan bo'lsa hammasini saqlash)
+  const lessonMap = new Map<string, Lesson[]>();
   for (const l of classLessons) {
-    lessonMap.set(`${l.dayOfWeek}_${l.periodNumber}`, l);
+    const key = `${l.dayOfWeek}_${l.periodNumber}`;
+    if (!lessonMap.has(key)) {
+      lessonMap.set(key, []);
+    }
+    lessonMap.get(key)!.push(l);
   }
 
   return (
@@ -97,7 +110,12 @@ export const SingleClassView: React.FC<SingleClassViewProps> = ({
 
         <div className="flex items-center gap-3 text-xs text-muted-foreground">
           <span className="font-semibold text-foreground">
-            {activeClass.name} sinfi &bull; {classLessons.length} soat dars
+            {activeClass.name} sinfi &bull; {uniquePeriodHours} soat dars
+            {classLessons.length > uniquePeriodHours ? (
+              <span className="ml-1.5 text-[11px] font-normal text-muted-foreground/80">
+                (guruhlar kesimida {classLessons.length} soat)
+              </span>
+            ) : null}
           </span>
         </div>
       </div>
@@ -134,44 +152,60 @@ export const SingleClassView: React.FC<SingleClassViewProps> = ({
 
                 {/* Kunlik Katakchalar */}
                 {DAYS.map((day) => {
-                  const lesson = lessonMap.get(`${day.id}_${period.id}`);
-                  const subject = lesson ? subjectMap.get(lesson.subjectId) : undefined;
-                  const teacher = lesson ? teacherMap.get(lesson.teacherId) : undefined;
-                  const room = lesson?.roomId ? roomMap.get(lesson.roomId) : null;
+                  const cellLessons = lessonMap.get(`${day.id}_${period.id}`) || [];
 
                   return (
                     <td
                       key={`${day.id}_${period.id}`}
                       className="p-2 align-top border-l border-border/60 min-w-[130px]"
                     >
-                      {lesson ? (
-                        <div
-                          className="rounded-xl border border-border/80 border-l-4 p-2 bg-background shadow-sm hover:shadow-md transition-shadow"
-                          style={{ borderLeftColor: subject?.colorTag || "#3B82F6" }}
-                        >
-                          <div className="flex items-start justify-between gap-1">
-                            <span className="font-bold text-xs text-foreground truncate">
-                              {subject?.name || "Fan"}
-                            </span>
-                            {onOpenZamena && (
-                              <button
-                                onClick={() => onOpenZamena(lesson)}
-                                className="p-0.5 rounded hover:bg-muted text-muted-foreground hover:text-blue-600"
-                                title="O'rinbosar tayinlash"
+                      {cellLessons.length > 0 ? (
+                        <div className="flex flex-col gap-1.5">
+                          {cellLessons.map((lesson) => {
+                            const subject = subjectMap.get(lesson.subjectId);
+                            const teacher = teacherMap.get(lesson.teacherId);
+                            const room = lesson?.roomId ? roomMap.get(lesson.roomId) : null;
+                            const isGroup = lesson.groupType && lesson.groupType !== "WHOLE";
+
+                            return (
+                              <div
+                                key={lesson.id}
+                                className="rounded-xl border border-border/80 border-l-4 p-2 bg-background shadow-sm hover:shadow-md transition-shadow"
+                                style={{ borderLeftColor: subject?.colorTag || "#3B82F6" }}
                               >
-                                <UserCheck className="h-3 w-3" />
-                              </button>
-                            )}
-                          </div>
-                          <div className="text-[11px] text-muted-foreground font-medium mt-1 truncate">
-                            {teacher?.fullName}
-                          </div>
-                          {room && (
-                            <div className="flex items-center gap-1 text-[10px] text-blue-600 dark:text-blue-400 font-semibold mt-1">
-                              <MapPin className="h-2.5 w-2.5" />
-                              <span className="truncate">{room.name}</span>
-                            </div>
-                          )}
+                                <div className="flex items-start justify-between gap-1">
+                                  <div className="flex items-center gap-1 min-w-0">
+                                    <span className="font-bold text-xs text-foreground truncate">
+                                      {subject?.name || "Fan"}
+                                    </span>
+                                    {isGroup && (
+                                      <span className="text-[9px] font-extrabold px-1 py-0.2 rounded bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300">
+                                        {lesson.groupType === "GROUP_1" ? "1-guruh" : "2-guruh"}
+                                      </span>
+                                    )}
+                                  </div>
+                                  {onOpenZamena && (
+                                    <button
+                                      onClick={() => onOpenZamena(lesson)}
+                                      className="p-0.5 rounded hover:bg-muted text-muted-foreground hover:text-blue-600"
+                                      title="O'rinbosar tayinlash"
+                                    >
+                                      <UserCheck className="h-3 w-3" />
+                                    </button>
+                                  )}
+                                </div>
+                                <div className="text-[11px] text-muted-foreground font-medium mt-1 truncate">
+                                  {teacher?.fullName}
+                                </div>
+                                {room && (
+                                  <div className="flex items-center gap-1 text-[10px] text-blue-600 dark:text-blue-400 font-semibold mt-1">
+                                    <MapPin className="h-2.5 w-2.5" />
+                                    <span className="truncate">{room.name}</span>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
                         </div>
                       ) : (
                         <div className="h-14 rounded-xl border border-dashed border-border/40 flex items-center justify-center text-muted-foreground/30 text-xs">
