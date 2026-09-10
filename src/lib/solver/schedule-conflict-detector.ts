@@ -145,26 +145,37 @@ export function detectScheduleConflicts({
       const teacher = teacherMap.get(first.teacherId);
       const periodsStr = uniquePeriods.map((p) => `${p}-dars`).join(", ");
 
-      const isPrimary = (cls?.grade ?? 5) <= 4;
+      const isPrimary = (cls?.grade !== undefined && cls.grade <= 4) || Boolean(cls?.isPrimary);
       const isTripleOrMore = uniquePeriods.length >= 3;
       const isConsecutivePair =
         uniquePeriods.length === 2 &&
         uniquePeriods[1] - uniquePeriods[0] === 1;
-      const allowsDouble = !isPrimary && (subject?.allowDoubleLesson ?? false);
 
-      // Agar 3+ soat bo'lsa YOKI juft dars taqiqlangan fanda 2 soat bo'lsa YOKI juft dars orasi uzilgan bo'lsa
+      // O'quv kunlari va haftalik soat:
+      const blockedDays = cls?.blockedDays || (isPrimary ? [6] : []);
+      const availableDays = Math.max(1, 6 - blockedDays.length);
+      const clsSubject = cls?.subjects?.find((s) => s.subjectId === first.subjectId);
+      const weeklyHours = clsSubject?.weeklyHours;
+
+      // Fan sozlamasida allowDoubleLesson ruxsat etilgan bo'lsa YOKI haftalik soati mavjud kunlar sonidan ko'p bo'lsa
+      // (masalan boshlang'ich sinflarda 5 kunlik haftada 6-7 soatlik fanlar), 2 soatlik ketma-ket juft dars ruxsat etiladi!
+      const allowsDouble = Boolean(subject?.allowDoubleLesson) || (weeklyHours !== undefined && weeklyHours > availableDays);
+
+      // Agar 3+ soat bo'lsa YOKI juft dars ruxsat berilmagan fanda 2 soat bo'lsa YOKI juft dars orasi uzilgan bo'lsa
       const isViolation = isTripleOrMore || !allowsDouble || !isConsecutivePair;
 
       if (isViolation) {
         matchedLessons.forEach((l) => conflictLessonIds.add(l.id));
 
         let reasonText = "";
-        if (isPrimary && uniquePeriods.length > 1) {
-          reasonText = `boshlang'ich sinfda (${cls?.name || "1-4 sinf"}) kuniga ${uniquePeriods.length} soat (${periodsStr}) qo'yilgan. SanPiN 0341-17 qoidasi bo'yicha boshlang'ich sinflarda bitta fandan kuniga faqat 1 soat dars o'tilishi shart!`;
-        } else if (isTripleOrMore) {
-          reasonText = `kuniga ${uniquePeriods.length} soat (${periodsStr}) ketma-ket qo'yilgan. Maktab me'yori bo'yicha bu fanga kuniga ko'pi bilan 1-2 soat ruxsat beriladi.`;
+        if (isTripleOrMore) {
+          reasonText = `kuniga ${uniquePeriods.length} soat (${periodsStr}) qo'yilgan. Maktab me'yori bo'yicha bu fanga kuniga ko'pi bilan 1-2 soat ruxsat beriladi.`;
         } else if (!allowsDouble) {
-          reasonText = `kuniga 2 marta (${periodsStr}) qo'yilgan. Bu fanga juft dars o'tish taqiqlangan.`;
+          if (isPrimary) {
+            reasonText = `boshlang'ich sinfda (${cls?.name || "1-4 sinf"}) kuniga 2 marta (${periodsStr}) qo'yilgan. Haftalik soati 5 soatdan kam bo'lgan fanlar boshlang'ichda kuniga 1 soatdan oshmasligi shart!`;
+          } else {
+            reasonText = `kuniga 2 marta (${periodsStr}) qo'yilgan. Bu fanga juft dars o'tish taqiqlangan.`;
+          }
         } else {
           reasonText = `kuniga 2 soat (${periodsStr}) orasi uzilgan holda qo'yilgan. Juft darslar faqat ketma-ket bo'lishi shart!`;
         }

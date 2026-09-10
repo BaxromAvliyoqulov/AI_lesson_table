@@ -80,9 +80,7 @@ export const AITeacherWorkloadAdvisorModal: React.FC<AITeacherWorkloadAdvisorMod
         cls.subjects.forEach((cs) => {
           if (cs.teacherId === teacher.id) {
             const sub = subjectMap.get(cs.subjectId);
-            if (!isKelajakOrSinfSoatiSubject(cs.subjectId, sub?.name)) {
-              totalAssignedHours += cs.weeklyHours;
-            }
+            totalAssignedHours += Number(cs.weeklyHours) || 0;
             classSubjectList.push({
               className: cls.name,
               subjectName: sub?.name || "Fan",
