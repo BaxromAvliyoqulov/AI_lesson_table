@@ -314,12 +314,37 @@ export function useCurriculumLogic({
       return;
     }
 
-    setSubjectsList(deduplicateClassSubjects(generated, subjectMap, allSubjects, targetClass.homeroomTeacherId));
-    if (targetClass.grade <= 4) {
-      showToast(`✅ ${targetClass.grade}-sinf standart rejasi yuklandi! Ona tili, O'qish va Matematika sinf rahbariga biriktirildi.`);
-    } else {
-      showToast(`✅ ${targetClass.grade}-sinf davlat standart o'quv rejasi yuklandi!`);
-    }
+    setSubjectsList((prev) => {
+      // QAT'IY QOIDA (Ironclad Rule 9): Foydalanuvchi kiritgan fanlar, dars soatlari
+      // va foydalanuvchi ajratgan guruhlar (GROUP_1, GROUP_2) 100% DAXLSIZ SAQLANADI!
+      if (prev && prev.length > 0) {
+        const existingSubjectIds = new Set(prev.map((s) => s.subjectId));
+        const missingSubjects: ClassSubject[] = [];
+
+        for (const gen of generated) {
+          if (!existingSubjectIds.has(gen.subjectId)) {
+            missingSubjects.push({ ...gen, groupType: "WHOLE" });
+          }
+        }
+
+        if (missingSubjects.length === 0) {
+          showToast("Sinfda barcha davlat standart fanlari mavjud. Hech qanday dars o'zgartirilmadi.");
+          return prev;
+        }
+
+        showToast(`✅ Yetishmayotgan ${missingSubjects.length} ta standart fan qo'shildi (mavjud darslarga tegilmadi)`);
+        return deduplicateClassSubjects([...prev, ...missingSubjects], subjectMap, allSubjects, targetClass.homeroomTeacherId);
+      }
+
+      // Agar ro'yxat butunlay bo'sh bo'lsa:
+      const nonSplitList = generated.map((s) => ({ ...s, groupType: "WHOLE" as const }));
+      if (targetClass.grade <= 4) {
+        showToast(`✅ ${targetClass.grade}-sinf standart rejasi yuklandi! Ona tili, O'qish va Matematika sinf rahbariga biriktirildi.`);
+      } else {
+        showToast(`✅ ${targetClass.grade}-sinf davlat standart o'quv rejasi yuklandi!`);
+      }
+      return deduplicateClassSubjects(nonSplitList, subjectMap, allSubjects, targetClass.homeroomTeacherId);
+    });
   };
 
   const handleApplyPrimaryHomeroomRule = () => {

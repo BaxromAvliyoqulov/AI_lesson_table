@@ -487,6 +487,41 @@ export function useClassActions() {
 
       const updatedClasses = prev.classes.map((cls) => {
         const grade = cls.grade || 5;
+        const currentSubjects = cls.subjects || [];
+
+        // QAT'IY QOIDA (Ironclad Rule 9): Agar sinfda allaqachon darslar bo'lsa, mavjud fanlar,
+        // soatlar, biriktirilgan o'qituvchilar va foydalanuvchi ajratgan guruhlar (GROUP_1, GROUP_2)
+        // 100% DAXLSIZ SAQLANADI! Hech qanday dars o'chib ketmaydi va avtomatik guruhga bo'linmaydi!
+        if (currentSubjects.length > 0) {
+          const standardList = generateStandardCurriculumForClass(
+            grade,
+            cls.id,
+            cls.homeroomTeacherId,
+            prev.subjects,
+            prev.teachers,
+            workloadTracker
+          );
+
+          const existingSubjectIds = new Set(currentSubjects.map((cs) => cs.subjectId));
+          const missingSubjects: ClassSubject[] = [];
+
+          for (const stItem of standardList) {
+            if (!existingSubjectIds.has(stItem.subjectId)) {
+              missingSubjects.push({
+                ...stItem,
+                groupType: "WHOLE", // Faqat butun sinf, hech qachon avto-guruhlanmaydi
+              });
+            }
+          }
+
+          affectedCount++;
+          return {
+            ...cls,
+            subjects: [...currentSubjects, ...missingSubjects],
+          };
+        }
+
+        // Agar sinf butunlay bo'sh bo'lsa, standart reja 100% yaxlit (WHOLE) holatda to'ldiriladi
         const standardList = generateStandardCurriculumForClass(
           grade,
           cls.id,
@@ -495,31 +530,15 @@ export function useClassActions() {
           prev.teachers,
           workloadTracker
         );
-
-        // Agar foydalanuvchi allaqachon biriktirgan o'qituvchilar bo'lsa, ularni saqlab qolamiz!
-        const existingSubjectMap = new Map<string, ClassSubject>();
-        (cls.subjects || []).forEach((cs) => {
-          if (cs.teacherId) {
-            existingSubjectMap.set(cs.subjectId, cs);
-          }
-        });
-
-        const mergedSubjects: ClassSubject[] = standardList.map((stItem) => {
-          const existing = existingSubjectMap.get(stItem.subjectId);
-          if (existing && existing.teacherId) {
-            return {
-              ...stItem,
-              teacherId: existing.teacherId,
-              groupType: existing.groupType || stItem.groupType || "WHOLE",
-            };
-          }
-          return stItem;
-        });
+        const nonSplitList = standardList.map((st) => ({
+          ...st,
+          groupType: "WHOLE" as const, // Faqat butun sinf
+        }));
 
         affectedCount++;
         return {
           ...cls,
-          subjects: mergedSubjects,
+          subjects: nonSplitList,
         };
       });
 

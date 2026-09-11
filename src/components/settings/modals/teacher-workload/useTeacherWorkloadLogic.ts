@@ -145,12 +145,9 @@ export function useTeacherWorkloadLogic({
                 Number(other.weeklyHours) > 0
             );
 
-            const isSplit =
-              s.groupType === "GROUP_1" ||
-              s.groupType === "GROUP_2" ||
-              Boolean(otherTeacherSub);
-
-            const secondTeacherId = otherTeacherSub ? otherTeacherSub.teacherId : undefined;
+            // QAT'IY QOIDA: Faqat va faqat fanning o'zi avvaldan GROUP_1 yoki GROUP_2 bo'lsagina guruhlangan hisoblanadi
+            const isSplit = s.groupType === "GROUP_1" || s.groupType === "GROUP_2";
+            const secondTeacherId = isSplit && otherTeacherSub ? otherTeacherSub.teacherId : undefined;
 
             seenAssignmentKeys.add(dedupKey);
             currentList.push({
@@ -283,14 +280,14 @@ export function useTeacherWorkloadLogic({
       const cls = targetClass;
       const standardHours = batchHours || (cls && cls.grade >= 5 ? 3 : 4);
 
-      const otherTeacherSub = (cls?.subjects || []).find(
-        (s) =>
-          s.subjectId === targetSubjectId &&
-          s.teacherId !== teacher.id &&
-          Number(s.weeklyHours) > 0
-      );
-      const isSplit = Boolean(otherTeacherSub);
-      const hours = otherTeacherSub ? Number(otherTeacherSub.weeklyHours) || standardHours : standardHours;
+      // QAT'IY QOIDA (Ironclad Rule 9): Yangi biriktirilgan dars doim WHOLE (butun sinf) bo'ladi.
+      // Faqat va faqat foydalanuvchi sinfda avval o'zi ushbu fanni GROUP_1/GROUP_2 ga ajratgan bo'lsagina guruh saqlanadi!
+      const existingClassSub = (cls?.subjects || []).find((s) => s.subjectId === targetSubjectId);
+      const isSplit = existingClassSub?.groupType === "GROUP_1" || existingClassSub?.groupType === "GROUP_2";
+      const secondTeacherSub = isSplit
+        ? (cls?.subjects || []).find((s) => s.subjectId === targetSubjectId && s.teacherId !== teacher.id)
+        : undefined;
+      const hours = existingClassSub ? Number(existingClassSub.weeklyHours) || standardHours : standardHours;
 
       setAssignments((prev) => [
         ...prev.filter((a) => {
@@ -303,9 +300,9 @@ export function useTeacherWorkloadLogic({
           classId: targetClassId,
           subjectId: targetSubjectId,
           weeklyHours: hours,
-          isSplit,
-          groupType: isSplit ? "GROUP_1" : "WHOLE",
-          secondTeacherId: otherTeacherSub ? otherTeacherSub.teacherId : undefined,
+          isSplit: Boolean(isSplit),
+          groupType: isSplit ? (existingClassSub?.groupType || "GROUP_1") : "WHOLE",
+          secondTeacherId: secondTeacherSub ? secondTeacherSub.teacherId : undefined,
         },
       ]);
     }
@@ -350,22 +347,20 @@ export function useTeacherWorkloadLogic({
         });
 
         if (!alreadyAssigned) {
-          const otherTeacherSub = (c.subjects || []).find(
-            (s) =>
-              s.subjectId === targetSubjectId &&
-              s.teacherId !== teacher.id &&
-              Number(s.weeklyHours) > 0
-          );
-          const isSplit = Boolean(otherTeacherSub);
-          const hours = otherTeacherSub ? Number(otherTeacherSub.weeklyHours) || (batchHours || 3) : (batchHours || 3);
+          const existingClassSub = (c.subjects || []).find((s) => s.subjectId === targetSubjectId);
+          const isSplit = existingClassSub?.groupType === "GROUP_1" || existingClassSub?.groupType === "GROUP_2";
+          const secondTeacherSub = isSplit
+            ? (c.subjects || []).find((s) => s.subjectId === targetSubjectId && s.teacherId !== teacher.id)
+            : undefined;
+          const hours = existingClassSub ? Number(existingClassSub.weeklyHours) || (batchHours || 3) : (batchHours || 3);
 
           newItems.push({
             classId: c.id,
             subjectId: targetSubjectId,
             weeklyHours: hours,
-            isSplit,
-            groupType: isSplit ? "GROUP_1" : "WHOLE",
-            secondTeacherId: otherTeacherSub ? otherTeacherSub.teacherId : undefined,
+            isSplit: Boolean(isSplit),
+            groupType: isSplit ? (existingClassSub?.groupType || "GROUP_1") : "WHOLE",
+            secondTeacherId: secondTeacherSub ? secondTeacherSub.teacherId : undefined,
           });
         }
       });

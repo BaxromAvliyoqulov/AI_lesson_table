@@ -103,4 +103,23 @@ describe("Uzbekistan Standard Curriculum & Subject Suitability Engine", () => {
     const highNames = highAvailable.map((s) => s.name.toLowerCase());
     expect(highNames.some((n) => n.includes("fizika"))).toBe(true);
   });
+
+  it("should enforce Ironclad Rule 9: standard curriculum must NEVER auto-split subjects (all groupType must be WHOLE)", () => {
+    for (let grade = 1; grade <= 11; grade++) {
+      const generated = generateStandardCurriculumForClass(
+        grade,
+        `class_${grade}`,
+        "teacher_homeroom",
+        initialSubjects,
+        initialTeachers
+      );
+
+      for (const cs of generated) {
+        expect(cs.groupType).toBe("WHOLE");
+        expect(cs.groupType).not.toBe("GROUP_1");
+        expect(cs.groupType).not.toBe("GROUP_2");
+      }
+    }
+  });
 });
+
