@@ -19,5 +19,11 @@ export type WorkloadFilterType = "ALL" | "OPTIMAL" | "UNDERLOADED" | "OVERLOADED
 
 export interface TeacherWorkloadInfo {
   assignedHours: number;
+  teachingHours: number;
+  homeroomHours: number;
   classCount: number;
+  isOverloaded: boolean;
+  isOptimal: boolean;
+  isUnderloaded: boolean;
+  workloadPct: number;
 }

@@ -232,15 +232,16 @@ export function useTeacherWorkloadLogic({
       }
     });
     return {
-      totalAssignedHours: assigned + homeroom,
+      totalAssignedHours: assigned,
+      totalTeachingHours: assigned,
       totalHomeroomHours: homeroom,
       totalPhysicalHours: assigned + homeroom,
     };
   }, [uniqueAssignments, subjectMap, subjects, teacher?.homeroomClassId]);
 
   const capacity = teacher?.weeklyHourCapacity || 20;
-  const remainingHours = capacity - totalAssignedHours;
   const isOverloaded = totalAssignedHours > capacity;
+  const remainingHours = capacity - totalAssignedHours;
 
   const teacherWorkloadMap = useMemo(() => {
     const map = new Map<string, number>();

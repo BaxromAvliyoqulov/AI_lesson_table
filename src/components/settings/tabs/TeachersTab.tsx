@@ -101,32 +101,72 @@ export const TeachersTab: React.FC<TeachersTabProps> = ({
   );
 
   // Calculate each teacher's assigned hours and class count
+  // Calculate each teacher's assigned hours and class count
   const teacherWorkloadMap = useMemo(() => {
     const map = new Map<string, TeacherWorkloadInfo>();
     teachers.forEach((t) => {
-      let hours = 0;
+      let teachingHours = 0;
+      let homeroomHours = 0;
       const classSet = new Set<string>();
+
+      const homeroomClass = getTeacherHomeroomClass(t);
+
       classes.forEach((c) => {
         (c.subjects || []).forEach((cs) => {
           if (cs.teacherId === t.id) {
-            hours += Number(cs.weeklyHours) || 0;
             classSet.add(c.id);
+            const isHomeroomSubject = isKelajakOrSinfSoatiSubject(
+              cs.subjectId,
+              subjectMap.get(cs.subjectId)?.name
+            );
+
+            if (isHomeroomSubject) {
+              homeroomHours += Number(cs.weeklyHours) || 0;
+            } else {
+              teachingHours += Number(cs.weeklyHours) || 0;
+            }
           }
         });
       });
 
-      const homeroomClass = getTeacherHomeroomClass(t);
-      if (homeroomClass) {
+      // If teacher is homeroom teacher but doesn't have an explicit homeroom subject assigned in class subjects
+      if (homeroomClass && homeroomHours === 0) {
         classSet.add(homeroomClass.id);
-        const alreadyHasHomeroomHour = (homeroomClass.subjects || []).some(
-          (cs) => cs.teacherId === t.id && isKelajakOrSinfSoatiSubject(cs.subjectId, subjectMap.get(cs.subjectId)?.name)
-        );
-        if (!alreadyHasHomeroomHour) {
-          hours += 1;
-        }
+        homeroomHours = 1;
       }
 
-      map.set(t.id, { assignedHours: hours, classCount: classSet.size });
+      const capacity = Number(t.weeklyHourCapacity) || 20;
+      const totalAssignedHours = teachingHours + homeroomHours;
+
+      // In Uzbekistan school tariffication standards:
+      // A teacher's stavka capacity corresponds to academic teaching load (teachingHours).
+      // True overload occurs only when academic teaching hours exceed capacity, OR when total hours exceed capacity + homeroom.
+      const isOverloaded = teachingHours > capacity || totalAssignedHours > (capacity + homeroomHours);
+
+      // Workload percentage calculation:
+      let workloadPct: number;
+      if (isOverloaded) {
+        workloadPct = Math.round((teachingHours / capacity) * 100);
+      } else if (teachingHours === capacity) {
+        workloadPct = 100;
+      } else {
+        const effectiveHours = Math.min(capacity, totalAssignedHours);
+        workloadPct = Math.round((effectiveHours / capacity) * 100);
+      }
+
+      const isOptimal = !isOverloaded && workloadPct >= 80 && workloadPct <= 100;
+      const isUnderloaded = !isOverloaded && workloadPct < 80;
+
+      map.set(t.id, {
+        assignedHours: totalAssignedHours,
+        teachingHours,
+        homeroomHours,
+        classCount: classSet.size,
+        isOverloaded,
+        isOptimal,
+        isUnderloaded,
+        workloadPct,
+      });
     });
     return map;
   }, [teachers, classes, subjectMap, getTeacherHomeroomClass]);
@@ -157,11 +197,9 @@ export const TeachersTab: React.FC<TeachersTabProps> = ({
     let over = 0;
 
     teachers.forEach((t) => {
-      const assigned = teacherWorkloadMap.get(t.id)?.assignedHours || 0;
-      const cap = Number(t.weeklyHourCapacity) || 20;
-      const pct = (assigned / cap) * 100;
-      if (pct > 100) over++;
-      else if (pct >= 80) optimal++;
+      const info = teacherWorkloadMap.get(t.id);
+      if (info?.isOverloaded) over++;
+      else if (info?.isOptimal) optimal++;
       else under++;
     });
 
@@ -222,12 +260,10 @@ export const TeachersTab: React.FC<TeachersTabProps> = ({
 
     if (workloadFilter !== "ALL") {
       list = list.filter((t) => {
-        const assigned = teacherWorkloadMap.get(t.id)?.assignedHours || 0;
-        const cap = Number(t.weeklyHourCapacity) || 20;
-        const pct = (assigned / cap) * 100;
-        if (workloadFilter === "OVERLOADED") return pct > 100;
-        if (workloadFilter === "OPTIMAL") return pct >= 80 && pct <= 100;
-        if (workloadFilter === "UNDERLOADED") return pct < 80;
+        const info = teacherWorkloadMap.get(t.id);
+        if (workloadFilter === "OVERLOADED") return info?.isOverloaded;
+        if (workloadFilter === "OPTIMAL") return info?.isOptimal;
+        if (workloadFilter === "UNDERLOADED") return info?.isUnderloaded;
         return true;
       });
     }
@@ -345,7 +381,13 @@ export const TeachersTab: React.FC<TeachersTabProps> = ({
             const homeroomClass = getTeacherHomeroomClass(teacher);
             const workload = teacherWorkloadMap.get(teacher.id) || {
               assignedHours: 0,
+              teachingHours: 0,
+              homeroomHours: 0,
               classCount: 0,
+              isOverloaded: false,
+              isOptimal: false,
+              isUnderloaded: true,
+              workloadPct: 0,
             };
 
             return (

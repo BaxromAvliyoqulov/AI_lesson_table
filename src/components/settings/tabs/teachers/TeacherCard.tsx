@@ -67,9 +67,16 @@ export const TeacherCard: React.FC<TeacherCardProps> = ({
   }
 
   const capacity = Number(teacher.weeklyHourCapacity) || 20;
-  const workloadPct = Math.round((workload.assignedHours / capacity) * 100);
-  const isOptimal = workloadPct >= 80 && workloadPct <= 100;
-  const isOverloaded = workloadPct > 100;
+  const workloadPct =
+    workload.workloadPct !== undefined
+      ? workload.workloadPct
+      : Math.round((workload.assignedHours / capacity) * 100);
+  const isOptimal =
+    workload.isOptimal !== undefined
+      ? workload.isOptimal
+      : workloadPct >= 80 && workloadPct <= 100;
+  const isOverloaded =
+    workload.isOverloaded !== undefined ? workload.isOverloaded : workloadPct > 100;
 
   const eff = getEffectiveTeacherMethodDay(teacher, subjects);
 
@@ -148,8 +155,23 @@ export const TeacherCard: React.FC<TeacherCardProps> = ({
               <span>Dars yuklamasi:</span>
             </span>
             <span className="font-black text-foreground">
-              {workload.assignedHours}{" "}
-              <span className="font-normal text-muted-foreground">/ {capacity} st</span>
+              {workload.homeroomHours > 0 ? (
+                <span>
+                  {workload.teachingHours}{" "}
+                  <span
+                    className="font-semibold text-purple-600 dark:text-purple-400"
+                    title="Sinf rahbarligi ('Kelajak soati') alohida ustama soati"
+                  >
+                    +{workload.homeroomHours}
+                  </span>{" "}
+                  <span className="font-normal text-muted-foreground">/ {capacity} st</span>
+                </span>
+              ) : (
+                <span>
+                  {workload.assignedHours}{" "}
+                  <span className="font-normal text-muted-foreground">/ {capacity} st</span>
+                </span>
+              )}
             </span>
           </div>
 
@@ -178,10 +200,10 @@ export const TeacherCard: React.FC<TeacherCardProps> = ({
               }`}
             >
               {isOverloaded
-                ? `🔴 +${workload.assignedHours - capacity} st ortiqcha`
+                ? `🔴 +${(workload.teachingHours ?? workload.assignedHours) - capacity} st ortiqcha`
                 : isOptimal
                 ? "🟢 Optimal stavka"
-                : `🟡 ${capacity - workload.assignedHours} st bo'sh`}
+                : `🟡 ${Math.max(0, capacity - (workload.teachingHours ?? workload.assignedHours))} st bo'sh`}
             </span>
             <span className="font-extrabold text-foreground">{workloadPct}%</span>
           </div>
