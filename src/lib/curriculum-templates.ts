@@ -717,3 +717,26 @@ export function checkMMTV133SplitEligibility(
   return { eligible: false };
 }
 
+/**
+ * Qat'iy Daxlsizlik Qoidasi (Ironclad Rule 9):
+ * Mavjud o'quv rejasidagi fanlar, o'qituvchilar biriktiruvi, dars soatlari
+ * va qo'lda ochilgan guruhlarni (GROUP_1, GROUP_2) daxlsiz saqlagan holda,
+ * faqat yetishmayotgan standart fanlarni butun sinf (WHOLE) holatida to'ldiradi.
+ */
+export function mergeCurriculumNonDestructive(
+  currentSubjects: ClassSubject[] = [],
+  standardList: ClassSubject[] = []
+): ClassSubject[] {
+  if (!currentSubjects || currentSubjects.length === 0) {
+    return standardList.map((st) => ({ ...st, groupType: "WHOLE" as const }));
+  }
+
+  const existingSubjectIds = new Set(currentSubjects.map((cs) => cs.subjectId));
+  const missing = standardList
+    .filter((st) => !existingSubjectIds.has(st.subjectId))
+    .map((st) => ({ ...st, groupType: "WHOLE" as const }));
+
+  return [...currentSubjects, ...missing];
+}
+
+

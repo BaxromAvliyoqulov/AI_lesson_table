@@ -13,6 +13,7 @@ import {
   generateStandardCurriculumForClass,
   isKelajakOrSinfSoatiSubject,
   isHomeroomPrimarySubject,
+  mergeCurriculumNonDestructive,
 } from "@/lib/curriculum-templates";
 import { TarifficationHeader, ViewMode } from "./TarifficationHeader";
 import { TarifficationByClassView } from "./TarifficationByClassView";
@@ -331,7 +332,7 @@ export const TarifficationWorkspace: React.FC<TarifficationWorkspaceProps> = ({
       }
     });
 
-    const newSubjects = generateStandardCurriculumForClass(
+    const standardList = generateStandardCurriculumForClass(
       targetClass.grade,
       targetClass.id,
       targetClass.homeroomTeacherId,
@@ -340,20 +341,22 @@ export const TarifficationWorkspace: React.FC<TarifficationWorkspaceProps> = ({
       tracker
     );
 
+    const mergedSubjects = mergeCurriculumNonDestructive(targetClass.subjects, standardList);
+
     const updated = classesData.map((cls) =>
-      cls.id === targetClass.id ? { ...cls, subjects: newSubjects } : cls
+      cls.id === targetClass.id ? { ...cls, subjects: mergedSubjects } : cls
     );
 
     setClassesData(updated);
     await onSaveClassSubjects(updated);
-    showToast(`✅ ${targetClass.name} sinfiga standart reja yuklandi va bazaga saqlandi!`);
+    showToast(`✅ ${targetClass.name} sinfiga standart reja xavfsiz yuklandi (mavjud darslar saqlandi)!`);
   };
 
   const handleLoadStandardForAllClasses = () => {
     setConfirmModalConfig({
       isOpen: true,
       title: "Davlat o'quv rejasini yuklash",
-      description: "Barcha tanlangan sinflarga davlat tayanch o'quv rejasini (316 soatlik standart) yuklashni tasdiqlaysizmi?",
+      description: "Barcha tanlangan sinflarga davlat tayanch o'quv rejasini (MMTV 133-buyruq standarti) yuklashni tasdiqlaysizmi? Mavjud o'qituvchilar va darslar saqlanadi.",
       confirmText: "Ha, yuklansin",
       variant: "warning",
       onConfirm: async () => {
@@ -365,7 +368,7 @@ export const TarifficationWorkspace: React.FC<TarifficationWorkspaceProps> = ({
           if (stageFilter === "PRIMARY" && !cls.isPrimary && cls.grade > 4) return cls;
           if (stageFilter === "HIGH" && (cls.isPrimary || cls.grade <= 4)) return cls;
 
-          const newSubjects = generateStandardCurriculumForClass(
+          const standardList = generateStandardCurriculumForClass(
             cls.grade,
             cls.id,
             cls.homeroomTeacherId,
@@ -373,12 +376,13 @@ export const TarifficationWorkspace: React.FC<TarifficationWorkspaceProps> = ({
             sortedTeachers,
             tracker
           );
-          return { ...cls, subjects: newSubjects };
+          const merged = mergeCurriculumNonDestructive(cls.subjects, standardList);
+          return { ...cls, subjects: merged };
         });
 
         setClassesData(updated);
         await onSaveClassSubjects(updated);
-        showToast("✅ Barcha sinflarga davlat tayanch o'quv rejasi yuklandi!");
+        showToast("✅ Barcha sinflarga davlat tayanch o'quv rejasi xavfsiz yuklandi!");
         setConfirmModalConfig((prev) => ({ ...prev, isOpen: false }));
       },
     });

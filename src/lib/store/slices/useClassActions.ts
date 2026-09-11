@@ -480,12 +480,18 @@ export function useClassActions() {
    * ⚡ Barcha sinflarga O'zbekiston Respublikasi Davlat Standart O'quv Rejasini 1-bosishda tatbiq etish
    * (1-sinf: 22s, 2-4: 25s, 5: 30s, 6: 31s, 7: 36s, 8: 34s, 9: 35s, 10-11: 32s)
    */
-  const applyStandardCurriculumToAllClasses = useCallback(() => {
+  const applyStandardCurriculumToAllClasses = useCallback((targetLanguage: "ALL" | "UZBEK" | "RUSSIAN" = "ALL") => {
     let affectedCount = 0;
     updateStore((prev) => {
       const workloadTracker = new Map<string, number>();
 
       const updatedClasses = prev.classes.map((cls) => {
+        const cNameLower = cls.name.toLowerCase();
+        const isRussianClass = cNameLower.includes("rus") || cNameLower.endsWith("-v") || cNameLower.endsWith("v");
+
+        if (targetLanguage === "UZBEK" && isRussianClass) return cls;
+        if (targetLanguage === "RUSSIAN" && !isRussianClass) return cls;
+
         const grade = cls.grade || 5;
         const currentSubjects = cls.subjects || [];
 

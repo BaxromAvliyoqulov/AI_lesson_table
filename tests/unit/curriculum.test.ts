@@ -4,6 +4,7 @@ import {
   generateStandardCurriculumForClass,
   isSubjectSuitableForGrade,
   getAvailableSubjectsForGrade,
+  mergeCurriculumNonDestructive,
 } from "@/lib/curriculum-templates";
 import { initialSubjects, initialTeachers } from "@/lib/mock-data";
 import { Subject } from "@/types";
@@ -104,22 +105,57 @@ describe("Uzbekistan Standard Curriculum & Subject Suitability Engine", () => {
     expect(highNames.some((n) => n.includes("fizika"))).toBe(true);
   });
 
-  it("should enforce Ironclad Rule 9: standard curriculum must NEVER auto-split subjects (all groupType must be WHOLE)", () => {
-    for (let grade = 1; grade <= 11; grade++) {
-      const generated = generateStandardCurriculumForClass(
-        grade,
-        `class_${grade}`,
-        "teacher_homeroom",
-        initialSubjects,
-        initialTeachers
-      );
+  it("should enforce Ironclad Rule 9: mergeCurriculumNonDestructive must preserve existing subjects, teachers, hours, and manual split groups", () => {
+    const existingSubjects = [
+      {
+        classId: "c_5a",
+        subjectId: "sub_ingliz",
+        teacherId: "teacher_custom_1",
+        weeklyHours: 5,
+        groupType: "GROUP_1" as const,
+      },
+      {
+        classId: "c_5a",
+        subjectId: "sub_ingliz",
+        teacherId: "teacher_custom_2",
+        weeklyHours: 5,
+        groupType: "GROUP_2" as const,
+      },
+    ];
 
-      for (const cs of generated) {
-        expect(cs.groupType).toBe("WHOLE");
-        expect(cs.groupType).not.toBe("GROUP_1");
-        expect(cs.groupType).not.toBe("GROUP_2");
-      }
-    }
+    const standardList = [
+      {
+        classId: "c_5a",
+        subjectId: "sub_ingliz",
+        teacherId: "teacher_auto",
+        weeklyHours: 5,
+        groupType: "WHOLE" as const,
+      },
+      {
+        classId: "c_5a",
+        subjectId: "sub_matem",
+        teacherId: "teacher_matem",
+        weeklyHours: 5,
+        groupType: "WHOLE" as const,
+      },
+    ];
+
+    const merged = mergeCurriculumNonDestructive(existingSubjects, standardList);
+
+    // Existing split groups must remain untouched
+    const inglizSubjects = merged.filter((s) => s.subjectId === "sub_ingliz");
+    expect(inglizSubjects.length).toBe(2);
+    expect(inglizSubjects[0].teacherId).toBe("teacher_custom_1");
+    expect(inglizSubjects[0].groupType).toBe("GROUP_1");
+    expect(inglizSubjects[1].teacherId).toBe("teacher_custom_2");
+    expect(inglizSubjects[1].groupType).toBe("GROUP_2");
+
+    // Missing subject (Matematika) should be added as WHOLE
+    const matemSubject = merged.find((s) => s.subjectId === "sub_matem");
+    expect(matemSubject).toBeDefined();
+    expect(matemSubject?.groupType).toBe("WHOLE");
+    expect(matemSubject?.teacherId).toBe("teacher_matem");
   });
 });
+
 

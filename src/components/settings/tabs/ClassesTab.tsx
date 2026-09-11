@@ -4,7 +4,7 @@ import React, { useState, useMemo, useCallback } from "react";
 import { SchoolClass, Branch, Shift, Teacher, Subject } from "@/types";
 import { sortClassesByName, isClassSecondShift } from "@/lib/utils";
 import { useSchoolStore } from "@/lib/store/useSchoolStore";
-import { ConfirmActionModal } from "@/components/modals/ConfirmActionModal";
+import { MMTV133CurriculumModal } from "@/components/settings/modals/MMTV133CurriculumModal";
 import { GraduationCap } from "lucide-react";
 import { ClassFilterType } from "./classes/types";
 import { ClassesHeaderAndStats } from "./classes/ClassesHeaderAndStats";
@@ -32,6 +32,7 @@ export const ClassesTab: React.FC<ClassesTabProps> = ({
   branches,
   shifts,
   teachers,
+  subjects,
   onAddClass,
   onEditClass,
   onDeleteClass,
@@ -62,11 +63,18 @@ export const ClassesTab: React.FC<ClassesTabProps> = ({
     setTimeout(() => setStatusToast(null), 4000);
   };
 
-  const handleConfirmApplyStandard = async () => {
+  const handleApplyStandardCurriculum = async (targetScope?: "ALL" | "UZBEK" | "RUSSIAN") => {
     setIsApplyingStandard(true);
     try {
-      applyStandardCurriculumToAllClasses();
-      showStatusToast("🎉 Barcha sinflarga 2026-2027 Davlat Standart O'quv Rejasi muvaffaqiyatli tatbiq etildi!");
+      const scope = targetScope || "ALL";
+      applyStandardCurriculumToAllClasses(scope);
+      const scopeLabel =
+        scope === "UZBEK"
+          ? "O'zbek sinflariga"
+          : scope === "RUSSIAN"
+          ? "Rus sinflariga"
+          : "Barcha sinflarga";
+      showStatusToast(`🎉 ${scopeLabel} 2026-2027 Davlat Standart O'quv Rejasi (MMTV 133-buyruq) xatosiz tatbiq etildi!`);
     } catch (err: unknown) {
       console.error(err);
       const errMsg = err instanceof Error ? err.message : "Noma'lum xatolik";
@@ -353,17 +361,15 @@ export const ClassesTab: React.FC<ClassesTabProps> = ({
         onSave={handleSaveQuickHomeroom}
       />
 
-      {/* Tasdiqlash modali: Davlat Standart Rejasini Tatbiq Qilish */}
-      <ConfirmActionModal
+      {/* MMTV 133-buyruq Standart O'quv Rejasi Modali (Excel Matrix, Daxlsiz Merging & 1-Click Apply) */}
+      <MMTV133CurriculumModal
         isOpen={isApplyStandardModalOpen}
         onClose={() => setIsApplyStandardModalOpen(false)}
-        onConfirm={handleConfirmApplyStandard}
-        title="Davlat Standart O'quv Rejasini barcha sinflarga tatbiq qilish"
-        description="2026-2027-o'quv yili uchun rasmiy MMTV standarti bo'yicha barcha sinflarga fanlar va me'yoriy dars soatlari yuklanadi. Avval belgilangan o'qituvchilaringiz saqlanadi, boshlang'ich sinflarda sinf rahbari avtomatik biriktiriladi. Tasdiqlaysizmi?"
-        confirmText="Ha, tatbiq etilsin"
-        cancelText="Bekor qilish"
-        variant="info"
-        isLoading={isApplyingStandard}
+        classes={classes}
+        subjects={subjects}
+        teachers={teachers}
+        onApplyStandard={handleApplyStandardCurriculum}
+        isApplying={isApplyingStandard}
       />
 
       {/* Status Toast */}
