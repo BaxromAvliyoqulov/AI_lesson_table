@@ -37,6 +37,7 @@ import { Official39Grid } from "./official-39/Official39Grid";
 import { Official39CellModal } from "./official-39/Official39CellModal";
 import { Official39RequisitesModal, Official39HomeroomModal } from "./official-39/Official39ExtraModals";
 import { AIConflictResolverModal } from "@/components/modals/AIConflictResolverModal";
+import { ScheduleHealthRadar } from "./ScheduleHealthRadar";
 import { useSchoolStore } from "@/lib/store/useSchoolStore";
 
 export const Official39TableView: React.FC<Official39TableViewProps> = ({
@@ -770,6 +771,14 @@ export const Official39TableView: React.FC<Official39TableViewProps> = ({
           lockedClassesCount={lockedClassIds.length}
           onLockPrimaryClasses={() => lockPrimaryClasses()}
           onLockAllClasses={() => lockAllClasses()}
+        />
+
+        {/* Jadval Salomatligi & Sifat Radari (Qat'iy Karkas Monitoringi) */}
+        <ScheduleHealthRadar
+          lessons={lessons}
+          classes={classes}
+          subjects={subjects}
+          conflictsCount={teacherConflictsSet.size}
         />
 
         <div

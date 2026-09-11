@@ -305,8 +305,8 @@ export function normalizeHomeroomSinfSoati({
     }
   });
 
-  // 4. Qat'iy qoida: 7-soat umuman bo'lmasligi kerak (maksimal 6 soat)
-  normalizedLessons = normalizedLessons.filter((l) => l.periodNumber <= 6);
+  // 4. Qat'iy qoida: darslar 1..7 oralig'ida bo'lishi kerak (boshlang'ich 1..5, yuqori sinflar 1..7)
+  normalizedLessons = normalizedLessons.filter((l) => l.periodNumber <= 7);
 
   return {
     classes: normalizedClasses,
@@ -361,7 +361,7 @@ export function useStoreSync() {
               teachers: normalized.teachers,
               classes: normalized.classes,
               lessons: normalized.lessons,
-              bellPeriods: (bellPeriods && bellPeriods.length > 0 ? bellPeriods : prev.bellPeriods).filter((bp: any) => bp.periodNumber <= 6),
+              bellPeriods: (bellPeriods && bellPeriods.length > 0 ? bellPeriods : prev.bellPeriods).filter((bp: any) => bp.periodNumber <= 7),
               syncStatus: "synced" as const,
             };
             saveLocalStorageState(newState);

@@ -24,22 +24,64 @@ export function buildClassSlots(
 ): SlotBuilderResult {
   const classSlots = new Map<string, Slot[]>();
   const allSlots: Slot[] = [];
+  const lockedClassSet = new Set(lockedClassIds || []);
+  const lockedTeacherSet = new Set(lockedTeacherIds || []);
 
-  // 1. Slotlarni qurish
+  // 1. Slotlarni Qat'iy Karkas (Rigid Class Envelope) tamoyilida qurish
   for (const cls of classes) {
     if (cls.isClosed) continue;
     const isPrimary = Boolean(cls.isPrimary) || (cls.grade !== undefined && Number(cls.grade) <= 4);
     const blockedDaysSet = new Set(cls.blockedDays || (isPrimary ? [6] : []));
     const blockedPeriodsSet = new Set((cls.blockedPeriods || []).map((bp) => `${bp.dayOfWeek}_${bp.periodNumber}`));
 
-    const maxP = isPrimary ? 5 : 6;
+    // Faol o'qish kunlari
+    const activeDays: number[] = [];
+    for (let d = 1; d <= daysCount; d++) {
+      if (!blockedDaysSet.has(d)) {
+        activeDays.push(d);
+      }
+    }
+    const numActiveDays = activeDays.length || 5;
+
+    // Sinf uchun zarur bo'lgan mustaqil vaqt slotlari (GROUP_2 parallel ravishda GROUP_1 bilan bir xil vaqtda o'tadi)
+    const requiredHours = (effectiveClassSubjects.get(cls.id) || []).reduce((sum, cs) => {
+      return sum + (cs.groupType === "GROUP_2" ? 0 : Math.max(1, Number(cs.weeklyHours) || 1));
+    }, 0);
+
+    const basePerDay = Math.floor(requiredHours / numActiveDays);
+    const remainder = requiredHours % numActiveDays;
+
+    const dailyTargetMap = new Map<number, number>();
+    activeDays.forEach((day, idx) => {
+      // Dastlabki remainder ta kunga base + 1, qolgan kunlarga base soat dars beriladi
+      dailyTargetMap.set(day, basePerDay + (idx < remainder ? 1 : 0));
+    });
+
     const slots: Slot[] = [];
     const hasGroup2 = (effectiveClassSubjects.get(cls.id) || []).some((cs) => cs.groupType === "GROUP_2");
+    const classMaxP = isPrimary ? 5 : (requiredHours > 34 ? 7 : 6);
 
     for (let day = 1; day <= daysCount; day++) {
       if (blockedDaysSet.has(day)) continue;
+      let targetP = classMaxP;
 
-      for (let p = 1; p <= maxP; p++) {
+      // Mavjud qulflangan darslar agar yuqoriroq periodda bo'lsa
+      if (existingLessons && existingLessons.length > 0) {
+        for (const el of existingLessons) {
+          if (el.classId === cls.id && el.dayOfWeek === day) {
+            const isClassLocked = lockedClassSet.has(el.classId);
+            const isTeacherLocked = lockedTeacherSet.has(el.teacherId);
+            const isExplicitlyLocked = el.isLocked === true;
+            if (isClassLocked || isTeacherLocked || isExplicitlyLocked) {
+              if (el.periodNumber > targetP) {
+                targetP = el.periodNumber;
+              }
+            }
+          }
+        }
+      }
+
+      for (let p = 1; p <= targetP; p++) {
         if (blockedPeriodsSet.has(`${day}_${p}`)) continue;
 
         const slot: Slot = {
@@ -78,8 +120,6 @@ export function buildClassSlots(
 
   const teacherOccupancy = new Map<string, number>();
   const teacherDailyHours = new Map<string, number>();
-  const lockedClassSet = new Set(lockedClassIds || []);
-  const lockedTeacherSet = new Set(lockedTeacherIds || []);
 
   // 2. Mavjud qulflangan darslarni joylashtirish
   if (existingLessons && existingLessons.length > 0) {

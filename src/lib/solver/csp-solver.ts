@@ -333,6 +333,13 @@ export class CSPSolver {
       }
     });
 
+    let totalCurriculumRequiredHours = 0;
+    effectiveClassSubjects.forEach((subs) => {
+      subs.forEach((s) => {
+        totalCurriculumRequiredHours += Number(s.weeklyHours) || 0;
+      });
+    });
+
     const totalConflicts = globalClashes + methodDayViolations + duplicateViolations;
 
     return {
@@ -340,7 +347,7 @@ export class CSPSolver {
       lessons,
       unassignedLessons: [],
       stats: {
-        totalRequiredHours: lessons.length,
+        totalRequiredHours: totalCurriculumRequiredHours || lessons.length,
         placedHours: lessons.length,
         score: Math.max(0, 100 - totalConflicts * 5),
         conflictsCount: totalConflicts,
